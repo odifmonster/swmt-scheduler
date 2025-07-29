@@ -6,10 +6,9 @@ from collections.abc import Hashable
 
 T = TypeVar('T', bound=Hashable)
 
-class HasID(Generic[T], Hashable):
+class _HasIDBase(Generic[T], Hashable):
 
     def __init__(self, id: T, prefix: str):
-        Generic[T].__init__(self)
         Hashable.__init__(self)
 
         self.__id = id
@@ -24,3 +23,6 @@ class HasID(Generic[T], Hashable):
     
     def __hash__(self) -> int:
         return self.__id.__hash__()
+
+class HasID(_HasIDBase):
+    pass

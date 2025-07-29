@@ -6,7 +6,7 @@ from collections.abc import Iterator
 
 T = TypeVar('T')
 
-class Iter2D(Generic[T], Iterator):
+class _Iter2DBase(Generic[T], Iterator):
 
     def __init__(self, data: Iterable[Iterable[T]]):
         self.__data: Iterable[Iterable[T]] = data
@@ -31,3 +31,6 @@ class Iter2D(Generic[T], Iterator):
             self.__iters = [x.__iter__() for x in self.__data]
             self.__cur_iter = self.__iters[0]
             raise StopIteration()
+        
+class Iter2D(_Iter2DBase):
+    pass
