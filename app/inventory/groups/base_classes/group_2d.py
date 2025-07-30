@@ -25,6 +25,12 @@ class Group2D(Group, Generic[T, U]):
     
     def _add_pair(self, key: T, value: U) -> None:
         self.__groups[key] = value
+
+    def _has_group(self, key: T) -> bool:
+        return key in self.__groups
+
+    def _get_group(self, key: T) -> U:
+        return self.__groups[key]
     
     def __iter__(self) -> Iterator[Roll]:
         return Iter2D(list(self.__groups.values()))
@@ -41,12 +47,14 @@ class Group2D(Group, Generic[T, U]):
         Group.add_roll(self, roll)
 
         prop = self._get_prop(roll)
+        if not prop in self.__groups:
+            self._add_group(prop)
         group = self.__groups[prop]
         group.add_roll(roll)
 
     def remove_roll(self, roll: Roll) -> Roll:
-        Group.remove_roll(self, roll)
-
         prop = self._get_prop(roll)
         group = self.__groups[prop]
-        return group.remove_roll(roll)
+        group.remove_roll(roll)
+
+        return Group.remove_roll(self, roll)
