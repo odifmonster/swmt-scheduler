@@ -32,9 +32,6 @@ class Group2D(Group, Generic[T, U]):
     def _get_group(self, key: T) -> U:
         return self.__groups[key]
     
-    def __iter__(self) -> Iterator[Roll]:
-        return Iter2D(list(self.__groups.values()))
-    
     @abstractmethod
     def _add_group(self, prop: T) -> None:
         raise NotImplementedError()
@@ -42,6 +39,9 @@ class Group2D(Group, Generic[T, U]):
     @abstractmethod
     def _get_prop(self, roll: Roll) -> T:
         raise NotImplementedError()
+    
+    def __iter__(self) -> Iterator[Roll]:
+        return Iter2D(list(self.__groups.values()))
     
     def add_roll(self, roll: Roll) -> None:
         Group.add_roll(self, roll)

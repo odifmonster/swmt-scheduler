@@ -118,7 +118,7 @@ class Group(ABC, Collection[Roll]):
         return self.__contents[idx].clear()
     
     @abstractmethod
-    def get_k_rolls(self, k: int) -> list[Roll]:
+    def get_k_rolls(self, k: int, **kwargs) -> list[Roll]:
         raise NotImplementedError()
     
     def remove_rolls(self, rolls: list[Roll]) -> list[Roll]:

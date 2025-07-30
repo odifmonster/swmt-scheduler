@@ -12,7 +12,7 @@ class StyleGroup(Group2D[SizeClass, SizeGroup]):
     def _get_prop(self, roll: Roll) -> SizeClass:
         return roll.size_class
     
-    def get_k_rolls(self, k: int) -> list[Roll]:
+    def get_k_rolls(self, k: int, **kwargs) -> list[Roll]:
         for size in (NORMAL, LARGE, SMALL):
             if not self._has_group(size):
                 continue

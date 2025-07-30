@@ -15,7 +15,7 @@ class SizeGroup(Group):
     def remove_roll(self, roll: Roll) -> None:
         return super().remove_roll(roll)
     
-    def get_k_rolls(self, k: int) -> list[Roll]:
+    def get_k_rolls(self, k: int, **kwargs) -> list[Roll]:
         if self.length < k:
             return []
         
