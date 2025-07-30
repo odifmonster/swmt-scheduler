@@ -24,5 +24,5 @@ class _HasIDBase(Generic[T], Hashable):
     def __hash__(self) -> int:
         return self.__id.__hash__()
 
-class HasID(_HasIDBase):
+class HasID(_HasIDBase, Generic[T]):
     pass

@@ -5,7 +5,7 @@ from ...structures import HasID
 class Style(HasID[str]):
 
     def __init__(self, id: str, prefix: str):
-        HasID[str].__init__(self, id, prefix)
+        super().__init__(id, prefix)
 
     @property
     def name(self) -> str:

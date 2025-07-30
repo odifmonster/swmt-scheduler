@@ -37,6 +37,9 @@ class _RollBase(HasID[str]):
         if self.__weight < 750:
             return NORMAL
         return LARGE
+    
+    def __str__(self) -> str:
+        return f'ROLL[id=\'{self._id}\', style=\'{self.__style}\', size_class={self.size_class}]'
 
 class Roll(_RollBase):
     pass
