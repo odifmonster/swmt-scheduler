@@ -40,6 +40,11 @@ class _RollBase(HasID[str]):
     
     def __str__(self) -> str:
         return f'ROLL[id=\'{self._id}\', style=\'{self.__style}\', size_class={self.size_class}]'
+    
+    def use(self, amount: float) -> None:
+        if self.__weight < amount:
+            raise ValueError('Cannot use more than total weight of greige roll.')
+        self.__weight -= amount
 
 class Roll(_RollBase):
     pass
