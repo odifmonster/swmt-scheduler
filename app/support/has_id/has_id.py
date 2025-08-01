@@ -24,3 +24,5 @@ class HasID(Generic[T]):
     
     def view(self):
         return self
+
+HasIDLike = HasID

@@ -1,8 +1,10 @@
 from typing import TypeVar, Generic, Protocol, Hashable, Self
+from abc import abstractmethod
 
 _T1 = TypeVar('_T1')
 
 class Viewable(Generic[_T1], Protocol):
+    @abstractmethod
     def view(self) -> _T1: ...
 
 _T2 = TypeVar('_T2', bound=Hashable)
