@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Self
 
 from app.support import Viewable
 
@@ -26,6 +26,12 @@ class Item(Generic[T, U]):
         if self.__data is None:
             raise AttributeError('This Item has no data', name='data', obj=self)
         return self.__data.view()
+    
+    def __eq__(self, value: Self):
+        return self.__idx == value.__idx
+    
+    def __lt__(self, value: Self):
+        return self.__idx < value.__idx
     
     def store(self, value: T, idx):
         if idx < 0 or idx <= self.__idx:
