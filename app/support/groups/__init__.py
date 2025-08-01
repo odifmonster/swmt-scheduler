@@ -2,5 +2,6 @@
 
 from .item import Item
 from .base_group import BaseGroup
+from .atomic import Atomic
 
-__all__ = ['Item', 'BaseGroup']
+__all__ = ['Item', 'BaseGroup', 'Atomic']

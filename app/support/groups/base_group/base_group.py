@@ -17,6 +17,8 @@ MAX_SATUR = 0.8
 class BaseGroup(Generic[S, T, U], ABC):
 
     def __init__(self, initsize: int):
+        Generic.__init__(self, lambda _: BaseGroup)
+        
         self.__contents = [Item[S, T]() for _ in range(initsize)]
         self.__size = initsize
         self.__length = 0

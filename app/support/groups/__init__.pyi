@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Self, Iterator
+from typing import TypeVar, Generic, Self, Iterator, Collection, Any
 from abc import ABC, abstractmethod
 from app.support import Viewable, HasID
 
@@ -49,4 +49,23 @@ class BaseGroup(Generic[_S_BG, _T_BG, _U_BG], ABC):
         ...
     def iter_items(self) -> Iterator[_T_BG]:
         """Returns a flat iterator over views of the objects in this group."""
+        ...
+
+class Atomic(Generic[_S_BG, _T_BG, _U_BG],
+             ABC, Collection[_S_BG],
+             BaseGroup[_S_BG, _T_BG, _U_BG]):
+    """
+    An abstract base class for set-like groups. This class allows you to define
+    properties that all contents of the "set" should share.
+    """
+    def __init__(self, initsize: int = ..., **kwargs: dict[str, Any]) -> None: ...
+    def __contains__(self, x: _U_BG) -> bool: ...
+    def __iter__(self) -> Iterator[_T_BG]: ...
+    def __len__(self) -> int: ...
+    @abstractmethod
+    def get_props(self, value: _S_BG) -> dict[str, Any]:
+        """
+        Get the relevant properties from 'value' as a dictionary mapping
+        property names to values.
+        """
         ...
