@@ -8,7 +8,7 @@ from app.support.groups import Item
 S = TypeVar('S')
 T = TypeVar('T')
 
-class BGIter(Generic[T, S], Iterator[T]):
+class BGIter(Generic[T, S], Iterator[S]):
 
     def __init__(self, contents: list[Item[T, S]]):
         self.__data: list[Item[T, S]] = sorted(contents)
