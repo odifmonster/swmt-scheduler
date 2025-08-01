@@ -2,6 +2,8 @@ from app.helper import HasID
 from app.styles.color import ColorGrade as ColorGrade
 
 class Color:
+    """A read-only type for handling information related to item color."""
+
     def __init__(self, name: str, num: str, grade: ColorGrade) -> None: ...
     @property
     def name(self) -> str: ...
@@ -13,17 +15,28 @@ class Color:
         ...
 
 class Style(HasID[str]):
+    """A read-only type for handling styles, mostly a readability thing."""
     def __init__(self, name: str, prefix: str) -> None: ...
     @property
     def name(self) -> str: ...
 
 class Greige(Style):
+    """A read-only type for handling greige style information."""
     def __init__(self, name: str) -> None: ...
+    @property
+    def roll_range(self) -> tuple[float, float]:
+        """The standard weight range for a roll in this style."""
+        ...
+    @property
+    def port_range(self) -> tuple[float, float]:
+        """The standard weight range to load a port with this style."""
+        ...
 
 class FabricMaster(Style):
     def __init__(self, name: str) -> None: ...
 
 class Fabric(Style):
+    """A read-only type for handling fabric item information."""
     def __init__(self,
                  name: str,
                  master: FabricMaster,
@@ -35,14 +48,8 @@ class Fabric(Style):
         """The master style associated with this item."""
         ...
     @property
-    def greige(self) -> Greige:
-        """The greige style used for this item."""
-        ...
+    def greige(self) -> Greige: ...
     @property
-    def color(self) -> Color:
-        """The color of this item."""
-        ...
+    def color(self) -> Color: ...
     @property
-    def yds_per_lb(self) -> float:
-        """The average yield (yards produced per pound of greige) for this item."""
-        ...
+    def yds_per_lb(self) -> float: ...
