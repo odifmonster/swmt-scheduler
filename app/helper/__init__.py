@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
 from .has_id import HasID
-from . import decors
+from .viewable import Viewable
 
-__all__ = ['HasID', 'decors']
+__all__ = ['HasID', 'Viewable']
