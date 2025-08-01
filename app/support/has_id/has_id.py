@@ -7,7 +7,7 @@ T = TypeVar('T', str, int)
 
 class HasID(Generic[T], Hashable):
 
-    def __init__(self, id: T, prefix: str):
+    def __init__(self, id: T, prefix):
         Hashable.__init__(self)
 
         self.__id = id
