@@ -11,9 +11,6 @@ U = TypeVar('U')
 class BGIter(Generic[T, U], Iterator[U]):
 
     def __init__(self, data: list[Item[T, U]]):
-        Generic.__init__(self, lambda _: BGIter)
-        Iterator[U].__init__(self)
-
         self.__data = sorted(data)
         self.__idx = 0
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from . import support
+from . import support, styles
 
-__all__ = ['support']
+__all__ = ['support', 'styles']

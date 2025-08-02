@@ -10,8 +10,6 @@ U = TypeVar('U')
 class Item(Generic[T, U]):
 
     def __init__(self):
-        Generic.__init__(self, lambda _: Item)
-        
         self.__data: T | None = None
         self.__idx = 0
 

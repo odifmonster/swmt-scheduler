@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from typing import TypeVar, Generic, Any
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from app.support import Viewable, HasID
 from ..base_group import BaseGroup
@@ -12,10 +12,9 @@ U = TypeVar('U', str, int)
 
 INIT_SIZE = 256
 
-class Atomic(Generic[S, T, U], ABC, BaseGroup[S, T, U]):
+class Atomic(Generic[S, T, U], BaseGroup[S, T, U]):
 
     def __init__(self, initsize = INIT_SIZE, **kwargs):
-        Generic.__init__(self, lambda _: Atomic)
         BaseGroup[S, T, U].__init__(self, initsize)
 
         self.__props = kwargs

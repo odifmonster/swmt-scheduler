@@ -1,3 +1,5 @@
+from app.styles.fabric import FabricMaster as FabricMaster
+
 from typing import NamedTuple, Literal, Self
 from app.support import HasID
 
@@ -52,3 +54,20 @@ class Color(HasID[str]):
     def name(self) -> str: ...
     @property
     def grade(self) -> DyeGrade: ...
+
+class Fabric(Style):
+    """
+    A class for fabric styles (i.e. items). Stores the full finished item number,
+    as well as the master style, the color, greige style, and average yield (yards per pound).
+    """
+    def __init__(self, id: str, greige: Greige,
+                 master: str, color: Color, yld: float) -> None: ...
+    @property
+    def greige(self) -> Greige: ...
+    @property
+    def master(self) -> FabricMaster: ...
+    @property
+    def color(self) -> Color: ...
+    @property
+    def yds_per_lb(self) -> float: ...
+    def __str__(self) -> str: ...

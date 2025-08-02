@@ -8,9 +8,6 @@ T = TypeVar('T', str, int)
 class HasID(Generic[T], Hashable):
 
     def __init__(self, id: T, prefix):
-        Generic.__init__(self, lambda _: HasID)
-        Hashable.__init__(self)
-
         self.__id = id
         self.__prefix = prefix
     

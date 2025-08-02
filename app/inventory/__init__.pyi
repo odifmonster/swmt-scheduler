@@ -1,0 +1,19 @@
+from abc import ABC, abstractmethod
+from app.support import Viewable, HasID
+from app.styles import Greige
+
+class RollLike(ABC, HasID[str]):
+    @property
+    @abstractmethod
+    def greige(self) -> Greige: ...
+    @property
+    @abstractmethod
+    def weight(self) -> float: ...
+    def __str__(self) -> str: ...
+
+class RollView(RollLike):
+    def __init__(self, link: RollLike) -> None: ...
+
+class Roll(RollLike, Viewable[RollView]):
+    def __init__(self, id: str, greige: Greige, weight: float) -> None: ...
+    def use(self, amount: float) -> None: ...
