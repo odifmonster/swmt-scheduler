@@ -1,15 +1,22 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Generic, Self
+from typing import TypeVar, Protocol, Self
+from abc import abstractmethod
 from collections.abc import Hashable
 
 T = TypeVar('T', str, int)
 
-class HasID(Generic[T], Hashable):
+class HasID(Protocol[T], Hashable):
 
-    def __init__(self, id: T, prefix: str):
-        self.id = id
-        self._prefix = prefix
+    @property
+    @abstractmethod
+    def _prefix(self):
+        raise NotImplementedError()
+    
+    @property
+    @abstractmethod
+    def id(self):
+        raise NotImplementedError()
 
     def __eq__(self, value: Self):
         return self.id == value.id and self._prefix == value._prefix

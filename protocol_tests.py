@@ -14,23 +14,27 @@ def random_str_id(length: int):
     
     return res
 
-def random_int_id(length: int):
-    digits = list(range(10))
-    res = random.choice(digits[1:])
+class ConcreteID(HasID[str]):
 
-    for _ in range(length-1):
-        res *= 10
-        res = res + random.choice(digits)
+    def __init__(self, id: str, suffix: int):
+        self.__id = id
+        self.__prefix = 'TYPE' + str(suffix)
+
+    @property
+    def id(self) -> str:
+        return self.__id
     
-    return res
+    @property
+    def _prefix(self) -> str:
+        return self.__prefix
 
 class TestHasID(unittest.TestCase):
 
     def test_equals(self):
-        var1 = HasID[int](random_int_id(8), 'TYPE1')
-        var2 = HasID[int](var1.id, 'TYPE1')
-        var3 = HasID[int](random_int_id(8), 'TYPE1')
-        var4 = HasID[int](var1.id, 'TYPE2')
+        var1 = ConcreteID(random_str_id(8), 1)
+        var2 = ConcreteID(var1.id, 1)
+        var3 = ConcreteID(random_str_id(8), 1)
+        var4 = ConcreteID(var1.id, 2)
 
         self.assertEqual(var1, var2,
                          'Two objects with same id and _prefix should be equal.')
@@ -40,8 +44,8 @@ class TestHasID(unittest.TestCase):
                             'Two objects with same id and different _prefix should not be equal.')
     
     def test_hash(self):
-        var1 = HasID[str](random_str_id(8), 'VAR_TYPE')
-        var2 = HasID[str](var1.id, 'TYPE_VAR')
+        var1 = ConcreteID(random_str_id(8), 1)
+        var2 = ConcreteID(var1.id, 1)
 
         self.assertEqual(hash(var1), hash(var2), 'Two equal objects should have the same hash value.')
 
