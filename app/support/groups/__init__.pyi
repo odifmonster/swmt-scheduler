@@ -1,9 +1,8 @@
 from app.support.groups.atomic import *
 
 from typing import TypeVar, Generic, Self, Any, \
-    Iterator
+    Iterator, KeysView, ValuesView, ItemsView
 from abc import ABC, abstractmethod
-from collections.abc import KeysView
 from app.support import Viewable, SupportsPrettyID
 
 _T_Item = TypeVar('_T_Item', bound=Viewable)
@@ -65,5 +64,9 @@ class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC):
     def remove(self, item_id: _U_BG) -> _S_BG_co: ...
     @abstractmethod
     def keys(self) -> KeysView[Any]: ...
+    @abstractmethod
+    def values(self) -> ValuesView[Any]: ...
+    @abstractmethod
+    def items(self) -> ItemsView[Any]: ...
     def get_by_id(self, item_id: _U_BG) -> _T_BG_co: ...
     def iter_items(self) -> Iterator[_T_BG_co]: ...

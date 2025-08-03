@@ -96,6 +96,12 @@ class BaseGroup(Generic[S_co, T_co, U], ABC):
     
     @abstractmethod
     def keys(self): raise NotImplementedError()
+
+    @abstractmethod
+    def values(self): raise NotImplementedError()
+
+    @abstractmethod
+    def items(self): raise NotImplementedError()
     
     def get_by_id(self, item_id: U):
         idx = self._get_nearest_idx(item_id, True)

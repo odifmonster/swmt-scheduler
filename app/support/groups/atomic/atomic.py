@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 from typing import Unpack, TypedDict
-from collections.abc import Iterator
 
 from app.support.groups import BaseGroup
 from .temp import Data, DataView
-from .views import AKeysView
+from .views import AKeysView, AValuesView, AItemsView
 
 INIT_SIZE = 256
 
@@ -20,6 +19,8 @@ class Atomic(BaseGroup[Data, DataView, str]):
 
         self.__props = kwargs
         self.__keys = AKeysView(self)
+        self.__values = AValuesView(self)
+        self.__items = AItemsView(self)
 
     def _props_matches(self, data: Data):
         for name in self.__props:
@@ -55,3 +56,7 @@ class Atomic(BaseGroup[Data, DataView, str]):
         return super().remove(item_id)
     
     def keys(self): return self.__keys
+
+    def values(self): return self.__values
+
+    def items(self): return self.__items

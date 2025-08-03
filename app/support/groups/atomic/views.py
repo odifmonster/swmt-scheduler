@@ -1,26 +1,33 @@
 #!/usr/bin/env python
 
-from collections.abc import KeysView
+from collections.abc import Set
 
 from app.support import SuperIter
 from app.support.groups import BaseGroup
 from .temp import Data, DataView
 
-class AKeysIter(SuperIter[DataView, str], get_val=lambda dv: dv.id):
-    pass
+class AMapView:
 
-class AKeysView(KeysView[str]):
-
-    def __init__(self, link: BaseGroup[Data, DataView, str]):
-        self.__link = link
+    def __init__(self, link: BaseGroup[Data, DataView, str], kind: str):
+        self._link = link
+        self.__kind = kind
 
     def __repr__(self):
+        if self.__kind not in ('keys', 'values', 'items'):
+            raise TypeError(f'Unknown MapView kind: \'{self.__kind}\'.')
+        
         res = ''
-        nxt_line = 'group_keys(['
+        nxt_line = f'group_{self.__kind}(['
 
-        for i, item in enumerate(self.__link.iter_items()):
-            nxt_str = item.pretty(kind='key')
-
+        for i, item in enumerate(self._link.iter_items()):
+            nxt_str = ''
+            if self.__kind == 'keys':
+                nxt_str = item.pretty(kind='key')
+            elif self.__kind == 'items':
+                nxt_str = f'({item.pretty(kind='key')},{item.pretty(kind='value')})'
+            else:
+                nxt_str = item.pretty(kind='value')
+            
             if len(nxt_line) > 0 and len(nxt_line) + len(nxt_str) > 73:
                 if i > 0: nxt_line += ','
                 if len(res) > 0: res += '\n'
@@ -35,9 +42,43 @@ class AKeysView(KeysView[str]):
         if len(res) > 0: res += '\n'
         res += nxt_line
         return res
-    
-    def __len__(self): return self.__link.n_items
 
-    def __iter__(self): return AKeysIter(self.__link.iter_items())
+class AKeysIter(SuperIter[DataView, str], get_val=lambda dv: dv.id):
+    pass
 
-    def __contains__(self, key: str): return key in self.__link
+class AItemsIter(SuperIter[DataView, tuple[str, DataView]], get_val=lambda dv: (dv.id, dv)):
+    pass
+
+class AKeysView(Set[str], AMapView):
+
+    def __init__(self, link: BaseGroup[Data, DataView, str]):
+        AMapView.__init__(self, link, 'keys')
+
+    def __len__(self): return self._link.n_items
+
+    def __iter__(self): return AKeysIter(self._link.iter_items())
+
+    def __contains__(self, key: str): return key in self._link
+
+class AValuesView(Set[DataView], AMapView):
+
+    def __init__(self, link: BaseGroup[Data, DataView, str]):
+        AMapView.__init__(self, link, 'values')
+
+    def __len__(self): return self._link.n_items
+
+    def __iter__(self): self._link.iter_items()
+
+    def __contains__(self, value: DataView): return value.id in self._link
+
+class AItemsView(Set[tuple[str, DataView]], AMapView):
+
+    def __init__(self, link: BaseGroup[Data, DataView, str]):
+        AMapView.__init__(self, link, 'items')
+
+    def __len__(self): return self._link.n_items
+
+    def __iter__(self): return AItemsIter(self._link.iter_items())
+
+    def __contains__(self, item: tuple[str, DataView]):
+        return item[0] in self._link
