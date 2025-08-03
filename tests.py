@@ -15,16 +15,16 @@ def random_str_id() -> str:
 
     return res
 
+def random_data(length: int, name: str, value: int) -> list[Data]:
+    return [Data(random_str_id(), name, value) for _ in range(length)]
+
 class TestAtomic(unittest.TestCase):
 
     def test_getitem(self):
         atom = Atomic(name='DVar1', value=5)
-        vals: list[Data] = []
+        vals: list[Data] = random_data(25, 'DVar1', 5)
 
-        for _ in range(25):
-            d = Data(random_str_id(), 'DVar1', 5)
-            atom.add(d)
-            vals.append(d)
+        for v in vals: atom.add(v)
 
         self.assertTrue(
             all(map(lambda v: atom[v.id] == v, vals)),
@@ -36,6 +36,22 @@ class TestAtomic(unittest.TestCase):
             view.name = 'DVar2'
 
         self.assertRaises(AttributeError, lambda: attempt_set(view))
+
+    def test_iter(self):
+        atom = Atomic(name='DVar1', value=5)
+        vals = random_data(20, 'DVar1', 50)
+
+        val_ids = [v.id for v in vals]
+        self.assertTrue(
+            all(map(lambda x: x[0] == x[1], zip(val_ids, iter(atom))))
+        )
+    
+    def test_contains(self):
+        atom = Atomic(name='Data', value=0)
+        atom.add(Data('a_unique_id', 'Data', 0))
+
+        self.assertTrue('a_unique_id' in atom)
+        self.assertFalse('another_id' in atom)
 
     def test_add(self):
         atom = Atomic(name='DVar1', value=5)

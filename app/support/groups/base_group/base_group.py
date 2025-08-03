@@ -62,6 +62,12 @@ class BaseGroup(Generic[S_co, T_co, U], ABC):
     
     @abstractmethod
     def __len__(self): raise NotImplementedError()
+
+    @abstractmethod
+    def __iter__(self): raise NotImplementedError()
+
+    @abstractmethod
+    def __contains__(self, key): raise NotImplementedError()
     
     @abstractmethod
     def __getitem__(self, key): raise NotImplementedError()

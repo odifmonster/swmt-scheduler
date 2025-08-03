@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from typing import Unpack, TypedDict
+from collections.abc import Iterator
 
 from app.support.groups import BaseGroup
 from .temp import Data, DataView
@@ -10,6 +11,16 @@ INIT_SIZE = 256
 class AProps(TypedDict):
     name: str
     value: int
+
+class AIter(Iterator[str]):
+
+    def __init__(self, view_iter: Iterator[DataView]):
+        self.__iter = view_iter
+
+    def __iter__(self): return self
+
+    def __next__(self):
+        return self.__iter.__next__().id
 
 class Atomic(BaseGroup[Data, DataView, str]):
 
@@ -29,6 +40,15 @@ class Atomic(BaseGroup[Data, DataView, str]):
         return res + ',\n  '.join([f'{k}={repr(v)}' for k, v in self.__props.items()])
     
     def __len__(self): return self.n_items
+
+    def __iter__(self): return AIter(self.iter_items())
+    
+    def __contains__(self, key):
+        try:
+            self.get_by_id(key)
+            return True
+        except ValueError:
+            return False
     
     def __getitem__(self, key: str): return self.get_by_id(key)
     
