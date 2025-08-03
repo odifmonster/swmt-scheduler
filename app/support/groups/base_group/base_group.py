@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 
 from app.support import Viewable, SupportsPrettyID
 from app.support.groups import Item
@@ -14,7 +15,7 @@ U = TypeVar('U', str, int)
 SKIP_LEN = 7
 MAX_SATUR = 0.8
 
-class BaseGroup(Generic[S_co, T_co, U], ABC):
+class BaseGroup(Generic[S_co, T_co, U], ABC, Mapping[Any, Any]):
 
     def __init__(self, initsize: int):
         self.__contents: list[Item[S_co, T_co]] = [Item[S_co, T_co]() for _ in range(initsize)]

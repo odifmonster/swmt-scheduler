@@ -1,28 +1,29 @@
 #!/usr/bin/env python
 
-from typing import Unpack, TypedDict
+from typing import TypeVar, Generic
 
+from app.support import Viewable, SupportsPrettyID
 from app.support.groups import BaseGroup
-from .temp import Data, DataView
 from .views import AKeysView, AValuesView, AItemsView
+
+S_co = TypeVar('S_co', bound=Viewable[SupportsPrettyID], covariant=True)
+T_co = TypeVar('T_co', bound=SupportsPrettyID, covariant=True)
+U = TypeVar('U', str, int)
 
 INIT_SIZE = 256
 
-class AProps(TypedDict):
-    name: str
-    value: int
+class Atomic(Generic[S_co, T_co, U],
+             BaseGroup[S_co, T_co, U]):
 
-class Atomic(BaseGroup[Data, DataView, str]):
-
-    def __init__(self, initsize = INIT_SIZE, **kwargs: Unpack[AProps]):
+    def __init__(self, initsize = INIT_SIZE, **kwargs):
         super().__init__(initsize)
 
         self.__props = kwargs
-        self.__keys = AKeysView(self)
-        self.__values = AValuesView(self)
-        self.__items = AItemsView(self)
+        self.__keys = AKeysView[S_co, T_co, U](self)
+        self.__values = AValuesView[S_co, T_co, U](self)
+        self.__items = AItemsView[S_co, T_co, U](self)
 
-    def _props_matches(self, data: Data):
+    def _props_matches(self, data: S_co):
         for name in self.__props:
             if getattr(data, name) != self.__props[name]:
                 return False
@@ -43,16 +44,16 @@ class Atomic(BaseGroup[Data, DataView, str]):
         except ValueError:
             return False
     
-    def __getitem__(self, key: str): return self.get_by_id(key)
+    def __getitem__(self, key): return self.get_by_id(key)
     
-    def add(self, data: Data):
+    def add(self, data: S_co):
         if not self._props_matches(data):
             msg = 'Contents of this group must have the following properties:'
             msg += self._props_repr()
             raise ValueError(msg)
         super().add(data)
 
-    def remove(self, item_id: str):
+    def remove(self, item_id):
         return super().remove(item_id)
     
     def keys(self): return self.__keys

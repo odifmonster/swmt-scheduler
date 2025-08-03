@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 
+from typing import TypeVar, Generic
 from collections.abc import Set
 
-from app.support import SuperIter
+from app.support import SuperIter, Viewable, SupportsPrettyID
 from app.support.groups import BaseGroup
-from .temp import Data, DataView
 
-class AMapView:
+S_co = TypeVar('S_co', bound=Viewable[SupportsPrettyID], covariant=True)
+T_co = TypeVar('T_co', bound=SupportsPrettyID, covariant=True)
+U = TypeVar('U', str, int)
 
-    def __init__(self, link: BaseGroup[Data, DataView, str], kind: str):
+class AMapView(Generic[S_co, T_co, U]):
+
+    def __init__(self, link: BaseGroup[S_co, T_co, U], kind: str):
         self._link = link
         self.__kind = kind
 
@@ -43,42 +47,52 @@ class AMapView:
         res += nxt_line
         return res
 
-class AKeysIter(SuperIter[DataView, str], get_val=lambda dv: dv.id):
+class AKeysIter(Generic[T_co, U],
+                SuperIter[T_co, U],
+                get_val=lambda dv: dv.id):
     pass
 
-class AItemsIter(SuperIter[DataView, tuple[str, DataView]], get_val=lambda dv: (dv.id, dv)):
+class AItemsIter(Generic[T_co, U],
+                 SuperIter[T_co, tuple[U, T_co]], 
+                 get_val=lambda dv: (dv.id, dv)):
     pass
 
-class AKeysView(Set[str], AMapView):
+class AKeysView(Generic[S_co, T_co, U],
+                Set[U],
+                AMapView[S_co, T_co, U]):
 
-    def __init__(self, link: BaseGroup[Data, DataView, str]):
+    def __init__(self, link: BaseGroup[S_co, T_co, U]):
         AMapView.__init__(self, link, 'keys')
 
     def __len__(self): return self._link.n_items
 
     def __iter__(self): return AKeysIter(self._link.iter_items())
 
-    def __contains__(self, key: str): return key in self._link
+    def __contains__(self, key: U): return key in self._link
 
-class AValuesView(Set[DataView], AMapView):
+class AValuesView(Generic[S_co, T_co, U],
+                  Set[T_co],
+                  AMapView[S_co, T_co, U]):
 
-    def __init__(self, link: BaseGroup[Data, DataView, str]):
+    def __init__(self, link: BaseGroup[S_co, T_co, U]):
         AMapView.__init__(self, link, 'values')
 
     def __len__(self): return self._link.n_items
 
     def __iter__(self): self._link.iter_items()
 
-    def __contains__(self, value: DataView): return value.id in self._link
+    def __contains__(self, value: T_co): return value.id in self._link
 
-class AItemsView(Set[tuple[str, DataView]], AMapView):
+class AItemsView(Generic[S_co, T_co, U],
+                 Set[tuple[U, T_co]], 
+                 AMapView[S_co, T_co, U]):
 
-    def __init__(self, link: BaseGroup[Data, DataView, str]):
+    def __init__(self, link: BaseGroup[S_co, T_co, U]):
         AMapView.__init__(self, link, 'items')
 
     def __len__(self): return self._link.n_items
 
     def __iter__(self): return AItemsIter(self._link.iter_items())
 
-    def __contains__(self, item: tuple[str, DataView]):
+    def __contains__(self, item: tuple[U, S_co]):
         return item[0] in self._link
