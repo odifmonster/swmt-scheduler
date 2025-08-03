@@ -1,8 +1,10 @@
+from app.support import groups as groups
+
 from typing import TypeVar, Protocol, Self, Hashable
 from abc import abstractmethod
 
-_T = TypeVar('T')
 _T_HasID = TypeVar('_T_HasID', str, int)
+_T_View_co = TypeVar('T_View_co', contravariant=True)
 
 class HasID(Protocol[_T_HasID], Hashable):
     """
@@ -20,9 +22,9 @@ class HasID(Protocol[_T_HasID], Hashable):
     def __eq__(self, value: Self) -> bool: ...
     def __hash__(self) -> int: ...
 
-class Viewable(Protocol[_T]):
+class Viewable(Protocol[_T_View_co]):
     """
     A protocol for objects that provide live, read-only "views" of their data.
     """
     @abstractmethod
-    def view(self) -> _T: ...
+    def view(self) -> _T_View_co: ...
