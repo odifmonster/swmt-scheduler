@@ -1,6 +1,7 @@
 from app.support import groups as groups
 
-from typing import TypeVar, Protocol, Self, Hashable
+from typing import TypeVar, Generic, Protocol, Self, \
+    Hashable
 from abc import abstractmethod
 
 _T_HasID = TypeVar('_T_HasID', str, int)
@@ -28,3 +29,13 @@ class Viewable(Protocol[_T_View_co]):
     """
     @abstractmethod
     def view(self) -> _T_View_co: ...
+
+_T_SV_co = TypeVar('_T_SV_co', covariant=True)
+
+class SuperView(Generic[_T_SV_co]):
+    """
+    Super class for easy creation of view types. Type parameter is usually a Protocol,
+    and 'gettables' is a list of attributes to make read-only for this view.
+    """
+    def __init_subclass__(cls, gettables: list[str]) -> None: ...
+    def __init__(self, link: _T_SV_co) -> None: ...

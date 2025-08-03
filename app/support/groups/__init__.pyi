@@ -1,7 +1,9 @@
-from app.support.groups.base_group import *
+from app.support.groups.atomic import *
 
-from typing import TypeVar, Generic, Self
-from app.support import Viewable
+from typing import TypeVar, Generic, Self, Any, \
+    Iterator
+from abc import ABC, abstractmethod
+from app.support import Viewable, HasID
 
 _T_Item = TypeVar('_T_Item', bound=Viewable)
 _U_Item = TypeVar('_U_Item')
@@ -29,3 +31,32 @@ class Item(Generic[_T_Item, _U_Item]):
     def remove(self) -> _T_Item:
         """Empties this Item and returns the actual object it was holding."""
         ...
+
+_S_BG_co = TypeVar('_S_BG_co', bound=Viewable[HasID], covariant=True)
+_T_BG_co = TypeVar('_T_BG_co', bound=HasID, covariant=True)
+_U_BG = TypeVar('_U_BG', str, int)
+
+class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC):
+    """
+    An abstract container-like class whose contents are read-only until they are
+    removed. Contents are accessed by id, and insertion order is preserved.
+    """
+    def __init__(self, initsize: int) -> None: ...
+    @property
+    def n_items(self) -> int:
+        """
+        The number of items in this Group. For sub-classes, differs from len(Group)
+        in that "nested" groups will return the flat number of items, not the number
+        of sub-groups.
+        """
+        ...
+    @abstractmethod
+    def __len__(self) -> int: ...
+    @abstractmethod
+    def __getitem__(self, key: Any) -> Any: ...
+    @abstractmethod
+    def add(self, data: _S_BG_co) -> None: ...
+    @abstractmethod
+    def remove(self, item_id: _U_BG) -> _S_BG_co: ...
+    def get_by_id(self, item_id: _U_BG) -> _T_BG_co: ...
+    def iter_items(self) -> Iterator[_T_BG_co]: ...

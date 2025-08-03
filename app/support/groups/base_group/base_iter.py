@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 
+from typing import TypeVar, Generic
 from collections.abc import Iterator
 
+from app.support import Viewable, HasID
+
 from app.support.groups import Item
-from .temp import Data, DataView
 
-class BGIter(Iterator[DataView]):
+T = TypeVar('T', bound=Viewable[HasID])
+U = TypeVar('U', bound=HasID)
 
-    def __init__(self, data: list[Item[Data, DataView]]):
+class BGIter(Generic[T, U], Iterator[U]):
+
+    def __init__(self, data: list[Item[T, U]]):
         self.__data = sorted(data)
         self.__idx = 0
 
