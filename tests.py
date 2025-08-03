@@ -62,5 +62,31 @@ class TestAtomic(unittest.TestCase):
         self.assertRaises(ValueError, lambda: atom.add(Data(random_str_id(), 'DVar1', 10)))
         self.assertRaises(ValueError, lambda: atom.add(Data(random_str_id(), 'DVar2', 10)))
 
+    def test_keys(self):
+        dname = 'DVar1'
+        dval = 10
+        vals = random_data(20, dname, dval)
+        atom = Atomic(name=dname, value=dval)
+
+        for data in vals:
+            atom.add(data)
+
+        key_set = { x.id for x in vals }
+        akeys = atom.keys()
+        self.assertEqual(akeys, key_set)
+
+        key_set2 = key_set - { vals[5].id, vals[7].id }
+        atom.remove(vals[5].id)
+        atom.remove(vals[7].id)
+
+        self.assertNotEqual(key_set, akeys)
+        self.assertEqual(key_set2, akeys)
+
+        newdata = Data(random_str_id(), dname, dval)
+        atom.add(newdata)
+        key_set2.add(newdata.id)
+
+        self.assertEqual(key_set2, akeys)
+
 if __name__ == '__main__':
     unittest.main()

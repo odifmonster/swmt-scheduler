@@ -3,7 +3,8 @@ from app.support.groups.atomic import *
 from typing import TypeVar, Generic, Self, Any, \
     Iterator
 from abc import ABC, abstractmethod
-from app.support import Viewable, HasID
+from collections.abc import KeysView
+from app.support import Viewable, SupportsPrettyID
 
 _T_Item = TypeVar('_T_Item', bound=Viewable)
 _U_Item = TypeVar('_U_Item')
@@ -32,8 +33,8 @@ class Item(Generic[_T_Item, _U_Item]):
         """Empties this Item and returns the actual object it was holding."""
         ...
 
-_S_BG_co = TypeVar('_S_BG_co', bound=Viewable[HasID], covariant=True)
-_T_BG_co = TypeVar('_T_BG_co', bound=HasID, covariant=True)
+_S_BG_co = TypeVar('_S_BG_co', bound=Viewable[SupportsPrettyID], covariant=True)
+_T_BG_co = TypeVar('_T_BG_co', bound=SupportsPrettyID, covariant=True)
 _U_BG = TypeVar('_U_BG', str, int)
 
 class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC):
@@ -62,5 +63,7 @@ class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC):
     def add(self, data: _S_BG_co) -> None: ...
     @abstractmethod
     def remove(self, item_id: _U_BG) -> _S_BG_co: ...
+    @abstractmethod
+    def keys(self) -> KeysView[Any]: ...
     def get_by_id(self, item_id: _U_BG) -> _T_BG_co: ...
     def iter_items(self) -> Iterator[_T_BG_co]: ...

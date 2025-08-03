@@ -1,7 +1,7 @@
 from app.support import groups as groups
 
-from typing import TypeVar, Generic, Protocol, Self, \
-    Hashable
+from typing import TypeVar, Generic, Protocol, Self, Any, \
+    Hashable, Iterator, Callable
 from abc import abstractmethod
 
 _T_HasID = TypeVar('_T_HasID', str, int)
@@ -39,3 +39,31 @@ class SuperView(Generic[_T_SV_co]):
     """
     def __init_subclass__(cls, gettables: list[str]) -> None: ...
     def __init__(self, link: _T_SV_co) -> None: ...
+
+_T_SI_co = TypeVar('_T_SI_co', covariant=True)
+_U_SI_co = TypeVar('_U_SI_co', covariant=True)
+
+class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterator[_U_SI_co]):
+    """
+    Super class for easy creation of "wrapper" iterators. The wrapper applies a
+    function to every output of the inner iterator to get its next value.
+    """
+    def __init_subclass__(cls, get_val: Callable[[_T_SI_co], _U_SI_co]) -> None: ...
+    def __init__(self, link: Iterator[_T_SI_co]) -> None: ...
+    def __iter__(self) -> Iterator[_U_SI_co]: ...
+    def __next__(self) -> _U_SI_co: ...
+
+class SupportsPretty(Protocol):
+    """
+    A protocol for objects whose string representations change depending on context.
+    """
+    @abstractmethod
+    def pretty(self, **kwargs: dict[str, Any]) -> str: ...
+
+_T_SPID = TypeVar('_T_SPID', str, int)
+
+class SupportsPrettyID(Generic[_T_SPID], SupportsPretty, HasID[_T_SPID], Protocol):
+    """
+    A protocol for objects that can be pretty and have ids (for contents of groups).
+    """
+    ...

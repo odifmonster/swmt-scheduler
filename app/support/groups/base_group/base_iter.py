@@ -3,12 +3,12 @@
 from typing import TypeVar, Generic
 from collections.abc import Iterator
 
-from app.support import Viewable, HasID
+from app.support import Viewable, SupportsPrettyID
 
 from app.support.groups import Item
 
-T = TypeVar('T', bound=Viewable[HasID])
-U = TypeVar('U', bound=HasID)
+T = TypeVar('T', bound=Viewable[SupportsPrettyID])
+U = TypeVar('U', bound=SupportsPrettyID)
 
 class BGIter(Generic[T, U], Iterator[U]):
 

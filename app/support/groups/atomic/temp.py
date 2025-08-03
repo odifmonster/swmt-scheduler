@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
-from typing import Protocol
+from typing import Protocol, TypedDict, Unpack, Literal
 
-from app.support import Viewable, SuperView, HasID
+from app.support import Viewable, SuperView, SupportsPrettyID
 
-class DataLike(HasID[str], Protocol):
+class DPrettyArgs(TypedDict):
+    kind: Literal['verbose', 'value', 'object', 'key']
+
+class DataLike(SupportsPrettyID[str], Protocol):
 
     @property
     def _prefix(self): return 'DATA'
@@ -18,10 +21,29 @@ class DataLike(HasID[str], Protocol):
     @property
     def value(self) -> int: raise NotImplementedError()
 
+    def pretty(self, **kwargs: Unpack[DPrettyArgs]):
+        kind = kwargs['kind']
+
+        if kind == 'verbose':
+            res = f'{self._prefix}[\n  '
+            res += f'id={self.id},\n  '
+            res += f'name={self.name},\n  '
+            res += f'value={self.value}]'
+            return res
+        
+        if kind == 'value':
+            res = f'<{self.name} is {self.value}>'
+            return res
+        
+        if kind == 'object':
+            return f'{self._prefix}(id=\'{self.id}\')'
+        
+        return f'\'{self.id}\''
+
 class DataView(SuperView[DataLike],
                DataLike,
                gettables=['_prefix', 'id', 'name', 'value',
-                          '__eq__', '__hash__']):
+                          '__eq__', '__hash__', 'pretty']):
     pass
 
 class Data(DataLike, Viewable[DataView]):

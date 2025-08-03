@@ -3,12 +3,12 @@
 from typing import TypeVar, Generic
 from abc import ABC, abstractmethod
 
-from app.support import Viewable, HasID
+from app.support import Viewable, SupportsPrettyID
 from app.support.groups import Item
 from .base_iter import BGIter
 
-S_co = TypeVar('S_co', bound=Viewable[HasID], covariant=True)
-T_co = TypeVar('T_co', bound=HasID, covariant=True)
+S_co = TypeVar('S_co', bound=Viewable[SupportsPrettyID], covariant=True)
+T_co = TypeVar('T_co', bound=SupportsPrettyID, covariant=True)
 U = TypeVar('U', str, int)
 
 SKIP_LEN = 7
@@ -93,6 +93,9 @@ class BaseGroup(Generic[S_co, T_co, U], ABC):
         
         self.__length -= 1
         return self.__contents[idx].remove()
+    
+    @abstractmethod
+    def keys(self): raise NotImplementedError()
     
     def get_by_id(self, item_id: U):
         idx = self._get_nearest_idx(item_id, True)

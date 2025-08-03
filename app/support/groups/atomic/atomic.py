@@ -5,6 +5,7 @@ from collections.abc import Iterator
 
 from app.support.groups import BaseGroup
 from .temp import Data, DataView
+from .views import AKeysView
 
 INIT_SIZE = 256
 
@@ -12,22 +13,13 @@ class AProps(TypedDict):
     name: str
     value: int
 
-class AIter(Iterator[str]):
-
-    def __init__(self, view_iter: Iterator[DataView]):
-        self.__iter = view_iter
-
-    def __iter__(self): return self
-
-    def __next__(self):
-        return self.__iter.__next__().id
-
 class Atomic(BaseGroup[Data, DataView, str]):
 
     def __init__(self, initsize = INIT_SIZE, **kwargs: Unpack[AProps]):
         super().__init__(initsize)
 
         self.__props = kwargs
+        self.__keys = AKeysView(self)
 
     def _props_matches(self, data: Data):
         for name in self.__props:
@@ -41,7 +33,7 @@ class Atomic(BaseGroup[Data, DataView, str]):
     
     def __len__(self): return self.n_items
 
-    def __iter__(self): return AIter(self.iter_items())
+    def __iter__(self): return iter(self.__keys)
     
     def __contains__(self, key):
         try:
@@ -61,3 +53,5 @@ class Atomic(BaseGroup[Data, DataView, str]):
 
     def remove(self, item_id: str):
         return super().remove(item_id)
+    
+    def keys(self): return self.__keys
