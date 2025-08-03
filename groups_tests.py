@@ -2,12 +2,9 @@
 
 import unittest
 
-from typing import Protocol
-from abc import abstractmethod
 import random
 
-from app.support import HasID, Viewable
-from app.support.groups import Item
+from app.support.groups import *
 
 def random_str_id(length: int):
     res = ''
@@ -17,61 +14,6 @@ def random_str_id(length: int):
         res = res + str(random.choice(digits))
     
     return res
-    
-class DataLike(HasID[str], Protocol):
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        raise NotImplementedError()
-    
-    @property
-    @abstractmethod
-    def value(self) -> int:
-        raise NotImplementedError()
-    
-class DataView(DataLike):
-
-    def __init__(self, link: DataLike):
-        self.__link = link
-
-    @property
-    def _prefix(self) -> str: return self.__link._prefix
-    
-    @property
-    def id(self) -> str: return self.__link.id
-    
-    @property
-    def name(self) -> str: return self.__link.name
-    
-    @property
-    def value(self) -> int: return self.__link.value
-
-class Data(DataLike, Viewable[DataView]):
-
-    def __init__(self, id: str, name: str, value: int):
-        self.__id = id
-        self.__name = name
-        self.__value = value
-        self.__view = DataView(self)
-
-    @property
-    def _prefix(self) -> str: return 'DATA'
-
-    @property
-    def id(self) -> str: return self.__id
-
-    @property
-    def name(self) -> str: return self.__name
-    @name.setter
-    def name(self, value: str) -> None: self.__name = value
-
-    @property
-    def value(self) -> int: return self.__value
-    @value.setter
-    def value(self, new: int) -> None: self.__value = new
-
-    def view(self) -> DataView: return self.__view
 
 class TestItem(unittest.TestCase):
 
@@ -122,6 +64,80 @@ class TestItem(unittest.TestCase):
         ivar.insert(dvar2, 1)
         self.assertEqual(ivar.data, dvar2,
                          'The data inserted should be equal to the Item\'s data.')
+        
+def random_group(length: int, initsize: int = 256) -> tuple[BaseGroup, list[Data]]:
+    bgvar = BaseGroup(initsize)
+    vals = []
+    for i in range(length):
+        d = Data(random_str_id(8), f'DVar{i+1}', i**2)
+        bgvar.add(d)
+        vals.append(d)
+
+    return bgvar, vals
+        
+class TestBaseGroup(unittest.TestCase):
+
+    def test_length(self):
+        bgvar = BaseGroup(256)
+        for i in range(10):
+            self.assertEqual(bgvar.length, i)
+            bgvar.add(Data(random_str_id(8), f'DVar{i+1}', i**2))
+        self.assertEqual(bgvar.length, 10)
+    
+    def test_iter(self):
+        bgvar, vals = random_group(10)
+        
+        for i, d in enumerate(bgvar.iter_items()):
+            self.assertEqual(vals[i], d)
+    
+    def test_writable(self):
+        bgvar, vals = random_group(10)
+
+        dvar = vals[3]
+        dvar.name = 'NewDVar'
+        dvar.value = -4
+
+        dview = bgvar.get_by_id(dvar.id)
+        self.assertTrue(dview.name == 'NewDVar' and dview.value == -4)
+        
+        def attempt_set_name(bgvar: BaseGroup, item_id: str, newname: str):
+            bgvar.get_by_id(item_id).name = newname
+        
+        self.assertRaises(AttributeError, lambda: attempt_set_name(bgvar, dvar.id, 'NewDVar2'))
+
+        remdvar = bgvar.remove(dvar.id)
+        remdvar.name = 'OldDVar'
+        remdvar.value = 50
+
+        self.assertTrue(dvar.name == 'OldDVar' and dvar.value == 50)
+        self.assertTrue(dview.name == 'OldDVar' and dview.value == 50)
+
+    def test_resize(self):
+        bgvar, vals = random_group(10, initsize=8)
+
+        for i, d in enumerate(bgvar.iter_items()):
+            self.assertEqual(vals[i], d)
+
+    def test_add_duplicate(self):
+        bgvar, vals = random_group(10)
+
+        bgvar.add(vals[2])
+        views = list(bgvar.iter_items())
+        self.assertEqual(vals[2], views[2])
+
+    def test_remove(self):
+        bgvar, vals = random_group(10)
+
+        bgvar.remove(vals[2].id)
+        self.assertEqual(bgvar.length, 9)
+
+def main():
+    suite = unittest.TestSuite()
+    suite.addTest(TestItem(methodName='run'))
+    suite.addTest(TestBaseGroup(methodName='run'))
+
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
 
 if __name__ == '__main__':
-    unittest.main()
+    main()
