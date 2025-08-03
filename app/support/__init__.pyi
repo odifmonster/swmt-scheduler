@@ -1,6 +1,7 @@
 from typing import TypeVar, Protocol, Self, Hashable
 from abc import abstractmethod
 
+_T = TypeVar('T')
 _T_HasID = TypeVar('_T_HasID', str, int)
 
 class HasID(Protocol[_T_HasID], Hashable):
@@ -18,3 +19,10 @@ class HasID(Protocol[_T_HasID], Hashable):
     def id(self) -> _T_HasID: ...
     def __eq__(self, value: Self) -> bool: ...
     def __hash__(self) -> int: ...
+
+class Viewable(Protocol[_T]):
+    """
+    A protocol for objects that provide live, read-only "views" of their data.
+    """
+    @abstractmethod
+    def view(self) -> _T: ...

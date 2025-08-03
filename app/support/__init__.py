@@ -2,4 +2,4 @@
 
 from .protocols import *
 
-__all__ = ['HasID']
+__all__ = ['HasID', 'Viewable']
