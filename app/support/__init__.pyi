@@ -55,20 +55,26 @@ class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterator[_U_SI_co]):
     def __iter__(self) -> Iterator[_U_SI_co]: ...
     def __next__(self) -> _U_SI_co: ...
 
-class SupportsPretty(Protocol):
+_T_P_co = TypeVar('_T_P_co', bound=PrettyArgsOpt, covariant=True)
+
+class SupportsPretty(Protocol[_T_P_co]):
     """
     A protocol for objects whose string representations should be formatted differently
     depending on context. Provides two helper functions for maintaining a certain
     maximum representation size.
     """
-    def shorten_line(self, line: str, **kwargs) -> str: ...
-    def shorten_lines(self, lines: list[str], **kwargs) -> list[str]: ...
+    def shorten_line(self, line: str, **kwargs: Unpack[_T_P_co]) -> str: ...
+    def shorten_lines(self, lines: list[str], **kwargs: Unpack[_T_P_co]) -> list[str]: ...
+    def validate_args(self, val: _T_P_co) -> _T_P_co: ...
     @abstractmethod
-    def pretty(self, **kwargs: Unpack[PrettyArgsOpt]) -> str: ...
+    def pretty(self, **kwargs: Unpack[_T_P_co]) -> str: ...
 
 _T_SPID = TypeVar('_T_SPID', str, int)
+_U_SPID_co = TypeVar('_U_SPID_co', bound=PrettyArgsOpt, covariant=True)
 
-class SupportsPrettyID(Generic[_T_SPID], SupportsPretty, HasID[_T_SPID], Protocol):
+class SupportsPrettyID(Generic[_T_SPID, _U_SPID_co],
+                       SupportsPretty[_U_SPID_co],
+                       HasID[_T_SPID], Protocol):
     """
     A protocol for objects that can be pretty and have ids (for contents of groups).
     """
