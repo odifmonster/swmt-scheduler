@@ -2,7 +2,7 @@
 
 from typing import TypeVar, Generic, Any
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping # pyright: ignore[reportShadowedImports]
 
 from app.support import Viewable, SupportsPrettyID
 from app.support.groups import Item
@@ -17,11 +17,12 @@ MAX_SATUR = 0.8
 
 class BaseGroup(Generic[S_co, T_co, U], ABC, Mapping[Any, Any]):
 
-    def __init__(self, initsize: int):
+    def __init__(self, initsize: int, **kwargs):
         self.__contents: list[Item[S_co, T_co]] = [Item[S_co, T_co]() for _ in range(initsize)]
         self.__size = initsize
         self.__length = 0
         self.__insert_idx = 0
+        self.__props = kwargs
 
     @property
     def n_items(self): return self.__length
@@ -113,3 +114,12 @@ class BaseGroup(Generic[S_co, T_co, U], ABC, Mapping[Any, Any]):
     
     def iter_items(self):
         return BGIter[S_co, T_co](self.__contents)
+    
+    def props_match(self, data: S_co):
+        for name in self.__props:
+            if getattr(data, name) != self.__props[name]:
+                return False
+        return True
+    
+    def props_repr(self):
+        return '\n,  '.join([f'{k}={repr(v)}' for k, v in self.__props.items()])

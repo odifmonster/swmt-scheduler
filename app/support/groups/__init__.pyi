@@ -1,5 +1,3 @@
-from app.support.groups.atomic import *
-
 from typing import TypeVar, Generic, Self, Any, Literal, Unpack, \
     Iterator, KeysView, ValuesView, ItemsView, Mapping, Set
 from abc import ABC, abstractmethod
@@ -42,7 +40,7 @@ class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC, Mapping[Any, Any]):
     until they are removed. Contents are accessed by id, and insertion order is preserved
     at all levels.
     """
-    def __init__(self, initsize: int) -> None: ...
+    def __init__(self, initsize: int, **kwargs: Unpack[dict[str, Any]]) -> None: ...
     @property
     def n_items(self) -> int:
         """
@@ -71,12 +69,22 @@ class BaseGroup(Generic[_S_BG_co, _T_BG_co, _U_BG], ABC, Mapping[Any, Any]):
     def items(self) -> ItemsView[Any]: ...
     def get_by_id(self, item_id: _U_BG) -> _T_BG_co: ...
     def iter_items(self) -> Iterator[_T_BG_co]: ...
+    def props_match(self, data: _S_BG_co) -> bool:
+        """
+        Returns True iff the properties of \'data\' match all the values set in
+        this group
+        """
+        ...
+    def props_repr(self) -> str: ...
 
 _S_A_co = TypeVar('_S_A_co', bound=Viewable[SupportsPrettyID], covariant=True)
 _T_A_co = TypeVar('_T_A_co', bound=SupportsPrettyID, covariant=True)
 _U_A = TypeVar('_U_A', str, int)
 
 class AMapView(Generic[_S_A_co, _T_A_co, _U_A]):
+    """
+    Generic class for views on Atomic objects. Provides a __repr__ implementation.
+    """
     def __init__(self,
                  link: BaseGroup[_S_A_co, _T_A_co, _U_A],
                  kind: Literal['keys', 'values', 'items']) -> None: ...
@@ -85,6 +93,9 @@ class AMapView(Generic[_S_A_co, _T_A_co, _U_A]):
 class AKeysView(Generic[_S_A_co, _T_A_co, _U_A],
                 AMapView[_S_A_co, _T_A_co, _U_A],
                 Set[_U_A]):
+    """
+    Generic class for key views on Atomic objects.
+    """
     def __init__(self, link: BaseGroup[_S_A_co, _T_A_co, _U_A]) -> None: ...
     def __len__(self) -> int: ...
     def __iter__(self) -> Iterator[_U_A]: ...
@@ -93,6 +104,9 @@ class AKeysView(Generic[_S_A_co, _T_A_co, _U_A],
 class AValuesView(Generic[_S_A_co, _T_A_co, _U_A],
                   AMapView[_S_A_co, _T_A_co, _U_A],
                   Set[_T_A_co]):
+    """
+    Generic class for value views on Atomic objects.
+    """
     def __init__(self, link: BaseGroup[_S_A_co, _T_A_co, _U_A]) -> None: ...
     def __len__(self) -> int: ...
     def __iter__(self) -> Iterator[_T_A_co]: ...
@@ -101,6 +115,9 @@ class AValuesView(Generic[_S_A_co, _T_A_co, _U_A],
 class AItemsView(Generic[_S_A_co, _T_A_co, _U_A],
                   AMapView[_S_A_co, _T_A_co, _U_A],
                   Set[tuple[_U_A, _T_A_co]]):
+    """
+    Generic class for item views on Atomic objects.
+    """
     def __init__(self, link: BaseGroup[_S_A_co, _T_A_co, _U_A]) -> None: ...
     def __len__(self) -> int: ...
     def __iter__(self) -> Iterator[tuple[_U_A, _T_A_co]]: ...
@@ -108,6 +125,10 @@ class AItemsView(Generic[_S_A_co, _T_A_co, _U_A],
 
 class Atomic(Generic[_S_A_co, _T_A_co, _U_A],
              BaseGroup[_S_A_co, _T_A_co, _U_A]):
+    """
+    Generic class for "atomic" groups. Its keys are object ids, and its values
+    are non-group objects.
+    """
     def __init__(self, initsize: int = ..., **kwargs: Unpack[dict[str, Any]]) -> None: ...
     def __len__(self) -> int: ...
     def __iter__(self) -> Iterator[_U_A]: ...

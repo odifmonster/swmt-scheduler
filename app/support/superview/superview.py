@@ -6,11 +6,11 @@ T_co = TypeVar('T_co', covariant=True)
 
 class SuperView(Generic[T_co]):
 
-    _gettables = []
+    _no_access = []
 
-    def __init_subclass__(cls, gettables):
+    def __init_subclass__(cls, no_access):
         super().__init_subclass__()
-        cls._gettables = [x for x in gettables]
+        cls._no_access = [x for x in no_access]
 
     def __init__(self, link: T_co):
         self.__link = link
@@ -18,7 +18,7 @@ class SuperView(Generic[T_co]):
     def __getattribute__(self, name):
         if name == '_SuperView__link':
             return object.__getattribute__(self, name)
-        elif name not in type(self)._gettables:
+        elif name in type(self)._no_access:
             raise AttributeError(f'\'{str(type(self))}\' object has no attribute \'{name}\'.')
         return getattr(self.__link, name)
     

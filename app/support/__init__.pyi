@@ -1,7 +1,9 @@
 from app.support import groups as groups
+from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
 
-from typing import TypeVar, Generic, Protocol, Self, Any, \
-    Hashable, Iterator, Callable
+from typing import TypeVar, Generic, Protocol, Self, \
+    Hashable, Iterator, Callable, \
+    Unpack
 from abc import abstractmethod
 
 _T_HasID = TypeVar('_T_HasID', str, int)
@@ -35,9 +37,10 @@ _T_SV_co = TypeVar('_T_SV_co', covariant=True)
 class SuperView(Generic[_T_SV_co]):
     """
     Super class for easy creation of view types. Type parameter is usually a Protocol,
-    and 'gettables' is a list of attributes to make read-only for this view.
+    and 'no_access' is a list of methods that the view should not have access to
+    (presumably because they change the underlying object in some way).
     """
-    def __init_subclass__(cls, gettables: list[str]) -> None: ...
+    def __init_subclass__(cls, no_access: list[str]) -> None: ...
     def __init__(self, link: _T_SV_co) -> None: ...
 
 _T_SI_co = TypeVar('_T_SI_co', covariant=True)
@@ -55,10 +58,14 @@ class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterator[_U_SI_co]):
 
 class SupportsPretty(Protocol):
     """
-    A protocol for objects whose string representations change depending on context.
+    A protocol for objects whose string representations should be formatted differently
+    depending on context. Provides two helper functions for maintaining a certain
+    maximum representation size.
     """
+    def shorten_line(self, line: str, **kwargs) -> str: ...
+    def shorten_lines(self, lines: list[str], **kwargs) -> list[str]: ...
     @abstractmethod
-    def pretty(self, **kwargs: dict[str, Any]) -> str: ...
+    def pretty(self, **kwargs: Unpack[PrettyArgsOpt]) -> str: ...
 
 _T_SPID = TypeVar('_T_SPID', str, int)
 

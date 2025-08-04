@@ -16,22 +16,11 @@ class Atomic(Generic[S_co, T_co, U],
              BaseGroup[S_co, T_co, U]):
 
     def __init__(self, initsize = INIT_SIZE, **kwargs):
-        super().__init__(initsize)
+        super().__init__(initsize, **kwargs)
 
-        self.__props = kwargs
         self.__keys = AKeysView[S_co, T_co, U](self)
         self.__values = AValuesView[S_co, T_co, U](self)
         self.__items = AItemsView[S_co, T_co, U](self)
-
-    def _props_matches(self, data: S_co):
-        for name in self.__props:
-            if getattr(data, name) != self.__props[name]:
-                return False
-        return True
-    
-    def _props_repr(self):
-        res = '\n  '
-        return res + ',\n  '.join([f'{k}={repr(v)}' for k, v in self.__props.items()])
     
     def __len__(self): return self.n_items
 
@@ -44,12 +33,18 @@ class Atomic(Generic[S_co, T_co, U],
         except ValueError:
             return False
     
-    def __getitem__(self, key): return self.get_by_id(key)
+    def __getitem__(self, key):
+        if type(key) is tuple and len(key) == 1:
+            key = key[0]
+            
+        if type(key) not in (str, int):
+            raise TypeError(f'\'key\' cannot be of type \'{type(key)}\'.')
+        return self.get_by_id(key)
     
     def add(self, data: S_co):
-        if not self._props_matches(data):
-            msg = 'Contents of this group must have the following properties:'
-            msg += self._props_repr()
+        if not self.props_match(data):
+            msg = 'Contents of this group must have the following properties:\n  '
+            msg += self.props_repr()
             raise ValueError(msg)
         super().add(data)
 
