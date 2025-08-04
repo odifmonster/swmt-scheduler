@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 
-from ..temp import Data, DataView
+from typing import TypeVar, Generic
 
-class Item:
+from app.support import Viewable, SupportsPrettyID, PrettyArgsOpt
+
+T = TypeVar('T', str, int)
+U_co = TypeVar('U_co', bound=PrettyArgsOpt, covariant=True)
+Data = Viewable[SupportsPrettyID[T, U_co]]
+
+class Item(Generic[T, U_co]):
 
     def __init__(self):
-        self.__data: Data | None = None
+        self.__data: Data[T, U_co] | None = None
         self.__idx = -1
 
     @property
-    def data(self) -> DataView:
+    def data(self):
         if self.__data is None:
             raise AttributeError('Cannot access data from empty Item.')
         return self.__data.view()
