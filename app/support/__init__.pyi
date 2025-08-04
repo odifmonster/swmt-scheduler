@@ -1,4 +1,3 @@
-from app.support import groups as groups
 from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
 
 from typing import TypeVar, Generic, Protocol, Self, \
