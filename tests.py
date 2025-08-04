@@ -10,27 +10,17 @@ def random_str_id(length: int = 8):
     return ''.join([random.choice(digits) for _ in range(length)])
 
 mvar = Mapped(256)
+vals: list[Data] = []
 
-d1 = Data(random_str_id(), 'MASTER1', 'BLACK', 500)
-d1copy = Data(d1.id, d1.master, d1.color, d1.value)
+for _ in range(25):
+    vals.append(Data(random_str_id(), 'MASTER1', 'BLACK', 500))
+    mvar.add(vals[-1])
 
-d2 = Data(random_str_id(), 'MASTER2', 'BLUE', 450)
+print(mvar.pretty())
 
-print(mvar.n_items)
-mvar.add(d1)
-print(mvar.n_items)
-mvar.add(d1copy)
-print(mvar.n_items)
+for key in mvar:
+    print(repr(key))
 
-mvar.add(d2)
-
-mview = mvar.view()
-
-try:
-    mview.remove(d2.id)
-except AttributeError as e:
-    print(e)
-
-print(mvar.n_items)
-mvar.remove(d2.id)
-print(mvar.n_items)
+print(vals[3].id in mvar)
+print(mvar.n_items, len(mvar))
+print(vals)

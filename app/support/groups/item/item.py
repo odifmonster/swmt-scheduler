@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Self
 
 from app.support import Viewable, SupportsPrettyID, PrettyArgsOpt
 
@@ -19,6 +19,12 @@ class Item(Generic[T, U_co]):
         if self.__data is None:
             raise AttributeError('Cannot access data from empty Item.')
         return self.__data.view()
+    
+    def __eq__(self, other: Self):
+        return self.__idx == other.__idx
+    
+    def __lt__(self, other: Self):
+        return self.__idx < other.__idx
     
     def inserted(self):
         return self.__idx >= 0

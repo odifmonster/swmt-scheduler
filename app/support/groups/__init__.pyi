@@ -1,6 +1,6 @@
 from app.support.groups import mapped as mapped
 
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Self
 from app.support import Viewable, SupportsPrettyID, PrettyArgsOpt
 
 _T_I = TypeVar('_T_I', str, int)
@@ -11,14 +11,16 @@ _Data = Viewable[_DataView[_T_I, _U_I_co]]
 
 class Item(Generic[_T_I, _U_I_co]):
     """
-    A class for storing data about the contents of Groups. Tracks insertion order for
-    iteration and sorting purposes.
+    A class for storing data about the contents of Groups. Tracks insertion order (this
+    must be provided by the container class). Can be sorted by insertion order.
     """
     def __init__(self) -> None: ...
     @property
     def data(self) -> _DataView[_T_I, _U_I_co]:
         """Returns a live, read-only view of the data stored in this item."""
         ...
+    def __eq__(self, other: Self) -> bool: ...
+    def __lt__(self, other: Self) -> bool: ...
     def inserted(self) -> bool:
         """Returns True iff this Item had data stored in it at one point."""
         ...

@@ -3,6 +3,7 @@
 from app.support import Viewable
 from app.support.groups import Item
 from .mapped_like import MappedLike, MappedView
+from .mapped_iter import MappedIter, MIDIter
 from ..temp import Data, DPrettyArgsOpt
 
 SKIP_LEN = 7
@@ -57,6 +58,15 @@ class Mapped(MappedLike, Viewable[MappedView]):
         if idx >= 0:
             return self.__contents[idx]
         return None
+    
+    def __len__(self): return self.__length
+
+    def __iter__(self):
+        return MIDIter(MappedIter(self.__contents))
+    
+    def __contains__(self, key: str):
+        item = self._get_by_id(key)
+        return not item is None and not item.is_empty()
     
     def add(self, data: Data):
         item = self._get_by_id(data.id)
