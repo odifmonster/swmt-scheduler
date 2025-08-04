@@ -1,5 +1,3 @@
-from app.support.groups import mapped as mapped
-
 from typing import TypeVar, Generic, Self
 from app.support import Viewable, SupportsPrettyID, PrettyArgsOpt
 
@@ -31,3 +29,4 @@ class Item(Generic[_T_I, _U_I_co]):
     def clear(self) -> _Data[_T_I, _U_I_co]:
         """Removes the stored data and returns it."""
         ...
+

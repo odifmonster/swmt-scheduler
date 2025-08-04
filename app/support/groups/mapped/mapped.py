@@ -1,35 +1,45 @@
 #!/usr/bin/env python
 
-from typing import Any
+from typing import Any, TypeVar, Generic, Unpack
+from collections.abc import Mapping # pyright: ignore[reportShadowedImports]
 
-from app.support import Viewable
+from app.support import Viewable, PrettyArgsOpt, SupportsPrettyID, SupportsPretty
 from app.support.groups import Item
-from .mapped_like import MappedLike, MappedView
+from .mapped_like import MappedView, MPrettyArgsOpt, MPrettyArgs
 from .mapped_iter import MappedIter, MIDIter
-from ..temp import Data, DPrettyArgsOpt
 
 INITSIZE = 256
 SKIP_LEN = 7
 MAX_SATUR = 0.8
 
-class Mapped(MappedLike, Viewable[MappedView]):
+T1 = TypeVar('T1', str, int)
+U1_co = TypeVar('U1_co', bound=PrettyArgsOpt, covariant=True)
+T2 = TypeVar('T2')
+
+Data = Viewable[SupportsPrettyID[T1, U1_co]]
+AnyMapView = MappedView[T1, U1_co, Any]
+
+class Mapped(Generic[T1, U1_co, T2],
+             Viewable[MappedView[T1, U1_co, T2]],
+             SupportsPretty[MPrettyArgsOpt],
+             Mapping[T2, Data[T1, U1_co] | AnyMapView[T1, U1_co]]):
 
     def __init__(self, initize: int = INITSIZE, subattrs: tuple = (), **kwargs):
-        self.__contents = [Item[str, DPrettyArgsOpt]() for _ in range(initize)]
+        self.__contents = [Item[T1, U1_co]() for _ in range(initize)]
         self.__size = initize
         self.__length = 0
         self.__insert_idx = 0
 
         self.__match_attrs = kwargs
         self.__sub_attrs = subattrs
-        self.__groups: dict[Any, Mapped] = {}
+        self.__groups: dict[T2, Mapped[T1, U1_co, Any]] = {}
 
-        self.__view = MappedView(self)
+        self.__view = MappedView[T1, U1_co, T2](self)
 
     @property
     def n_items(self): return self.__length
 
-    def _get_nearest_idx(self, id: str, skip_inserted: bool):
+    def _get_nearest_idx(self, id: T1, skip_inserted: bool):
         idx = hash(id) % self.__size
         n_skips = 0
 
@@ -48,7 +58,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
     def _resize(self, newsize: int):
         pcontents = self.__contents
 
-        self.__contents = [Item[str, DPrettyArgsOpt]() for _ in range(newsize)]
+        self.__contents = [Item[T1, U1_co]() for _ in range(newsize)]
         self.__size = newsize
 
         for x in pcontents:
@@ -60,7 +70,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
             
             self.__contents[idx] = x
     
-    def _get_by_id(self, id: str):
+    def _get_by_id(self, id: T1):
         idx = self._get_nearest_idx(id, True)
         if idx >= 0:
             return self.__contents[idx]
@@ -70,7 +80,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
         contents = [f'  {prop}={repr(val)}' for prop, val in self.__match_attrs.items()]
         return '\n'.join(contents)
     
-    def _match_props(self, data: Data) -> bool:
+    def _match_props(self, data: Data[T1, U1_co]) -> bool:
         for prop, val in self.__match_attrs.items():
             if getattr(data, prop) != val:
                 return False
@@ -83,10 +93,10 @@ class Mapped(MappedLike, Viewable[MappedView]):
 
     def __iter__(self):
         if len(self.__sub_attrs) == 0:
-            return MIDIter(MappedIter(self.__contents))
+            return MIDIter[T1, U1_co](MappedIter[T1, U1_co](self.__contents))
         return iter(self.__groups)
     
-    def __contains__(self, key):
+    def __contains__(self, key: T2):
         if len(self.__sub_attrs) == 0:
             if type(key) not in (str, int):
                 raise TypeError(f'Cannot check whether type {type(self)} contains key of type {type(key)}.')
@@ -95,7 +105,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
             return not item is None and not item.is_empty()
         return key in self.__groups
     
-    def __getitem__(self, key):
+    def __getitem__(self, key: T2 | tuple):
         if len(self.__sub_attrs) == 0:
             if type(key) is tuple:
                 if len(key) > 1:
@@ -113,8 +123,8 @@ class Mapped(MappedLike, Viewable[MappedView]):
                 return self.__groups[key[0]].view()
             return self.__groups[key[0]][key[1:]]
     
-    def add(self, data: Data):
-        item = self._get_by_id(data.id)
+    def add(self, data: Data[T1, U1_co]):
+        item = self._get_by_id(data.view().id)
         if not item is None and not item.is_empty():
             return
         
@@ -125,7 +135,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
         if (self.__length + 1) / self.__size >= MAX_SATUR:
             self._resize(self.__size * 2)
 
-        idx = self._get_nearest_idx(data.id, False)
+        idx = self._get_nearest_idx(data.view().id, False)
         self.__insert_idx += 1
         self.__length += 1
         self.__contents[idx].store(data, self.__insert_idx-1)
@@ -138,7 +148,7 @@ class Mapped(MappedLike, Viewable[MappedView]):
                 self.__groups[val] = Mapped(subattrs=self.__sub_attrs[1:], **subprops)
             self.__groups[val].add(data)
     
-    def remove(self, id: str):
+    def remove(self, id: T1):
         item = self._get_by_id(id)
         if item is None or item.is_empty():
             raise ValueError(f'Object does not contain data with id {repr(id)}.')
@@ -150,3 +160,36 @@ class Mapped(MappedLike, Viewable[MappedView]):
         return data
     
     def view(self): return self.__view
+
+    def pretty(self, **kwargs: Unpack[MPrettyArgsOpt]):
+        opts = self.validate_args(kwargs)
+        opts = MPrettyArgs.create(**opts)
+
+        lines: list[str] = []
+        cur_line: str = 'Mapped({'
+        prefix: str = ' ' * len(cur_line)
+
+        for key in self:
+            if not lines and len(cur_line) == len(prefix):
+                cur_line += repr(key)
+            else:
+                plen = 0 if len(lines) == 0 else len(prefix)
+                cur_item = repr(key)
+                
+                if len(cur_line)+len(cur_item)+plen+2 >= opts['maxlen']:
+                    cur_line += ','
+                    lines.append(cur_line)
+                    cur_line = cur_item
+                else:
+                    cur_line += ', '
+                    cur_line += cur_item
+        
+        cur_line += '})'
+        lines.append(cur_line)
+
+        if opts['maxlines'] == 1:
+            return self.shorten_line(' '.join(lines), **opts)
+        
+        lines = map(lambda x: x[1] if x[0] == 0 else prefix+x[1], enumerate(lines))
+        lines = map(lambda x: self.shorten_line(x, **opts), lines)
+        return '\n'.join(lines)
