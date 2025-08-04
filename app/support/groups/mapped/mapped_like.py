@@ -3,7 +3,7 @@
 from typing import Protocol, Iterator, Unpack
 
 from app.support import SuperView, SupportsPretty, PrettyArgsOpt
-from ..temp import Data
+from ..temp import Data, DataView
 
 class MPrettyArgsOpt(PrettyArgsOpt, total=False):
     lpad: str
@@ -24,6 +24,8 @@ class MappedLike(SupportsPretty[MPrettyArgsOpt], Protocol):
     def __iter__(self) -> Iterator[str]: raise NotImplementedError()
 
     def __contains__(self, key: str) -> bool: raise NotImplementedError()
+
+    def __getitem__(self, key: str) -> DataView: raise NotImplementedError()
 
     def add(self, data: Data) -> None: raise NotImplementedError()
 
