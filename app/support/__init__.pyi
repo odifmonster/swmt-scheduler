@@ -37,9 +37,10 @@ class SuperView(Generic[_T_SV_co]):
     """
     Super class for easy creation of view types. Type parameter is usually a Protocol,
     and 'no_access' is a list of methods that the view should not have access to
-    (presumably because they change the underlying object in some way).
+    (presumably because they change the underlying object in some way). 'overrides'
+    is a list of overridden methods/properties (if any).
     """
-    def __init_subclass__(cls, no_access: list[str]) -> None: ...
+    def __init_subclass__(cls, no_access: list[str], overrides: list[str]) -> None: ...
     def __init__(self, link: _T_SV_co) -> None: ...
 
 _T_SI_co = TypeVar('_T_SI_co', covariant=True)
