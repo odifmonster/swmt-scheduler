@@ -1,4 +1,5 @@
 from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
+from app.support import groups as groups
 
 from typing import TypeVar, TypeVarTuple, Generic, Protocol, Self, Any, \
     Hashable, Iterable, Iterator, Callable, Generator, \
@@ -69,12 +70,10 @@ class SupportsPretty(Protocol[_T_P_co]):
     @abstractmethod
     def pretty(self, **kwargs: Unpack[_T_P_co]) -> str: ...
 
-_T_VL = TypeVar('_T_VL', str, int)
 _T_VL_co = TypeVar('_T_VL_co', bound=PrettyArgsOpt, covariant=True)
 _T_VLs = TypeVarTuple('_T_VLs')
 
-class ValueLike(Protocol[_T_VL, _T_VL_co, *_T_VLs],
-                HasID[_T_VL], SupportsPretty[_T_VL_co]):
+class ValueLike(Protocol[_T_VL_co, *_T_VLs], SupportsPretty[_T_VL_co]):
     """
     A protocol for objects than can be Mapped values. In order to properly abstract
     mapping functions, all values must support __getitem__ and __iter__, even if the
@@ -83,4 +82,4 @@ class ValueLike(Protocol[_T_VL, _T_VL_co, *_T_VLs],
     @abstractmethod
     def __getitem__(self, key: tuple) -> 'ValueLike': ...
     @abstractmethod
-    def __iter__(self) -> 'Iterator[ValueLike]': ...
+    def __iter__(self) -> Iterator: ...

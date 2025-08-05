@@ -13,7 +13,7 @@ class DataArgsOpt(PrettyArgsOpt, total=False):
 class DataArgs(DataArgsOpt, total=True):
 
     @classmethod
-    def create(cls, kind = 'object', maxlen = 60, maxlines = 1) -> 'DataArgs':
+    def create(cls, kind = 'value', maxlen = 60, maxlines = 1) -> 'DataArgs':
         return cls(kind=kind, maxlen=maxlen, maxlines=maxlines)
 
 class DataLike(AtomLike[str, DataArgsOpt], Protocol):

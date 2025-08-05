@@ -3,6 +3,7 @@
 from .protocols import HasID, Viewable, ValueLike, SupportsPretty, \
     PrettyArgsOpt
 from .supers import SuperIter, SuperView
+from . import groups
 
 __all__ = ['HasID', 'Viewable', 'ValueLike', 'SupportsPretty', 'PrettyArgsOpt',
-           'SuperView', 'SuperIter']
+           'SuperView', 'SuperIter', 'groups']
