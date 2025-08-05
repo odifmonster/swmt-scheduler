@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-from .protocols import HasID, Viewable, SupportsPretty, SupportsPrettyID, \
+from .protocols import HasID, Viewable, ValueLike, SupportsPretty, \
     PrettyArgsOpt
 from .supers import SuperIter, SuperView
-from . import groups
 
-__all__ = ['HasID', 'Viewable', 'SupportsPretty', 'SupportsPrettyID',
-           'PrettyArgsOpt', 'SuperView', 'SuperIter', 'groups']
+__all__ = ['HasID', 'Viewable', 'ValueLike', 'SupportsPretty', 'PrettyArgsOpt',
+           'SuperView', 'SuperIter']

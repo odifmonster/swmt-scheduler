@@ -1,8 +1,7 @@
 from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
-from app.support import groups as groups
 
-from typing import TypeVar, Generic, Protocol, Self, \
-    Hashable, Iterator, Callable, \
+from typing import TypeVar, TypeVarTuple, Generic, Protocol, Self, Any, \
+    Hashable, Iterable, Iterator, Callable, Generator, \
     Unpack
 from abc import abstractmethod
 
@@ -46,15 +45,14 @@ class SuperView(Generic[_T_SV_co]):
 _T_SI_co = TypeVar('_T_SI_co', covariant=True)
 _U_SI_co = TypeVar('_U_SI_co', covariant=True)
 
-class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterator[_U_SI_co]):
+class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterable[_U_SI_co]):
     """
     Super class for easy creation of "wrapper" iterators. The wrapper applies a
     function to every output of the inner iterator to get its next value.
     """
     def __init_subclass__(cls, get_val: Callable[[_T_SI_co], _U_SI_co]) -> None: ...
-    def __init__(self, link: Iterator[_T_SI_co]) -> None: ...
-    def __iter__(self) -> Iterator[_U_SI_co]: ...
-    def __next__(self) -> _U_SI_co: ...
+    def __init__(self, link: Iterable[_T_SI_co]) -> None: ...
+    def __iter__(self) -> Generator[_U_SI_co, Any, None]: ...
 
 _T_P_co = TypeVar('_T_P_co', bound=PrettyArgsOpt, covariant=True)
 
@@ -70,13 +68,18 @@ class SupportsPretty(Protocol[_T_P_co]):
     @abstractmethod
     def pretty(self, **kwargs: Unpack[_T_P_co]) -> str: ...
 
-_T_SPID = TypeVar('_T_SPID', str, int)
-_U_SPID_co = TypeVar('_U_SPID_co', bound=PrettyArgsOpt, covariant=True)
+_T_VL = TypeVar('_T_VL', str, int)
+_T_VL_co = TypeVar('_T_VL_co', bound=PrettyArgsOpt, covariant=True)
+_T_VLs = TypeVarTuple('_T_VLs')
 
-class SupportsPrettyID(Generic[_T_SPID, _U_SPID_co],
-                       SupportsPretty[_U_SPID_co],
-                       HasID[_T_SPID], Protocol):
+class ValueLike(Protocol[_T_VL, _T_VL_co, *_T_VLs],
+                HasID[_T_VL], SupportsPretty[_T_VL_co]):
     """
-    A protocol for objects that can be pretty and have ids (for contents of groups).
+    A protocol for objects than can be Mapped values. In order to properly abstract
+    mapping functions, all values must support __getitem__ and __iter__, even if the
+    implementation is trivial.
     """
-    ...
+    @abstractmethod
+    def __getitem__(self, key: tuple) -> 'ValueLike': ...
+    @abstractmethod
+    def __iter__(self) -> 'Iterator[ValueLike]': ...

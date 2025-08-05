@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Generic, Callable
-from collections.abc import Iterator
+from typing import TypeVar, Generic, Callable, Iterator
 
 T_co = TypeVar('T_co', covariant=True)
 U_co = TypeVar('U_co', covariant=True)
 
-class SuperIter(Generic[T_co, U_co], Iterator[U_co]):
+class SuperIter(Generic[T_co, U_co]):
 
     _get_val: Callable[[T_co], U_co] = lambda _: None
 
@@ -17,7 +16,6 @@ class SuperIter(Generic[T_co, U_co], Iterator[U_co]):
     def __init__(self, link: Iterator[T_co]):
         self.__link = link
 
-    def __iter__(self): return self
-
-    def __next__(self):
-        return type(self)._get_val(self.__link.__next__())
+    def __iter__(self):
+        for x in self.__link:
+            yield type(self)._get_val(x)
