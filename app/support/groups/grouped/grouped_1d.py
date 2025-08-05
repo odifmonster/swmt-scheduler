@@ -13,12 +13,23 @@ class GroupedArgs(PrettyArgsOpt, total=True):
 
 class Grouped1D(ValueLike[PrettyArgsOpt, str]):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.__groups: dict[str, Data] = {}
+        self.__props = kwargs
     
     @property
     def n_items(self) -> int:
         return len(self.__groups)
+    
+    def _match_props(self, data: Data) -> bool:
+        for name, val in self.__props.items():
+            if getattr(data, name) != val:
+                return False
+        return True
+    
+    def _repr_props(self) -> str:
+        items = [f'    {k}={repr(v)}' for k, v in self.__props.items()]
+        return '\n'.join(items)
     
     def __len__(self) -> int:
         return len(self.__groups)
@@ -37,6 +48,11 @@ class Grouped1D(ValueLike[PrettyArgsOpt, str]):
     def add(self, data: Data) -> None:
         if data.view().id in self:
             return
+        if not self._match_props(data):
+            msg = 'Objects in this group must have these properties:\n'
+            msg += self._repr_props()
+            raise ValueError(msg)
+        
         self.__groups[data.view().id] = data
 
     def remove(self, id: str) -> Data:
