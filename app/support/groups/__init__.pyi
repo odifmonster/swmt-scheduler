@@ -1,4 +1,5 @@
 from app.support.groups.grouped import Grouped1D as Grouped1D
+from app.support.groups.grouped import Grouped2D as Grouped2D
 
 from typing import TypeVar, Protocol, Iterator
 from abc import abstractmethod

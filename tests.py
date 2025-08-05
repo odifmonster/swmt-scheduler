@@ -2,24 +2,24 @@
 
 import random
 from app.support.groups.temp import Data
-from app.support.groups import Grouped1D
+from app.support.groups import Grouped2D
 
 def random_str_id(length: int = 8):
     digits = [str(x) for x in range(10)]
     return ''.join([random.choice(digits) for _ in range(length)])
 
-gvar1 = Grouped1D(master='MASTER1', color='BLACK', value=500)
+gvar = Grouped2D(master='MASTER1', color='BLACK')
 
-vals: list[Data] = [Data(random_str_id(), 'MASTER1', 'BLACK', 500) for _ in range(15)]
+vals: list[Data] = []
+value_opts = [100, 200, 300]
+for _ in range(20):
+    value = random.choice(value_opts)
+    vals.append(Data(random_str_id(), 'MASTER1', 'BLACK', value))
+    gvar.add(vals[-1])
 
-for d in vals:
-    gvar1.add(d)
+print(gvar.pretty())
 
-print(gvar1.pretty())
+sub_gvar = gvar[200]
+print(sub_gvar.pretty())
 
-dvar = vals[7]
-print(dvar.id)
-print(gvar1[dvar.id].pretty(kind='object'))
-
-bad_data = Data(random_str_id(), 'MASTER1', 'BLUE', 500)
-gvar1.add(bad_data)
+sub_gvar.add(vals[0])
