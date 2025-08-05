@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 from typing import Any, TypeVar, Generic, Unpack
-from collections.abc import Mapping # pyright: ignore[reportShadowedImports]
 
 from app.support import Viewable, PrettyArgsOpt, SupportsPrettyID, SupportsPretty
 from app.support.groups import Item
-from .mapped_like import MappedView, MPrettyArgsOpt, MPrettyArgs
+from .mapped_like import MappedView, MPrettyArgs, MappedLike
 from .mapped_iter import MappedIter, MIDIter
 
 INITSIZE = 256
@@ -21,11 +20,11 @@ AnyMapView = MappedView[T1, U1_co, Any]
 
 class Mapped(Generic[T1, U1_co, T2],
              Viewable[MappedView[T1, U1_co, T2]],
-             SupportsPretty[MPrettyArgsOpt],
-             Mapping[T2, Data[T1, U1_co] | AnyMapView[T1, U1_co]]):
+             SupportsPretty[PrettyArgsOpt]):
 
     def __init__(self, initize: int = INITSIZE, subattrs: tuple = (), **kwargs):
         self.__contents = [Item[T1, U1_co]() for _ in range(initize)]
+        self.__sorted: list[Item[T1, U1_co]] = []
         self.__size = initize
         self.__length = 0
         self.__insert_idx = 0
@@ -76,6 +75,16 @@ class Mapped(Generic[T1, U1_co, T2],
             return self.__contents[idx]
         return None
     
+    def _get_by_insert_idx(self, item: Item[T1, U1_co], min: int, max: int):
+        if max <= min:
+            return min
+        
+        mid = int((max - min) / 2)
+        if item == self.__contents[mid]: return mid
+        if item > self.__contents[mid]:
+            return self._get_by_insert_idx(item, mid+1, max)
+        return self._get_by_insert_idx(item, min, mid-1)
+    
     def _repr_props(self) -> str:
         contents = [f'  {prop}={repr(val)}' for prop, val in self.__match_attrs.items()]
         return '\n'.join(contents)
@@ -122,6 +131,14 @@ class Mapped(Generic[T1, U1_co, T2],
             if len(key) == 1:
                 return self.__groups[key[0]].view()
             return self.__groups[key[0]][key[1:]]
+        
+    def __eq__(self, other: MappedLike[T1, U1_co, T2]):
+        if len(self) != len(other): return False
+
+        for key in self:
+            if key not in other: return False
+            if self[key] != other[key]: return False
+        return True
     
     def add(self, data: Data[T1, U1_co]):
         item = self._get_by_id(data.view().id)
@@ -139,6 +156,7 @@ class Mapped(Generic[T1, U1_co, T2],
         self.__insert_idx += 1
         self.__length += 1
         self.__contents[idx].store(data, self.__insert_idx-1)
+        self.__sorted.append(self.__contents[idx])
 
         if len(self.__sub_attrs) > 0:
             val = getattr(data, self.__sub_attrs[0])
@@ -155,13 +173,18 @@ class Mapped(Generic[T1, U1_co, T2],
         
         self.__length -= 1
         data = item.clear()
+
+        sort_idx = self._get_by_insert_idx(item, 0, len(self.__sorted))
+        self.__sorted.pop(sort_idx)
+
         subgroup = self.__groups[getattr(data, self.__sub_attrs[0])]
         subgroup.remove(data.view().id)
+        
         return data
     
     def view(self): return self.__view
 
-    def pretty(self, **kwargs: Unpack[MPrettyArgsOpt]):
+    def pretty(self, **kwargs: Unpack[PrettyArgsOpt]):
         opts = self.validate_args(kwargs)
         opts = MPrettyArgs.create(**opts)
 
@@ -191,5 +214,4 @@ class Mapped(Generic[T1, U1_co, T2],
             return self.shorten_line(' '.join(lines), **opts)
         
         lines = map(lambda x: x[1] if x[0] == 0 else prefix+x[1], enumerate(lines))
-        lines = map(lambda x: self.shorten_line(x, **opts), lines)
         return '\n'.join(lines)
