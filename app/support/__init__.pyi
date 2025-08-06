@@ -1,8 +1,7 @@
 from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
-from app.support import groups as groups
 
-from typing import TypeVar, TypeVarTuple, Generic, Protocol, Self, Any, \
-    Hashable, Iterable, Iterator, Callable, Generator, \
+from typing import TypeVar, Generic, Protocol, Self, Any, \
+    Hashable, Iterable, Callable, Generator, \
     Unpack
 from abc import abstractmethod
 
@@ -69,17 +68,3 @@ class SupportsPretty(Protocol[_T_P_co]):
     def validate_args(self, val: _T_P_co) -> _T_P_co: ...
     @abstractmethod
     def pretty(self, **kwargs: Unpack[_T_P_co]) -> str: ...
-
-_T_VL_co = TypeVar('_T_VL_co', bound=PrettyArgsOpt, covariant=True)
-_T_VLs = TypeVarTuple('_T_VLs')
-
-class ValueLike(Protocol[_T_VL_co, *_T_VLs], SupportsPretty[_T_VL_co]):
-    """
-    A protocol for objects than can be Mapped values. In order to properly abstract
-    mapping functions, all values must support __getitem__ and __iter__, even if the
-    implementation is trivial.
-    """
-    @abstractmethod
-    def __getitem__(self, key: tuple) -> 'ValueLike': ...
-    @abstractmethod
-    def __iter__(self) -> Iterator: ...
