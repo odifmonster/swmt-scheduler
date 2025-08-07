@@ -50,7 +50,8 @@ class ItemLike(DataLike[str, ItemArgsOpt], Protocol):
 
 class ItemView(ItemLike, SuperView[ItemLike],
                no_access=['increment'],
-               overrides=['']):
+               overrides=[''],
+               dunders=['eq', 'hash']):
     pass
 
 class Item(ItemLike, Viewable[ItemView]):

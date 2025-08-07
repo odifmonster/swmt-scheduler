@@ -52,7 +52,8 @@ class AtomLike(Generic[T, T_co], ValueLike[T, T_co, T_co], Protocol):
     
 class AtomView(Generic[T, T_co], SuperView[AtomLike[T, T_co]],
                no_access=['add', 'remove'],
-               overrides=[]):
+               overrides=[],
+               dunders=['len', 'iter', 'getitem']):
     pass
 
 class Atom(Generic[T, T_co], AtomLike[T, T_co], Viewable[AtomView[T, T_co]]):
