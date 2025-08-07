@@ -2,7 +2,7 @@ from app.support.protocols import PrettyArgsOpt as PrettyArgsOpt
 from app.support import groups as groups
 
 from typing import TypeVar, Generic, Protocol, Self, Any, \
-    Hashable, Iterable, Callable, Generator, \
+    Hashable, Iterable, Callable, Generator, NamedTuple, \
     Unpack
 from abc import abstractmethod
 
@@ -62,6 +62,13 @@ class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterable[_U_SI_co]):
     def __iter__(self) -> Generator[_U_SI_co, Any, None]: ...
 
 _T_P_co = TypeVar('_T_P_co', bound=PrettyArgsOpt, covariant=True)
+
+class FloatRange(NamedTuple):
+    minval: float
+    maxval: float
+    def contains(self, value: float) -> bool:
+        """Return True iff 'value' is within this range."""
+        ...
 
 class SupportsPretty(Protocol[_T_P_co]):
     """
