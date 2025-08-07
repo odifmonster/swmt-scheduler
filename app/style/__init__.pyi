@@ -1,4 +1,5 @@
 from app.style import color as color
+from app.style import translation as translation
 
 from app.support import HasID, FloatRange
 
