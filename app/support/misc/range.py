@@ -8,3 +8,9 @@ class FloatRange(NamedTuple):
 
     def contains(self, value):
         return value >= self.minval and value <= self.maxval
+    
+    def is_above(self, value):
+        return value < self.minval
+    
+    def is_below(self, value):
+        return value > self.maxval
