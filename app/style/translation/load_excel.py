@@ -5,7 +5,7 @@ import os
 
 EXCEL_DIR = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 MASTER_FILE = 'master.xlsx'
-TRANS_SHEET = 'translation_ana'
+TRANS_SHEET = 'greige_translation'
 OUTFILE = 'translate.csv'
 
 def load_trans_df():

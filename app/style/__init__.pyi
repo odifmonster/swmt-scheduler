@@ -35,7 +35,7 @@ class FabricStyle(HasID[str]):
     A class for tracking information about fabric styles.
     """
     def __init__(self, id: str, greige: GreigeStyle, master: str,
-                 clr: color.Color, yld: float) -> None:
+                 clr: color.Color, yld: float, allowed_jets: list[str]) -> None:
         """
         Initialize a FabricStyle object.
         id: the fabric item number
@@ -43,6 +43,7 @@ class FabricStyle(HasID[str]):
         master: the fabric master style
         clr: the associated Color
         yld: the average yards produced per pound of greige
+        allowed_jets: the ids of the jet this item can run on
         """
         ...
     @property
@@ -60,3 +61,17 @@ class FabricStyle(HasID[str]):
     @property
     def yds_per_lb(self) -> float: ...
     def __repr__(self) -> str: ...
+    def can_run_on_jet(self, jet_id: str) -> bool: ...
+
+def init_greige() -> None:
+    """
+    Initialize greige style info. Must run this function before using GreigeStyle and
+    related operations.
+    """
+    ...
+
+def get_greige_style(id: str) -> GreigeStyle | None:
+    """
+    Get a GreigeStyle object by its id/item number. Returns None if id not found.
+    """
+    ...

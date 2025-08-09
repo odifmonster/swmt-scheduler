@@ -7,12 +7,13 @@ from ..color.color import Color
 class _FabricBase(HasID[str]):
 
     def __init__(self, id: str, greige: GreigeStyle, master: str,
-                 color: Color, yld: float):
+                 color: Color, yld: float, allowed_jets: list[str]):
         self.__id = id
         self.__greige = greige
         self.__master = master
         self.__color = color
         self.__yld = yld
+        self.__allowed_jets = set(allowed_jets)
 
     @property
     def _prefix(self):
@@ -40,6 +41,9 @@ class _FabricBase(HasID[str]):
     
     def __repr__(self):
         return f'FabricStyle({repr(self.id)})'
+    
+    def can_run_on_jet(self, jet_id: str):
+        return jet_id in self.__allowed_jets
     
 class FabricStyle(_FabricBase):
     pass
