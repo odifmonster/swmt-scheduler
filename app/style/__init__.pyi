@@ -65,13 +65,26 @@ class FabricStyle(HasID[str]):
 
 def init_greige() -> None:
     """
-    Initialize greige style info. Must run this function before using GreigeStyle and
-    related operations.
+    Initialize greige style info. Must run this function before using GreigeStyle,
+    FabricStyle, and related operations.
     """
     ...
 
 def get_greige_style(id: str) -> GreigeStyle | None:
     """
     Get a GreigeStyle object by its id/item number. Returns None if id not found.
+    """
+    ...
+
+def init_fabric() -> None:
+    """
+    Initialize fabric style info. Must run this function before using FabricStyle and
+    related operations.
+    """
+    ...
+
+def get_fabric_style(id: str) -> FabricStyle | None:
+    """
+    Get a FabricStyle object by its id/item number. Returns None if id not found.
     """
     ...
