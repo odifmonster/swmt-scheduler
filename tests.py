@@ -1,36 +1,20 @@
 #!/usr/bin/env python
 
-from typing import TypedDict, Unpack
-from app.support import SuperImmut
+import datetime
 
-class CustomKwargs(TypedDict, total=False):
-    kind: str
-    name: str
-    value: int
-
-class CustomImmutable(SuperImmut,
-                      attrs=['kind', 'name', 'value'],
-                      defaults={'kind': 'Data'}):
-
-    def __init__(self, **kwargs: Unpack[CustomKwargs]):
-        super().__init__(**kwargs)
-    
-    def is_negative(self) -> bool:
-        return self.value < 0
+from app import style
+from app import schedule
 
 def main():
-    test = CustomImmutable(name='Test', value=10)
-    test2 = CustomImmutable(kind='NegData', name='Test2', value=-10)
-    print(test.is_negative(), test2.is_negative())
-    try:
-        test.name = 'NewName'
-    except AttributeError:
-        print('Failed to set attribute! Yay!')
-    
-    try:
-        test2.some_attr = []
-    except AttributeError:
-        print('Failed to set instance attribute! Yay!')
+    style.init()
+
+    start = datetime.datetime(2025, 8, 6)
+    p2 = start + datetime.timedelta(days=6)
+
+    aura = style.get_fabric_style('FF AURA30000-39064-63')
+    aura_demand = schedule.Demand(aura, 2130, p2)
+
+    print(aura_demand.pretty())
 
 if __name__ == '__main__':
     main()
