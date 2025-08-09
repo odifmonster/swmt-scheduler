@@ -63,6 +63,24 @@ class SuperIter(Generic[_T_SI_co, _U_SI_co], Iterable[_U_SI_co]):
 
 _T_P_co = TypeVar('_T_P_co', bound=PrettyArgsOpt, covariant=True)
 
+class SuperImmut:
+    """
+    Super class for easy creation of custom immutable objects. All attribute values
+    are defined in the initializer and unchangeable after that point.
+    """
+    def __init_subclass__(cls, attrs: list[str], defaults: dict[str, Any]) -> None:
+        """
+        Define a custom immutable type. The positional arguments are the names of
+        this type's attributes. The keyword arguments are (optional) default values
+        for any of the provided attributes.
+        """
+        ...
+    def __init__(self, **kwargs: Unpack[dict[str, Any]]) -> None: ...
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Always raises an AttributeError."""
+        ...
+    def __repr__(self) -> str: ...
+
 class FloatRange(NamedTuple):
     minval: float
     maxval: float

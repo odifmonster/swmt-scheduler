@@ -1,30 +1,36 @@
 #!/usr/bin/env python
 
-import random
+from typing import TypedDict, Unpack
+from app.support import SuperImmut
 
-from app.style import GreigeStyle
-from app.inventory import Inventory
-from app.inventory.roll import Roll, NORMAL
+class CustomKwargs(TypedDict, total=False):
+    kind: str
+    name: str
+    value: int
 
-def random_str_id(length: int = 8) -> str:
-    digits = [str(x) for x in range(10)]
-    return ''.join([random.choice(digits) for _ in range(length)])
+class CustomImmutable(SuperImmut,
+                      attrs=['kind', 'name', 'value'],
+                      defaults={'kind': 'Data'}):
 
-STYLES = [
-    GreigeStyle('AU4782', 375), GreigeStyle('AU5429D', 387),
-    GreigeStyle('AU4782K', 375), GreigeStyle('AU7529', 350)
-]
-
-def random_roll() -> Roll:
-    return Roll(random_str_id(), random.choice(STYLES), random.normalvariate(mu=700, sigma=75))
+    def __init__(self, **kwargs: Unpack[CustomKwargs]):
+        super().__init__(**kwargs)
+    
+    def is_negative(self) -> bool:
+        return self.value < 0
 
 def main():
-    inv = Inventory()
+    test = CustomImmutable(name='Test', value=10)
+    test2 = CustomImmutable(kind='NegData', name='Test2', value=-10)
+    print(test.is_negative(), test2.is_negative())
+    try:
+        test.name = 'NewName'
+    except AttributeError:
+        print('Failed to set attribute! Yay!')
     
-    for _ in range(100):
-        inv.add(random_roll())
-    
-    print(inv.pretty())
+    try:
+        test2.some_attr = []
+    except AttributeError:
+        print('Failed to set instance attribute! Yay!')
 
 if __name__ == '__main__':
     main()
