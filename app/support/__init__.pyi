@@ -69,6 +69,12 @@ class FloatRange(NamedTuple):
     def contains(self, value: float) -> bool:
         """Return True iff 'value' is within this range."""
         ...
+    def is_above(self, value: float) -> bool:
+        """Return True iff 'value' is below this range."""
+        ...
+    def is_below(self, value: float) -> bool:
+        """Return True iff 'value' is above this range."""
+        ...
 
 class SupportsPretty(Protocol[_T_P_co]):
     """
