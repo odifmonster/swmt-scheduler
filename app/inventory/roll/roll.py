@@ -64,6 +64,7 @@ class Roll(RollLike, Viewable[RollView]):
         self.__id = id
         self.__greige = greige
         self.__weight = weight
+        self.__view = RollView(self)
 
     @property
     def id(self):
@@ -93,3 +94,6 @@ class Roll(RollLike, Viewable[RollView]):
         if self.__weight < amount:
             raise ValueError('Cannot allocate more than total pounds in a roll.')
         self.__weight -= amount
+
+    def view(self):
+        return self.__view
