@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from . import support, style, inventory
+from . import support, style, inventory, schedule
 
-__all__ = ['support', 'style', 'inventory']
+__all__ = ['support', 'style', 'inventory', 'schedule']

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from .demand import DemandLike, DemandView, Demand
+from . import demand
 
-__all__ = ['DemandLike', 'DemandView', 'Demand']
+__all__ = ['demand']

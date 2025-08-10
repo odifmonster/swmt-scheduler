@@ -6,7 +6,7 @@ import datetime
 
 from app.support import PrettyArgsOpt, SuperView, Viewable
 from app.support.groups import DataLike
-from app.style import FabricStyle
+from app.style import FabricStyle, GreigeStyle
 
 _DMND_CTR = 0
 
@@ -25,6 +25,14 @@ class DemandLike(DataLike[int, PrettyArgsOpt], Protocol):
     @abstractmethod
     def item(self) -> FabricStyle:
         raise NotImplementedError()
+    
+    @property
+    def greige(self) -> GreigeStyle:
+        return self.item.greige
+    
+    @property
+    def color_num(self) -> str:
+        return self.item.color.number
     
     @property
     @abstractmethod

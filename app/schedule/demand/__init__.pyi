@@ -1,10 +1,16 @@
+from app.schedule.demand.groups import ColorProps as ColorProps, \
+    ColorGroupView as ColorGroupView, ColorGroup as ColorGroup, \
+    GreigeProps as GreigeProps, GreigeGroupView as GreigeGroupView, \
+    GreigeGroup as GreigeGroup, PriorityProps as PriorityProps, \
+    PriorityGroupView as PriorityGroupView, PriorityGroup as PriorityGroup, \
+    DemandGroupView as DemandGroupView, DemandGroup as DemandGroup
+
 from typing import Unpack, Protocol
 from abc import abstractmethod
 import datetime
-
 from app.support import PrettyArgsOpt, SuperView, Viewable
 from app.support.groups import DataLike
-from app.style import FabricStyle
+from app.style import FabricStyle, GreigeStyle
 
 class DemandLike(DataLike[int, PrettyArgsOpt], Protocol):
     """
@@ -18,6 +24,10 @@ class DemandLike(DataLike[int, PrettyArgsOpt], Protocol):
     @property
     @abstractmethod
     def item(self) -> FabricStyle: ...
+    @property
+    def greige(self) -> GreigeStyle: ...
+    @property
+    def color_num(self) -> str: ...
     @property
     @abstractmethod
     def yards(self) -> float: ...
