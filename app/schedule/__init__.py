@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from . import demand
+from . import demand, dyelot
 
-__all__ = ['demand']
+__all__ = ['demand', 'dyelot']
