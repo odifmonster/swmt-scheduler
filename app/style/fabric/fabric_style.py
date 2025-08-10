@@ -49,4 +49,4 @@ class FabricStyle(_FabricBase):
     pass
 
 EMPTY_FABRIC = FabricStyle('NONE', EMPTY_GREIGE, 'NONE MASTER',
-                           Color('NONE COLOR', 0, 4))
+                           Color('NONE COLOR', 0, 4), 1, [])

@@ -15,4 +15,4 @@ def init():
             globals()['STYLE_DICT'][inv] = plan
 
 def translate_greige_style(inv_name):
-    return STYLE_DICT.get(inv_name, default='')
+    return STYLE_DICT.get(inv_name, '')
