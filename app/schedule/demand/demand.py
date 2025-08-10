@@ -6,7 +6,7 @@ import datetime
 
 from app.support import PrettyArgsOpt, SuperView, Viewable
 from app.support.groups import DataLike
-from app.style import FabricStyle, GreigeStyle
+from app.style import FabricStyle, GreigeStyle, EMPTY_FABRIC
 
 _DMND_CTR = 0
 
@@ -91,3 +91,5 @@ class Demand(DemandLike, Viewable[DemandView]):
     
     def view(self):
         return self.__view
+
+EMPTY_DEMAND = Demand(EMPTY_FABRIC, 0, datetime.datetime.fromtimestamp(0))

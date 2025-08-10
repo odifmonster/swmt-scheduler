@@ -5,6 +5,7 @@ from typing import TypeVar, Generic, Protocol, Self, Any, \
     Hashable, Iterable, Callable, Generator, NamedTuple, \
     Unpack
 from abc import abstractmethod
+import datetime
 
 _T_HasID = TypeVar('_T_HasID', str, int)
 _T_View_co = TypeVar('T_View_co', contravariant=True)
@@ -81,18 +82,30 @@ class SuperImmut:
         ...
     def __repr__(self) -> str: ...
 
-class FloatRange(NamedTuple):
-    minval: float
-    maxval: float
-    def contains(self, value: float) -> bool:
+class _SupportsComparison(Protocol):
+    def __eq__(self, value) -> bool: ...
+    def __le__(self, value) -> bool: ...
+    def __lt__(self, value) -> bool: ...
+    def __ge__(self, value) -> bool: ...
+    def __gt__(self, value) -> bool: ...
+
+_T_CR = TypeVar('_T_CR', bound=_SupportsComparison)
+
+class CompRange(Generic[_T_CR], NamedTuple):
+    minval: _T_CR
+    maxval: _T_CR
+    def contains(self, value: _T_CR) -> bool:
         """Return True iff 'value' is within this range."""
         ...
-    def is_above(self, value: float) -> bool:
+    def is_above(self, value: _T_CR) -> bool:
         """Return True iff 'value' is below this range."""
         ...
-    def is_below(self, value: float) -> bool:
+    def is_below(self, value: _T_CR) -> bool:
         """Return True iff 'value' is above this range."""
         ...
+
+FloatRange = CompRange[float]
+DateRange = CompRange[datetime.datetime]
 
 class SupportsPretty(Protocol[_T_P_co]):
     """

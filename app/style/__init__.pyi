@@ -1,5 +1,7 @@
 from app.style import color as color
 from app.style import translation as translation
+from app.style.greige import EMPTY_GREIGE as EMPTY_GREIGE
+from app.style.fabric import EMPTY_FABRIC as EMPTY_FABRIC
 
 from app.support import HasID, FloatRange
 

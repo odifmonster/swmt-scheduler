@@ -3,10 +3,11 @@
 import datetime
 from app.support import HasID
 from ..dyelot import DyeLot
+from ..demand import EMPTY_DEMAND
 
 _JOB_CTR = 0
 
-_EMPTY_LOT = (DyeLot(),)
+_EMPTY_LOT = (DyeLot(EMPTY_DEMAND),)
 
 class _JobBase(HasID[int]):
 
