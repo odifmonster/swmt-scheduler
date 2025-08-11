@@ -11,8 +11,9 @@ from app.inventory import Inventory
 
 from app.schedule.job import Job
 from app.schedule.jet import Jet
-from app.schedule.demand import Demand, DemandGroup
+from app.schedule.demand import Demand, DemandGroup, DemandView
 from app.schedule.dyelot import DyeLot
+from app.schedule.job import Job
 
 from getjets import get_single_jets, get_multi_jets
 from getrolls import get_greige_rolls

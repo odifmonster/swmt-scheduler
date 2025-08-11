@@ -1,4 +1,0 @@
-ROLL(id='FSN04-2809', item=GreigeStyle('AU5429D'), weight=780.00) 390.0
-ROLL(id='FSN04-2809', item=GreigeStyle('AU5429D'), weight=780.00) 390.0
-ROLL(id='FSK12-3061', item=GreigeStyle('AU5429D'), weight=768.00) 384.0
-ROLL(id='FSK12-3061', item=GreigeStyle('AU5429D'), weight=768.00) 384.0

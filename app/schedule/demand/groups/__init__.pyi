@@ -6,7 +6,7 @@ import datetime
 from app.support import PrettyArgsOpt
 from app.support.groups import GroupedView, Grouped
 from app.style import GreigeStyle
-from app.schedule.demand.demand import DemandView, Demand
+from app.schedule.demand import DemandView, Demand
 
 class ColorGroupView(GroupedView[int, PrettyArgsOpt, int],
                      no_access=['add','remove'],
