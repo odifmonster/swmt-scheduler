@@ -41,6 +41,11 @@ class DemandLike(DataLike[int, PrettyArgsOpt], Protocol):
     
     @property
     @abstractmethod
+    def pounds(self):
+        raise NotImplementedError()
+    
+    @property
+    @abstractmethod
     def due_date(self) -> datetime.datetime:
         raise NotImplementedError()
     
@@ -80,6 +85,10 @@ class Demand(DemandLike, Viewable[DemandView]):
     @property
     def yards(self):
         return self.__yards
+    
+    @property
+    def pounds(self):
+        return self.__yards/self.__item.yds_per_lb
     
     @property
     def due_date(self) -> datetime.datetime:

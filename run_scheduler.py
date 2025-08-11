@@ -13,8 +13,7 @@ from app.schedule.job import Job
 from app.schedule.jet import Jet
 from app.schedule.demand import Demand, DemandGroup
 
-from getrolls import get_greige_rolls
-from getjets import ShadowedJet
+from getjets import get_multi_jets
 
 DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
@@ -104,18 +103,6 @@ def load_dmnd(start: datetime.datetime) -> DemandGroup:
 def main():
     style.init()
     style.translation.init()
-
-    # inv = load_inv()
-    # test_grg = style.get_greige_style('AU5429D')
-    # assert not test_grg is None
-
-    jets = load_jets(datetime.datetime(2025, 8, 6))
-    jet4 = jets[3]
-
-    shadow4 = ShadowedJet(jet4, datetime.datetime(2025, 8, 6))
-    shadow4.set_shadows(3)
-
-    print(shadow4.last_job_end)
 
 if __name__ == '__main__':
     main()
