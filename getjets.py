@@ -45,7 +45,7 @@ class ShadowedJet(Jet, SuperView[Jet],
     def inc_shadows(self):
         self.__shadow_jobs = self.__shadow_jobs + 1
 
-def nearest_jet(dmnd: Demand, jets: list[Jet]) -> int:
+def nearest_jet(dmnd: Demand, lbs: float, jets: list[Jet], exceed_total: bool = True) -> int:
     port_range = dmnd.item.greige.port_range
     port_avg = (port_range.minval+port_range.maxval)/2
 
@@ -53,15 +53,15 @@ def nearest_jet(dmnd: Demand, jets: list[Jet]) -> int:
     best_idx = 0
     for i, jet in enumerate(jets):
         if not dmnd.item.can_run_on_jet(jet.id): continue
-        diff = jet.n_ports*port_avg - dmnd.pounds
-        if diff > 0 and diff < best_diff:
-            best_diff = diff
+        diff = jet.n_ports*port_avg - lbs
+        if abs(diff) < best_diff and (not exceed_total or diff > 0):
+            best_diff = abs(diff)
             best_idx = i
     
     return best_idx
 
 def get_single_jets(dmnd: Demand, jets: list[Jet], ignore_due: bool = False) -> Generator[Jet]:
-    start = nearest_jet(dmnd, jets)
+    start = nearest_jet(dmnd, dmnd.pounds, jets)
     for i in range(start, len(jets)):
         jet = jets[i]
         if not dmnd.item.can_run_on_jet(jet.id): continue
@@ -82,10 +82,16 @@ def get_multi_jets(start_date: dt.datetime,
         yield prev
         return
 
-    jet_map = { j.id: ShadowedJet(j, start_date) for j in jets }
+    should_exceed = port_avg*8 > dmnd.pounds-total_lbs
+    best_idx = nearest_jet(dmnd, dmnd.pounds-total_lbs, jets, exceed_total=should_exceed)
+    from_best = jets
+    if best_idx > 0:
+        from_best = jets[best_idx:] + jets[best_idx-1::-1]
+
+    jet_map = { j.id: ShadowedJet(j, start_date) for j in from_best }
     map(lambda j: jet_map[j.id].inc_shadows(), prev)
 
-    for jet in sorted(jet_map.values(), key=lambda j: j.n_ports, reverse=True):
+    for jet in jet_map.values():
         if not dmnd.item.can_run_on_jet(jet.id):
             continue
         if jet.rem_time < jet.avg_cycle or \

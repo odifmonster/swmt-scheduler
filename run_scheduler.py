@@ -104,5 +104,20 @@ def main():
     style.init()
     style.translation.init()
 
+    start = datetime.datetime(2025, 8, 6)
+
+    jets = load_jets(start)
+    test_fab = style.get_fabric_style('FF ARCTIC-39811-68')
+    assert not test_fab is None
+
+    test_dmnd = Demand(test_fab, 9767, start+datetime.timedelta(days=2.5))
+    jet_combs = get_multi_jets(start, test_dmnd, jets, ignore_due=True)
+
+    for jcomb in jet_combs:
+        print('Combo:')
+        for jet in jcomb:
+            print(f'  {jet.id} (ports={jet.n_ports})')
+        print()
+
 if __name__ == '__main__':
     main()
