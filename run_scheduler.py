@@ -13,6 +13,8 @@ from app.schedule.job import Job
 from app.schedule.jet import Jet
 from app.schedule.demand import Demand, DemandGroup
 
+from assignment import start_rolls
+
 DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
                            'usecols': ['Roll', 'Item', 'Quality', 'Pounds',
@@ -103,5 +105,15 @@ def main():
     style.translation.init()
 
     inv = load_inv()
+    test_grg = style.get_greige_style('AU5429D')
+    assert not test_grg is None
+
     jets = load_jets(datetime.datetime(2025, 8, 6))
-    dmnd = load_dmnd(datetime.datetime(2025, 8, 6))
+    jet4 = jets[3]
+
+    starts = start_rolls(inv, test_grg, 375, jet4)
+    for start in starts:
+        print(start.pretty())
+
+if __name__ == '__main__':
+    main()

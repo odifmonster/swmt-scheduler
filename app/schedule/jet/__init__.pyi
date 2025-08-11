@@ -1,6 +1,6 @@
 from typing import Iterator
 import datetime
-from app.support import HasID, FloatRange, DateRange
+from app.support import HasID, FloatRange
 from app.schedule.job import Job
 
 class Jet(HasID[str]):
@@ -9,7 +9,7 @@ class Jet(HasID[str]):
     @property
     def n_ports(self) -> int: ...
     @property
-    def port_range(self) -> DateRange: ...
+    def port_range(self) -> FloatRange: ...
     @property
     def avg_cycle(self) -> datetime.timedelta: ...
     @property
