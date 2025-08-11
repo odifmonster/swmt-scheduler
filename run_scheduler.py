@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
+from typing import TypedDict
 import os, datetime as dt, pandas as pd
 
 from app.support import FloatRange
 
 from app import style
 
-from app.inventory.roll import Roll, RollLike
+from app.inventory.roll import Roll
 from app.inventory import Inventory
 
 from app.schedule.job import Job
 from app.schedule.jet import Jet
-from app.schedule.demand import Demand, DemandGroup, DemandView
+from app.schedule.demand import Demand, DemandGroup
 from app.schedule.dyelot import DyeLot
 from app.schedule.job import Job
 
@@ -29,6 +30,31 @@ JET_SRC = ('master.xlsx', {'sheet_name': 'jet_info',
 DMND_SRC = ('Demand Planning 20250806.xlsx', {'sheet_name': 'Demand Planning20230927',
                                               'usecols': 'D,M:P', 'header': 7,
                                               'dtype': {'PA Fin Item': 'string'}})
+OUT_WRITER = ('output.xlsx', {'datetime_format': 'YYYY-MM-DD HH:MM'})
+
+class NotScheduled(TypedDict):
+    due_date: list[dt.datetime]
+    fin_item: list[str]
+    greige_item: list[str]
+    yds_needed: list[float]
+    lbs_needed: list[float]
+
+class JetAlloc(TypedDict):
+    job_id: list[str]
+    starttime: list[dt.datetime]
+    endtime: list[dt.datetime]
+    jet: list[str]
+    fin_item: list[str]
+    greige_item: list[str]
+    pounds: list[float]
+    yards: list[float]
+
+class RollAlloc(TypedDict):
+    alloc_id: list[str]
+    job_id: list[str]
+    greige_item: list[str]
+    roll: list[str]
+    pounds: list[float]
 
 def load_inv() -> Inventory:
     res = Inventory()
@@ -71,7 +97,7 @@ def load_jets(start: dt.datetime) -> list[Jet]:
         if cur_job_days > 0:
             if cur_job_days > 3:
                 cur_job_days += 2
-            cur_job = Job(start, dt.timedelta(days=cur_job_days))
+            cur_job = Job(start, dt.timedelta(days=cur_job_days), start)
             cur_jet.add_job(cur_job)
     
     return res
@@ -131,14 +157,14 @@ def tjc_reset(inv: Inventory, allocated: dict[str, set[DyeLot]], empty: list[Rol
             lot.unassign_roll(roll)
         inv.add(roll)
 
-def assign_combo(jet_lots: dict[Jet, list[DyeLot]]) -> None:
+def assign_combo(jet_lots: dict[Jet, list[DyeLot]], max_date: dt.datetime) -> None:
     for jet in jet_lots:
         for lot in jet_lots[jet]:
-            job = Job(jet.last_job_end, jet.avg_cycle, lots=(lot,))
+            job = Job(jet.last_job_end, jet.avg_cycle, max_date, lots=(lot,))
             jet.add_job(job)
 
 def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
-                  checked: dict[int, bool]) -> bool:
+                  checked: dict[int, bool], max_date: dt.datetime) -> bool:
     allocated: dict[str, set[DyeLot]] = {}
     empty: list[Roll] = []
     jet_lots: dict[Jet, list[DyeLot]] = {}
@@ -170,7 +196,7 @@ def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
         tjc_reset(inv, allocated, empty)
         return False
     
-    assign_combo(jet_lots)
+    assign_combo(jet_lots, max_date)
     return True
 
 def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
@@ -179,41 +205,161 @@ def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
     for jet in jets:
         checked[jet.n_ports] = False
 
+    max_date = dmnd.due_date
+    if ignore_due:
+        max_date = start_date+dt.timedelta(days=10)
     jet_combos = get_multi_jets(start_date, dmnd, jets, ignore_due=ignore_due)
 
     for combo in jet_combos:
+        if combo is None:
+            continue
+
+        print('Trying combo ' + ', '.join([j.id for j in combo]))
         if all(map(lambda j: checked[j.n_ports], jets)):
             return False
-        if try_jet_combo(dmnd, combo, inv, checked):
+        if try_jet_combo(dmnd, combo, inv, checked, max_date):
+            print('Assigned to combo!')
             return True
     
     return False
+
+def assign_single_jet(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
+                      inv: Inventory, ignore_due: bool = False) -> bool:
+    single_jets = get_single_jets(dmnd, jets, ignore_due=ignore_due)
+    max_date = dmnd.due_date
+    if ignore_due:
+        max_date = start_date+dt.timedelta(days=10)
+
+    for jet in single_jets:
+        print(f'Checking {jet.id}')
+        roll_splits = get_greige_rolls(inv, dmnd.item.greige, dmnd.pounds, jet)
+        if not roll_splits: continue
+
+        print(f'Assigning job to {jet.id}')
+        lot = DyeLot(dmnd)
+
+        for item in roll_splits:
+            roll = inv.remove(item.roll.id)
+            lot.assign_roll(roll, item.lbs)
+            if roll.weight > 20:
+                inv.add(roll)
+        
+        job = Job(jet.last_job_end, jet.avg_cycle, max_date, lots=(lot,))
+        jet.add_job(job)
+        return True
+    
+    return False
+
+def assign_demand(dmnd: Demand, start_date: dt.datetime, jets: list[Jet], inv: Inventory,
+                  ignore_due: bool = False) -> bool:
+    prt_rng = dmnd.item.greige.port_range
+    prt_avg = (prt_rng.minval+prt_rng.maxval)/2
+
+    if prt_avg*8 > dmnd.pounds:
+        print('Attempting to assign to single jet')
+        success = assign_single_jet(start_date, dmnd, jets, inv, ignore_due=ignore_due)
+        if success:
+            return True
+    
+    print('Attempting to assign to multiple jets')
+    success = assign_multi_jets(start_date, dmnd, jets, inv, ignore_due=ignore_due)
+    return success
+
+def convert_cols_to_string(df: pd.DataFrame, cols: list[str]) -> None:
+    for col in cols:
+        df[col] = df[col].astype('string')
+
+def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    not_scheduled = NotScheduled(due_date=[], fin_item=[], greige_item=[], yds_needed=[],
+                                 lbs_needed=[])
+
+    inv = load_inv()
+    dmnd = load_dmnd(start)
+    jets = load_jets(start)
+
+    pdates = sorted(iter(dmnd))
+    for pdate in pdates:
+        date_str = pdate.strftime('%a %b %d %Y')
+        print(f'Scheduling for {date_str} ...')
+        for grg in dmnd[pdate]:
+            for clr in dmnd[pdate, grg]:
+                for req_id in dmnd[pdate, grg, clr]:
+                    if dmnd[pdate, grg, clr, req_id].yards < 100:
+                        continue
+
+                    req = dmnd.remove(req_id)
+                    print(f'  Scheduling demand on item {req.item.id}...')
+                    due_str = req.due_date.strftime('%a %b %d %Y')
+                    print(f'    Attempting to schedule before {due_str}...')
+                    success = assign_demand(req, start, jets, inv)
+                    if success:
+                        dmnd.add(req)
+                        continue
+
+                    print('    Attempting to schedule with no date restriction...')
+                    success = assign_demand(req, start, jets, inv, ignore_due=True)
+                    if not success:
+                        not_scheduled['due_date'].append(req.due_date)
+                        not_scheduled['fin_item'].append(req.item.id)
+                        not_scheduled['greige_item'].append(req.item.greige.id)
+                        not_scheduled['lbs_needed'].append(req.pounds)
+                        not_scheduled['yds_needed'].append(req.yards)
+
+                    print(f'  Finished processing demand on item {req.item.id}!')
+                    dmnd.add(req)
+        print(f'Finished scheduling all demand for {date_str}!')
+    
+    jet_alloc = JetAlloc(job_id=[], starttime=[], endtime=[], jet=[],
+                         fin_item=[], greige_item=[], pounds=[], yards=[])
+    roll_alloc = RollAlloc(alloc_id=[], job_id=[], greige_item=[], roll=[], pounds=[])
+
+    for jet in jets:
+        for job in jet:
+            jet_alloc['job_id'].append(f'{job.id:05}')
+            jet_alloc['starttime'].append(job.start)
+            jet_alloc['endtime'].append(job.end)
+            jet_alloc['jet'].append(jet.id)
+            fab_item = job.lots[0].item
+            jet_alloc['fin_item'].append(fab_item.id)
+            jet_alloc['greige_item'].append(fab_item.greige.id)
+            jet_alloc['pounds'].append(job.lbs)
+            jet_alloc['yards'].append(job.yds)
+
+            lot = job.lots[0]
+            for aroll in lot:
+                roll_alloc['alloc_id'].append(f'{aroll.id:05}')
+                roll_alloc['job_id'].append(f'{job.id:05}')
+                roll_alloc['greige_item'].append(aroll.roll.item.id)
+                roll_alloc['roll'].append(aroll.roll.id)
+                roll_alloc['pounds'].append(aroll.lbs)
+    
+    ns_df = pd.DataFrame(data=not_scheduled)
+    convert_cols_to_string(ns_df, ['fin_item', 'greige_item'])
+
+    jet_df = pd.DataFrame(data=jet_alloc, )
+    convert_cols_to_string(jet_df, ['job_id', 'jet', 'fin_item', 'greige_item'])
+    jet_df.set_index('job_id')
+
+    roll_df = pd.DataFrame(data=roll_alloc)
+    convert_cols_to_string(roll_df, ['alloc_id', 'job_id', 'greige_item'])
+    roll_df.set_index('alloc_id')
+
+    return jet_df, roll_df, ns_df
 
 def main():
     style.init()
     style.translation.init()
 
     start = dt.datetime(2025, 8, 6)
+    jobs, rolls, not_sched = generate_schedule(start)
 
-    inv = load_inv()
-    jets = load_jets(start)
+    writer: pd.ExcelWriter = pd.ExcelWriter(os.path.join(DIRPATH, OUT_WRITER[0]), **OUT_WRITER[1])
 
-    fab = style.get_fabric_style('FF ARCTIC-39811-68')
-    assert not fab is None
-    p2 = start + dt.timedelta(days=2.5)
+    jobs.to_excel(writer, sheet_name='jet_allocation', index=False)
+    rolls.to_excel(writer, sheet_name='roll_allocation', index=False)
+    not_sched.to_excel(writer, sheet_name='not_scheduled')
 
-    dmnd = Demand(fab, 9767, p2)
-    success = assign_multi_jets(start, dmnd, jets, inv, ignore_due=True)
-
-    if success:
-        for jet in jets:
-            print(f'{jet.id} schedule:')
-            for job in jet:
-                print('  ' + repr(job))
-                lot = job.lots[0]
-                for roll_alloc in lot:
-                    print(f'    roll={roll_alloc.roll.id}\tlbs={roll_alloc.lbs:.2f}')
-            print()
+    writer.close()
 
 if __name__ == '__main__':
     main()

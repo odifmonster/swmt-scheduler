@@ -2,6 +2,7 @@
 
 import datetime
 from app.support import HasID
+from app.style import color
 from ..dyelot import DyeLot
 from ..demand import EMPTY_DEMAND
 
@@ -12,12 +13,13 @@ _EMPTY_LOT = (DyeLot(EMPTY_DEMAND),)
 class _JobBase(HasID[int]):
 
     def __init__(self, start: datetime.datetime, cycle_time: datetime.timedelta,
-                 lots: tuple[DyeLot, ...] = _EMPTY_LOT):
+                 max_date: datetime.datetime, lots: tuple[DyeLot, ...] = _EMPTY_LOT):
         globals()['_JOB_CTR'] += 1
         self.__id = globals()['_JOB_CTR']
 
         self.__start = start
         self.__cycle_time = cycle_time
+        self.__max_date = max_date
         self.__lots = lots
 
     @property
@@ -31,6 +33,9 @@ class _JobBase(HasID[int]):
     @property
     def start(self):
         return self.__start
+    @start.setter
+    def start(self, new: datetime.datetime):
+        self.__start = new
     
     @property
     def cycle_time(self):
@@ -39,6 +44,10 @@ class _JobBase(HasID[int]):
     @property
     def end(self):
         return self.__start + self.__cycle_time
+    
+    @property
+    def before_date(self):
+        return self.__max_date
     
     @property
     def lbs(self):
@@ -51,6 +60,12 @@ class _JobBase(HasID[int]):
     @property
     def lots(self):
         return self.__lots
+    
+    @property
+    def shade(self):
+        if self.__lots == _EMPTY_LOT:
+            return color.SOLUTION
+        return self.__lots[0].item.color.shade
     
     def __repr__(self):
         start_str = self.start.strftime('%m/%d/%y %H:%M:%S')

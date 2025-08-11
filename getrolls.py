@@ -91,7 +91,11 @@ def start_rolls(inv: Inventory, greige: GreigeStyle, dmnd_lbs: float, jet: Jet,
     for size in sizes:
         if size not in inv[greige]: continue
         for roll_id in inv[greige, size]:
-            roll = inv[greige, size, roll_id]
+            try:
+                roll = inv[greige, size, roll_id]
+            except AttributeError:
+                continue
+
             if is_valid_roll(roll, greige, dmnd_lbs, jet,
                              allowance=allowance):
                 yield roll
@@ -135,9 +139,15 @@ def get_greige_rolls(inv: Inventory,
                      jet: Jet,
                      allowance: float = 0) -> list[RollSplitItem]:
     options: list[RollSplit] = []
+    if not greige in inv:
+        return []
+    
     for size in inv[greige]:
         for roll_id in inv[greige, size]:
-            options.append(RollSplit(inv[greige, size, roll_id]))
+            try:
+                options.append(RollSplit(inv[greige, size, roll_id]))
+            except AttributeError:
+                continue
     
     start_opts = start_rolls(inv, greige, dmnd_lbs, jet, allowance=allowance)
     for start in start_opts:

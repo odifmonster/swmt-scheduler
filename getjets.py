@@ -73,7 +73,11 @@ def get_single_jets(dmnd: Demand, jets: list[Jet], ignore_due: bool = False) -> 
 def get_multi_jets(start_date: dt.datetime,
                    dmnd: Demand, jets: list[Jet],
                    prev: tuple[Jet, ...] = tuple(),
-                   ignore_due: bool = False) -> Generator[tuple[Jet, ...]]:
+                   ignore_due: bool = False) -> Generator[tuple[Jet, ...] | None]:
+    if len(prev) > 4:
+        yield None
+        return
+    
     port_range = dmnd.item.greige.port_range
     port_avg = (port_range.minval+port_range.maxval)/2
 

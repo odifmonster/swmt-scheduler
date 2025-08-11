@@ -76,5 +76,13 @@ class _JetBase(HasID[str]):
         idx = self._get_nearest_idx(job, 0, len(self.__jobs))
         self.__jobs.insert(idx, job)
 
+    def sort_jobs(self):
+        new_jobs = sorted(self.__jobs, key=lambda j: (j.before_date, j.shade))
+        self.__jobs = []
+
+        for job in new_jobs:
+            job.start = self.last_job_end
+            self.add_job(job)
+
 class Jet(_JetBase):
     pass

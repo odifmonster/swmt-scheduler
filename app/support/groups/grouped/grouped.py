@@ -89,8 +89,6 @@ class Grouped(Generic[T, T_co, U, *Us],
         subkey: T = getattr(data, self.__unbound[0])
         subgroup = self.__groups[subkey]
         subgroup.remove(id)
-        if len(subgroup) == 0:
-            del self.__groups[subkey]
         
         return data
     

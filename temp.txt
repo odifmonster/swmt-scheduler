@@ -1,36 +1,98 @@
-Jet-01 schedule:
-  JOB(id=00001, start=08/06/25 00:00:00, end=08/07/25 21:36:00)
-
-Jet-02 schedule:
-  JOB(id=00002, start=08/06/25 00:00:00, end=08/08/25 21:36:00)
-  JOB(id=00010, start=08/08/25 21:36:00, end=08/09/25 07:36:00)
-    roll=FSK12-3068	lbs=390.00
-    roll=FSK12-3068	lbs=390.00
-
-Jet-03 schedule:
-  JOB(id=00003, start=08/06/25 00:00:00, end=08/12/25 12:00:00)
-
-Jet-04 schedule:
-  JOB(id=00004, start=08/06/25 00:00:00, end=08/11/25 04:48:00)
-
-Jet-07 schedule:
-  JOB(id=00005, start=08/06/25 00:00:00, end=08/07/25 21:36:00)
-
-Jet-08 schedule:
-  JOB(id=00006, start=08/06/25 00:00:00, end=08/08/25 12:00:00)
-
-Jet-09 schedule:
-  JOB(id=00007, start=08/06/25 00:00:00, end=08/08/25 12:00:00)
-  JOB(id=00009, start=08/08/25 12:00:00, end=08/09/25 03:00:00)
-    roll=FSN04-2809	lbs=390.00
-    roll=FSN04-2809	lbs=390.00
-    roll=FSK12-3061	lbs=384.00
-    roll=FSK12-3061	lbs=384.00
-    roll=FSK12-3060	lbs=382.50
-    roll=FSK12-3060	lbs=382.50
-    roll=FSK12-3074	lbs=385.50
-    roll=FSK12-3074	lbs=385.50
-
-Jet-10 schedule:
-  JOB(id=00008, start=08/06/25 00:00:00, end=08/08/25 07:12:00)
-
+DEMAND(id=00004, item='FF AU3426M-38840-62', due_date=Fri 08 Aug 2025)
+DEMAND(id=00007, item='FF AU3426M-38840-64', due_date=Fri 08 Aug 2025)
+DEMAND(id=00011, item='FF TR570B-39777-62', due_date=Fri 08 Aug 2025)
+DEMAND(id=00088, item='FF TR570B-39789-66', due_date=Fri 08 Aug 2025)
+DEMAND(id=00017, item='FF TAFFETAHP-39894-60', due_date=Fri 08 Aug 2025)
+DEMAND(id=00025, item='FF AURA30000-40359-68', due_date=Fri 08 Aug 2025)
+DEMAND(id=00027, item='FF MESA-39327-58', due_date=Fri 08 Aug 2025)
+DEMAND(id=00029, item='FF ARCTIC-40416-73', due_date=Fri 08 Aug 2025)
+DEMAND(id=00054, item='FF ARCTICP-40938-61', due_date=Fri 08 Aug 2025)
+DEMAND(id=00075, item='FF ARCTIC-41079-62', due_date=Fri 08 Aug 2025)
+DEMAND(id=00036, item='FF TR665B-40477-65', due_date=Fri 08 Aug 2025)
+DEMAND(id=00038, item='FF TR665B-40478-65', due_date=Fri 08 Aug 2025)
+DEMAND(id=00040, item='FF LYRICR-40614-64', due_date=Fri 08 Aug 2025)
+DEMAND(id=00048, item='FF TR684B-40610-65', due_date=Fri 08 Aug 2025)
+DEMAND(id=00052, item='FF LYRICHELHS-41114-63', due_date=Fri 08 Aug 2025)
+DEMAND(id=00056, item='FF MOLTOSS-NA-40569-73', due_date=Fri 08 Aug 2025)
+DEMAND(id=00058, item='FF MOLTOSS-NA-40779-73', due_date=Fri 08 Aug 2025)
+DEMAND(id=00079, item='FF MOLTOSS-NA-40572-72', due_date=Fri 08 Aug 2025)
+DEMAND(id=00083, item='FF MOLTOSS-NA-40572-51', due_date=Fri 08 Aug 2025)
+DEMAND(id=00081, item='FF MOLTOSS-NA-41064-73', due_date=Fri 08 Aug 2025)
+DEMAND(id=00093, item='FF MOLTOSSX-NA-41320-73', due_date=Fri 08 Aug 2025)
+DEMAND(id=00068, item='FF TAFFETAHP-41026-67', due_date=Fri 08 Aug 2025)
+DEMAND(id=00070, item='FF MOLTOP-NA-41254-67', due_date=Fri 08 Aug 2025)
+DEMAND(id=00072, item='FF MOLTO-NA-41255-64', due_date=Fri 08 Aug 2025)
+DEMAND(id=00076, item='FF MOLTO-NA-40382-59', due_date=Fri 08 Aug 2025)
+DEMAND(id=00086, item='FF MOLTOV-NA-41204-57', due_date=Fri 08 Aug 2025)
+DEMAND(id=00095, item='FF PROVT-NDWR-40973-61', due_date=Fri 08 Aug 2025)
+DEMAND(id=00098, item='FF LYRIC-39651-71', due_date=Fri 08 Aug 2025)
+DEMAND(id=00002, item='FF AURA30000-39064-63', due_date=Tue 12 Aug 2025)
+DEMAND(id=00008, item='FF AU3426M-38840-64', due_date=Tue 12 Aug 2025)
+DEMAND(id=00012, item='FF TR570B-39777-62', due_date=Tue 12 Aug 2025)
+DEMAND(id=00020, item='FF TR570B-39789-48', due_date=Tue 12 Aug 2025)
+DEMAND(id=00089, item='FF TR570B-39789-66', due_date=Tue 12 Aug 2025)
+DEMAND(id=00014, item='FF LYRICP-40542-55', due_date=Tue 12 Aug 2025)
+DEMAND(id=00018, item='FF TAFFETAHP-39894-60', due_date=Tue 12 Aug 2025)
+DEMAND(id=00031, item='FF ARCTIC-39811-68', due_date=Tue 12 Aug 2025)
+DEMAND(id=00055, item='FF ARCTICP-40938-61', due_date=Tue 12 Aug 2025)
+DEMAND(id=00034, item='FF TR665BP-40607-65', due_date=Tue 12 Aug 2025)
+DEMAND(id=00035, item='FF TR665BP-40608-65', due_date=Tue 12 Aug 2025)
+DEMAND(id=00041, item='FF LYRICR-40614-64', due_date=Tue 12 Aug 2025)
+DEMAND(id=00042, item='FF LYRICR-40582-64', due_date=Tue 12 Aug 2025)
+DEMAND(id=00053, item='FF LYRICHELHS-41114-63', due_date=Tue 12 Aug 2025)
+DEMAND(id=00059, item='FF LYRICPHE-41122-63', due_date=Tue 12 Aug 2025)
+DEMAND(id=00065, item='FF LYRICPHE-41120-61', due_date=Tue 12 Aug 2025)
+DEMAND(id=00062, item='FF ANMUT-C-NA-40487-66', due_date=Tue 12 Aug 2025)
+DEMAND(id=00073, item='FF MOLTO-NA-41255-64', due_date=Tue 12 Aug 2025)
+DEMAND(id=00077, item='FF MOLTO-NA-40382-59', due_date=Tue 12 Aug 2025)
+DEMAND(id=00087, item='FF MOLTOV-NA-41204-57', due_date=Tue 12 Aug 2025)
+DEMAND(id=00091, item='FF MOLTO-NA-40383-59', due_date=Tue 12 Aug 2025)
+DEMAND(id=00084, item='FF MOLTOSS-NA-40572-51', due_date=Tue 12 Aug 2025)
+DEMAND(id=00096, item='FF PROVT-NDWR-40973-61', due_date=Tue 12 Aug 2025)
+DEMAND(id=00005, item='FF AU3426M-38840-62', due_date=Fri 15 Aug 2025)
+DEMAND(id=00009, item='FF AU3426M-38840-64', due_date=Fri 15 Aug 2025)
+DEMAND(id=00015, item='FF LYRICP-40542-55', due_date=Fri 15 Aug 2025)
+DEMAND(id=00097, item='FF LYRIC-41282-71', due_date=Fri 15 Aug 2025)
+DEMAND(id=00099, item='FF LYRIC-39651-71', due_date=Fri 15 Aug 2025)
+DEMAND(id=00028, item='FF MESA-39327-58', due_date=Fri 15 Aug 2025)
+DEMAND(id=00037, item='FF TR665B-40279-65', due_date=Fri 15 Aug 2025)
+DEMAND(id=00039, item='FF TR665B-40478-65', due_date=Fri 15 Aug 2025)
+DEMAND(id=00043, item='FF LYRICR-40582-64', due_date=Fri 15 Aug 2025)
+DEMAND(id=00045, item='FF TR684B-40623-60', due_date=Fri 15 Aug 2025)
+DEMAND(id=00050, item='FF AEROKNIT D-40637-61', due_date=Fri 15 Aug 2025)
+DEMAND(id=00060, item='FF LYRICPHE-41122-63', due_date=Fri 15 Aug 2025)
+DEMAND(id=00066, item='FF LYRICPHE-41120-61', due_date=Fri 15 Aug 2025)
+DEMAND(id=00071, item='FF MOLTOP-NA-41254-67', due_date=Fri 15 Aug 2025)
+DEMAND(id=00003, item='FF AURA30000-39064-63', due_date=Tue 19 Aug 2025)
+DEMAND(id=00006, item='FF AU3426M-38840-62', due_date=Tue 19 Aug 2025)
+DEMAND(id=00010, item='FF AU3426M-38840-64', due_date=Tue 19 Aug 2025)
+DEMAND(id=00069, item='FF MESA-40241-63', due_date=Tue 19 Aug 2025)
+DEMAND(id=00013, item='FF TR570B-39777-62', due_date=Tue 19 Aug 2025)
+DEMAND(id=00022, item='FF TR570B-39777-48', due_date=Tue 19 Aug 2025)
+DEMAND(id=00021, item='FF TR570B-39789-48', due_date=Tue 19 Aug 2025)
+DEMAND(id=00090, item='FF TR570B-39789-66', due_date=Tue 19 Aug 2025)
+DEMAND(id=00016, item='FF LYRICP-40542-55', due_date=Tue 19 Aug 2025)
+DEMAND(id=00019, item='FF TAFFETAHP-39894-60', due_date=Tue 19 Aug 2025)
+DEMAND(id=00023, item='FF ARCTIC-39811-73', due_date=Tue 19 Aug 2025)
+DEMAND(id=00032, item='FF ARCTIC-39811-68', due_date=Tue 19 Aug 2025)
+DEMAND(id=00030, item='FF ARCTIC-40416-73', due_date=Tue 19 Aug 2025)
+DEMAND(id=00033, item='FF ARCTIC-40506-63', due_date=Tue 19 Aug 2025)
+DEMAND(id=00024, item='FF MESASS-39833-45', due_date=Tue 19 Aug 2025)
+DEMAND(id=00026, item='FF AURA30000-40359-68', due_date=Tue 19 Aug 2025)
+DEMAND(id=00044, item='FF LYRICR-40582-64', due_date=Tue 19 Aug 2025)
+DEMAND(id=00049, item='FF LYRICRSS-40582-64', due_date=Tue 19 Aug 2025)
+DEMAND(id=00046, item='FF TR684B-40610-60', due_date=Tue 19 Aug 2025)
+DEMAND(id=00051, item='FF AEROKNIT D-40637-61', due_date=Tue 19 Aug 2025)
+DEMAND(id=00047, item='FF MOLTO-NA-41256-64', due_date=Tue 19 Aug 2025)
+DEMAND(id=00074, item='FF MOLTO-NA-41255-64', due_date=Tue 19 Aug 2025)
+DEMAND(id=00078, item='FF MOLTO-NA-40382-59', due_date=Tue 19 Aug 2025)
+DEMAND(id=00092, item='FF MOLTO-NA-40383-59', due_date=Tue 19 Aug 2025)
+DEMAND(id=00057, item='FF MOLTOSS-NA-40569-73', due_date=Tue 19 Aug 2025)
+DEMAND(id=00080, item='FF MOLTOSS-NA-40572-72', due_date=Tue 19 Aug 2025)
+DEMAND(id=00085, item='FF MOLTOSS-NA-40572-51', due_date=Tue 19 Aug 2025)
+DEMAND(id=00082, item='FF MOLTOSS-NA-41064-73', due_date=Tue 19 Aug 2025)
+DEMAND(id=00094, item='FF MOLTOSSX-NA-41320-73', due_date=Tue 19 Aug 2025)
+DEMAND(id=00061, item='FF ANMUT-C-NA-40488-66', due_date=Tue 19 Aug 2025)
+DEMAND(id=00063, item='FF ANMUT-C-NA-40487-66', due_date=Tue 19 Aug 2025)
+DEMAND(id=00064, item='FF MOLTOX-NA-40771-62', due_date=Tue 19 Aug 2025)
+DEMAND(id=00067, item='FF LYRICPHE-41120-61', due_date=Tue 19 Aug 2025)
