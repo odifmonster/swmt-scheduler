@@ -47,6 +47,13 @@ class RollSplit:
         self.__excess = None
 
     def split(self, tgt_lbs: float, wt_rng: FloatRange) -> None:
+        if tgt_lbs - self.__roll.weight > 20:
+            self.__excess = RollSplitItem(self.roll, self.roll.weight)
+            return
+        if tgt_lbs - self.__roll.weight >= 0:
+            self.__splits = [RollSplitItem(self.roll, self.roll.weight)]
+            return
+        
         x = round(self.__roll.weight / tgt_lbs)
         avg_split = self.__roll.weight / x
         if wt_rng.contains(avg_split) and abs(avg_split - tgt_lbs) <= 20:
