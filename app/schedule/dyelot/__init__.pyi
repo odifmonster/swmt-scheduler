@@ -1,5 +1,6 @@
 from app.schedule.dyelot.allocation import Allocation as Allocation
 
+from typing import Iterator
 from app.support import HasID
 from app.style import FabricStyle
 from app.inventory.roll import Roll
@@ -20,6 +21,7 @@ class DyeLot(HasID[str]):
     @property
     def yds(self) -> float: ...
     def __repr__(self) -> str: ...
+    def __iter__(self) -> Iterator[Allocation]: ...
     def assign_roll(self, roll: Roll, lbs: float) -> None:
         """
         Assign some pounds from the given roll to this DyeLot. 'lbs' can be less than

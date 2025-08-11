@@ -1,0 +1,36 @@
+Jet-01 schedule:
+  JOB(id=00001, start=08/06/25 00:00:00, end=08/07/25 21:36:00)
+
+Jet-02 schedule:
+  JOB(id=00002, start=08/06/25 00:00:00, end=08/08/25 21:36:00)
+  JOB(id=00010, start=08/08/25 21:36:00, end=08/09/25 07:36:00)
+    roll=FSK12-3068	lbs=390.00
+    roll=FSK12-3068	lbs=390.00
+
+Jet-03 schedule:
+  JOB(id=00003, start=08/06/25 00:00:00, end=08/12/25 12:00:00)
+
+Jet-04 schedule:
+  JOB(id=00004, start=08/06/25 00:00:00, end=08/11/25 04:48:00)
+
+Jet-07 schedule:
+  JOB(id=00005, start=08/06/25 00:00:00, end=08/07/25 21:36:00)
+
+Jet-08 schedule:
+  JOB(id=00006, start=08/06/25 00:00:00, end=08/08/25 12:00:00)
+
+Jet-09 schedule:
+  JOB(id=00007, start=08/06/25 00:00:00, end=08/08/25 12:00:00)
+  JOB(id=00009, start=08/08/25 12:00:00, end=08/09/25 03:00:00)
+    roll=FSN04-2809	lbs=390.00
+    roll=FSN04-2809	lbs=390.00
+    roll=FSK12-3061	lbs=384.00
+    roll=FSK12-3061	lbs=384.00
+    roll=FSK12-3060	lbs=382.50
+    roll=FSK12-3060	lbs=382.50
+    roll=FSK12-3074	lbs=385.50
+    roll=FSK12-3074	lbs=385.50
+
+Jet-10 schedule:
+  JOB(id=00008, start=08/06/25 00:00:00, end=08/08/25 07:12:00)
+

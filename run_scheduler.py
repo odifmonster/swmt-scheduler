@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, datetime, pandas as pd
+import os, datetime as dt, pandas as pd
 
 from app.support import FloatRange
 
@@ -16,7 +16,7 @@ from app.schedule.dyelot import DyeLot
 from app.schedule.job import Job
 
 from getjets import get_single_jets, get_multi_jets
-from getrolls import get_greige_rolls
+from getrolls import get_greige_rolls, RollSplitItem
 
 DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
@@ -51,7 +51,7 @@ def load_inv() -> Inventory:
     
     return res
 
-def load_jets(start: datetime.datetime) -> list[Jet]:
+def load_jets(start: dt.datetime) -> list[Jet]:
     res: list[Jet] = []
 
     jet_path = os.path.join(DIRPATH, JET_SRC[0])
@@ -71,12 +71,12 @@ def load_jets(start: datetime.datetime) -> list[Jet]:
         if cur_job_days > 0:
             if cur_job_days > 3:
                 cur_job_days += 2
-            cur_job = Job(start, datetime.timedelta(days=cur_job_days))
+            cur_job = Job(start, dt.timedelta(days=cur_job_days))
             cur_jet.add_job(cur_job)
     
     return res
 
-def load_dmnd(start: datetime.datetime) -> DemandGroup:
+def load_dmnd(start: dt.datetime) -> DemandGroup:
     res = DemandGroup()
 
     dmnd_path = os.path.join(DIRPATH, DMND_SRC[0])
@@ -84,10 +84,10 @@ def load_dmnd(start: datetime.datetime) -> DemandGroup:
     dmnd_df = dmnd_df[~dmnd_df['PA Fin Item'].isna()]
 
     prts = {
-        'P1 New': start + datetime.timedelta(days=2.5),
-        'P2 New': start + datetime.timedelta(days=6.5),
-        'P3 New': start + datetime.timedelta(days=9.5),
-        'P4 New': start + datetime.timedelta(days=13.5)
+        'P1 New': start + dt.timedelta(days=2.5),
+        'P2 New': start + dt.timedelta(days=6.5),
+        'P3 New': start + dt.timedelta(days=9.5),
+        'P4 New': start + dt.timedelta(days=13.5)
     }
 
     for i in dmnd_df.index:
@@ -103,9 +103,117 @@ def load_dmnd(start: datetime.datetime) -> DemandGroup:
     
     return res
 
+def tjc_update(inv: Inventory, allocated: dict[str, set[DyeLot]], empty: list[Roll],
+               jet_lots: dict[Jet, list[DyeLot]], lot: DyeLot, jet: Jet,
+               roll_splits: list[RollSplitItem]) -> None:
+    for item in roll_splits:
+        if item.roll.id not in allocated:
+            allocated[item.roll.id] = set()
+        if lot not in allocated[item.roll.id]:
+            allocated[item.roll.id].add(lot)
+
+        roll = inv.remove(item.roll.id)
+        lot.assign_roll(roll, item.lbs)
+        if roll.weight <= 20:
+            empty.append(roll)
+        else:
+            inv.add(roll)
+        
+    jet_lots[jet].append(lot)
+
+def tjc_reset(inv: Inventory, allocated: dict[str, set[DyeLot]], empty: list[Roll]) -> None:
+    for roll in empty:
+        inv.add(roll)
+
+    for rid, rlots in allocated.items():
+        roll = inv.remove(rid)
+        for lot in rlots:
+            lot.unassign_roll(roll)
+        inv.add(roll)
+
+def assign_combo(jet_lots: dict[Jet, list[DyeLot]]) -> None:
+    for jet in jet_lots:
+        for lot in jet_lots[jet]:
+            job = Job(jet.last_job_end, jet.avg_cycle, lots=(lot,))
+            jet.add_job(job)
+
+def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
+                  checked: dict[int, bool]) -> bool:
+    allocated: dict[str, set[DyeLot]] = {}
+    empty: list[Roll] = []
+    jet_lots: dict[Jet, list[DyeLot]] = {}
+
+    prt_rng = dmnd.item.greige.port_range
+    prt_avg = (prt_rng.minval+prt_rng.maxval)/2
+    total_over = 0
+    
+    for jet in combo:
+        if checked[jet.n_ports]:
+            break
+
+        roll_splits = get_greige_rolls(inv, dmnd.item.greige, jet.n_ports*prt_avg, jet,
+                                       allowance=max(0, total_over))
+        if not roll_splits:
+            checked[jet.n_ports] = True
+            break
+
+        cur_lbs = sum(map(lambda x: x.lbs, roll_splits))
+        cur_over = cur_lbs - prt_avg*jet.n_ports
+        total_over += cur_over
+
+        if jet not in jet_lots:
+            jet_lots[jet] = []
+        lot = DyeLot(dmnd)
+        tjc_update(inv, allocated, empty, jet_lots, lot, jet, roll_splits)
+
+    if dmnd.yards >= 100:
+        tjc_reset(inv, allocated, empty)
+        return False
+    
+    assign_combo(jet_lots)
+    return True
+
+def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
+                      inv: Inventory, ignore_due: bool = False) -> bool:
+    checked: dict[int, bool] = {}
+    for jet in jets:
+        checked[jet.n_ports] = False
+
+    jet_combos = get_multi_jets(start_date, dmnd, jets, ignore_due=ignore_due)
+
+    for combo in jet_combos:
+        if all(map(lambda j: checked[j.n_ports], jets)):
+            return False
+        if try_jet_combo(dmnd, combo, inv, checked):
+            return True
+    
+    return False
+
 def main():
     style.init()
     style.translation.init()
+
+    start = dt.datetime(2025, 8, 6)
+
+    inv = load_inv()
+    jets = load_jets(start)
+
+    fab = style.get_fabric_style('FF ARCTIC-39811-68')
+    assert not fab is None
+    p2 = start + dt.timedelta(days=2.5)
+
+    dmnd = Demand(fab, 9767, p2)
+    success = assign_multi_jets(start, dmnd, jets, inv, ignore_due=True)
+
+    if success:
+        for jet in jets:
+            print(f'{jet.id} schedule:')
+            for job in jet:
+                print('  ' + repr(job))
+                lot = job.lots[0]
+                for roll_alloc in lot:
+                    print(f'    roll={roll_alloc.roll.id}\tlbs={roll_alloc.lbs:.2f}')
+            print()
 
 if __name__ == '__main__':
     main()

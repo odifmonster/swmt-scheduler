@@ -46,6 +46,9 @@ class _DyeLotBase(HasID[str]):
     def __repr__(self):
         return f'{self._prefix}(id={self.id}, item={self.item.id}, lbs={self.lbs:.2f})'
     
+    def __iter__(self):
+        return iter(self.__allocs)
+    
     def assign_roll(self, roll: Roll, lbs: float):
         self.__allocs.append(Allocation(roll, lbs))
         self.__dmnd.assign(lbs)

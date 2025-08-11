@@ -2,7 +2,7 @@
 
 from app.support import HasID
 from ..greige import GreigeStyle, EMPTY_GREIGE
-from ..color.color import Color
+from ..color.color import Color, BLACK
 
 class _FabricBase(HasID[str]):
 
@@ -43,7 +43,7 @@ class _FabricBase(HasID[str]):
         return f'FabricStyle({repr(self.id)})'
     
     def can_run_on_jet(self, jet_id: str):
-        return jet_id in self.__allowed_jets
+        return jet_id in self.__allowed_jets and (jet_id != 'Jet-09' or self.color.shade == BLACK)
     
 class FabricStyle(_FabricBase):
     pass

@@ -88,16 +88,16 @@ def get_multi_jets(start_date: dt.datetime,
     if best_idx > 0:
         from_best = jets[best_idx:] + jets[best_idx-1::-1]
 
-    jet_map = { j.id: ShadowedJet(j, start_date) for j in from_best }
-    map(lambda j: jet_map[j.id].inc_shadows(), prev)
+    jet_map = { j.id: (ShadowedJet(j, start_date), j) for j in from_best }
+    map(lambda j: jet_map[j.id][0].inc_shadows(), prev)
 
-    for jet in jet_map.values():
-        if not dmnd.item.can_run_on_jet(jet.id):
+    for sjet, rjet in jet_map.values():
+        if not dmnd.item.can_run_on_jet(sjet.id):
             continue
-        if jet.rem_time < jet.avg_cycle or \
-            (not ignore_due and jet.last_job_end+dt.timedelta(days=1) > dmnd.due_date):
+        if sjet.rem_time < sjet.avg_cycle or \
+            (not ignore_due and sjet.last_job_end+dt.timedelta(days=1) > dmnd.due_date):
             continue
         
-        res = get_multi_jets(start_date, dmnd, jets, prev=(*prev, jet),
+        res = get_multi_jets(start_date, dmnd, jets, prev=(*prev, rjet),
                              ignore_due=ignore_due)
         yield from res

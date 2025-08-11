@@ -48,6 +48,10 @@ class _JobBase(HasID[int]):
     def yds(self):
         return sum(map(lambda x: x.yds, self.__lots))
     
+    @property
+    def lots(self):
+        return self.__lots
+    
     def __repr__(self):
         start_str = self.start.strftime('%m/%d/%y %H:%M:%S')
         end_str = self.end.strftime('%m/%d/%y %H:%M:%S')

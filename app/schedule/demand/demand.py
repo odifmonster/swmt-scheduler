@@ -102,7 +102,7 @@ class Demand(DemandLike, Viewable[DemandView]):
         yds = pounds * self.item.yds_per_lb * pounds
         self.__yards -= yds
 
-    def assign(self, pounds: float):
+    def unassign(self, pounds: float):
         yds = pounds * self.item.yds_per_lb * pounds
         self.__yards += yds
     
