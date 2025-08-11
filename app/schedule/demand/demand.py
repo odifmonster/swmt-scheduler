@@ -53,6 +53,10 @@ class DemandLike(DataLike[int, PrettyArgsOpt], Protocol):
     def assign(self, pounds: float):
         raise NotImplementedError()
     
+    @abstractmethod
+    def unassign(self, pounds: float):
+        raise NotImplementedError()
+    
     def pretty(self, **kwargs: Unpack[PrettyArgsOpt]):
         date_str = self.due_date.strftime('%a %d %b %Y')
         return f'{self._prefix}(id={self.id:05}, item={repr(self.item.id)}, due_date={date_str})'
@@ -97,6 +101,10 @@ class Demand(DemandLike, Viewable[DemandView]):
     def assign(self, pounds: float):
         yds = pounds * self.item.yds_per_lb * pounds
         self.__yards -= yds
+
+    def assign(self, pounds: float):
+        yds = pounds * self.item.yds_per_lb * pounds
+        self.__yards += yds
     
     def view(self):
         return self.__view

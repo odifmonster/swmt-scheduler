@@ -70,6 +70,12 @@ class Demand(DemandLike, Viewable[DemandView]):
         of greige assigned as an argument.
         """
         ...
+    def unassign(self, pounds: float) -> None:
+        """
+        Unassign some of this demand to a job/dye lot. Only accepts the number of pounds
+        of greige unassigned as an argument.
+        """
+        ...
     def view(self) -> DemandView: ...
 
 EMPTY_DEMAND = Demand(...)

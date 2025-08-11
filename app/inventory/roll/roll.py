@@ -49,11 +49,15 @@ class RollLike(DataLike[str, PrettyArgsOpt], Protocol):
     def allocate(self, amount):
         raise NotImplementedError()
     
+    @abstractmethod
+    def deallocate(self, amount):
+        raise NotImplementedError()
+    
     def pretty(self, **kwargs):
         return f'{self._prefix}(id={repr(self.id)}, item={repr(self.item)}, weight={self.weight:.2f})'
 
 class RollView(SuperView[RollLike],
-               no_access=['allocate'],
+               no_access=['allocate','deallocate'],
                overrides=[],
                dunders=['eq', 'hash']):
     pass
@@ -94,6 +98,9 @@ class Roll(RollLike, Viewable[RollView]):
         if self.__weight < amount:
             raise ValueError('Cannot allocate more than total pounds in a roll.')
         self.__weight -= amount
+
+    def deallocate(self, amount: float):
+        self.__weight += amount
 
     def view(self):
         return self.__view

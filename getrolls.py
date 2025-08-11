@@ -63,7 +63,8 @@ class RollSplit:
             self.__splits = [RollSplitItem(self.__roll, tgt_lbs) for _ in range(n_splits)]
             self.__excess = RollSplitItem(self.__roll, extra_wt)
 
-def is_valid_roll(roll: RollView, greige: GreigeStyle, dmnd_lbs: float, jet: Jet) -> bool:
+def is_valid_roll(roll: RollView, greige: GreigeStyle, dmnd_lbs: float, jet: Jet,
+                  allowance: float = 0) -> bool:
     if roll.size_class == SMALL:
         return False
     
@@ -80,9 +81,10 @@ def is_valid_roll(roll: RollView, greige: GreigeStyle, dmnd_lbs: float, jet: Jet
     if not (greige.port_range.contains(wt)):
         return False
     
-    return wt*jet.n_ports >= dmnd_lbs
+    return wt*jet.n_ports >= dmnd_lbs-allowance
 
-def start_rolls(inv: Inventory, greige: GreigeStyle, dmnd_lbs: float, jet: Jet) -> Generator[RollView]:
+def start_rolls(inv: Inventory, greige: GreigeStyle, dmnd_lbs: float, jet: Jet,
+                allowance: float = 0) -> Generator[RollView]:
     sizes = (NORMAL, LARGE, PARTIAL)
     if jet.n_ports == 1:
         sizes = (PARTIAL, NORMAL, LARGE)
@@ -90,7 +92,8 @@ def start_rolls(inv: Inventory, greige: GreigeStyle, dmnd_lbs: float, jet: Jet) 
         if size not in inv[greige]: continue
         for roll_id in inv[greige, size]:
             roll = inv[greige, size, roll_id]
-            if is_valid_roll(roll, greige, dmnd_lbs, jet):
+            if is_valid_roll(roll, greige, dmnd_lbs, jet,
+                             allowance=allowance):
                 yield roll
 
 def get_roll_splits(options: list[RollSplit],
@@ -129,13 +132,14 @@ def get_roll_splits(options: list[RollSplit],
 def get_greige_rolls(inv: Inventory,
                      greige: GreigeStyle,
                      dmnd_lbs: float,
-                     jet: Jet) -> list[RollSplitItem]:
+                     jet: Jet,
+                     allowance: float = 0) -> list[RollSplitItem]:
     options: list[RollSplit] = []
     for size in inv[greige]:
         for roll_id in inv[greige, size]:
             options.append(RollSplit(inv[greige, size, roll_id]))
     
-    start_opts = start_rolls(inv, greige, dmnd_lbs, jet)
+    start_opts = start_rolls(inv, greige, dmnd_lbs, jet, allowance=allowance)
     for start in start_opts:
         rsplits = get_roll_splits(options, start, jet)
         if len(rsplits) == jet.n_ports:

@@ -49,6 +49,13 @@ class _DyeLotBase(HasID[str]):
     def assign_roll(self, roll: Roll, lbs: float):
         self.__allocs.append(Allocation(roll, lbs))
         self.__dmnd.assign(lbs)
+    
+    def unassign_roll(self, roll: Roll):
+        for i in range(len(self.__allocs)):
+            a = self.__allocs[i]
+            if a.roll.id == roll.id:
+                self.__dmnd.unassign(a.lbs)
+                roll.deallocate(a.lbs)
 
 class DyeLot(_DyeLotBase):
     pass

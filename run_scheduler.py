@@ -6,14 +6,16 @@ from app.support import FloatRange
 
 from app import style
 
-from app.inventory.roll import Roll
+from app.inventory.roll import Roll, RollLike
 from app.inventory import Inventory
 
 from app.schedule.job import Job
 from app.schedule.jet import Jet
 from app.schedule.demand import Demand, DemandGroup
+from app.schedule.dyelot import DyeLot
 
-from getjets import get_multi_jets
+from getjets import get_single_jets, get_multi_jets
+from getrolls import get_greige_rolls
 
 DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
@@ -103,21 +105,6 @@ def load_dmnd(start: datetime.datetime) -> DemandGroup:
 def main():
     style.init()
     style.translation.init()
-
-    start = datetime.datetime(2025, 8, 6)
-
-    jets = load_jets(start)
-    test_fab = style.get_fabric_style('FF ARCTIC-39811-68')
-    assert not test_fab is None
-
-    test_dmnd = Demand(test_fab, 9767, start+datetime.timedelta(days=2.5))
-    jet_combs = get_multi_jets(start, test_dmnd, jets, ignore_due=True)
-
-    for jcomb in jet_combs:
-        print('Combo:')
-        for jet in jcomb:
-            print(f'  {jet.id} (ports={jet.n_ports})')
-        print()
 
 if __name__ == '__main__':
     main()
