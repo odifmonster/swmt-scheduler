@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from .range import FloatRange
+from .range import CompRange, FloatRange, DateRange
 
-__all__ = ['FloatRange']
+__all__ = ['CompRange', 'FloatRange', 'DateRange']

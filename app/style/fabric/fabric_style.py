@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from app.support import HasID
-from ..greige import GreigeStyle
+from ..greige import GreigeStyle, EMPTY_GREIGE
 from ..color.color import Color
 
 class _FabricBase(HasID[str]):
@@ -47,3 +47,6 @@ class _FabricBase(HasID[str]):
     
 class FabricStyle(_FabricBase):
     pass
+
+EMPTY_FABRIC = FabricStyle('NONE', EMPTY_GREIGE, 'NONE MASTER',
+                           Color('NONE COLOR', 0, 4), 1, [])

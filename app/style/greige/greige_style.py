@@ -30,3 +30,5 @@ class _GreigeStyleBase(HasID[str]):
     
 class GreigeStyle(_GreigeStyleBase):
     pass
+
+EMPTY_GREIGE = GreigeStyle('NONE', 0)

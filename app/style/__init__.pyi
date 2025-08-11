@@ -1,5 +1,7 @@
 from app.style import color as color
 from app.style import translation as translation
+from app.style.greige import EMPTY_GREIGE as EMPTY_GREIGE
+from app.style.fabric import EMPTY_FABRIC as EMPTY_FABRIC
 
 from app.support import HasID, FloatRange
 
@@ -63,28 +65,21 @@ class FabricStyle(HasID[str]):
     def __repr__(self) -> str: ...
     def can_run_on_jet(self, jet_id: str) -> bool: ...
 
-def init_greige() -> None:
-    """
-    Initialize greige style info. Must run this function before using GreigeStyle,
-    FabricStyle, and related operations.
-    """
-    ...
-
 def get_greige_style(id: str) -> GreigeStyle | None:
     """
     Get a GreigeStyle object by its id/item number. Returns None if id not found.
     """
     ...
 
-def init_fabric() -> None:
-    """
-    Initialize fabric style info. Must run this function before using FabricStyle and
-    related operations.
-    """
-    ...
-
 def get_fabric_style(id: str) -> FabricStyle | None:
     """
     Get a FabricStyle object by its id/item number. Returns None if id not found.
+    """
+    ...
+
+def init() -> None:
+    """
+    Initialize style module. Must run this function before using any methods or classes
+    from style. Does not initialize the translation submodule.
     """
     ...
