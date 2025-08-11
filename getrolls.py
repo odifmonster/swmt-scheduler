@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 from typing import NamedTuple, Iterator, Generator
-import datetime as dt
 
-from app.support import DateRange, FloatRange
+from app.support import FloatRange
 
 from app.style import GreigeStyle
 
@@ -63,47 +62,6 @@ class RollSplit:
             extra_wt = self.__roll.weight - tgt_lbs*n_splits
             self.__splits = [RollSplitItem(self.__roll, tgt_lbs) for _ in range(n_splits)]
             self.__excess = RollSplitItem(self.__roll, extra_wt)
-
-class ShadowedJet(Jet):
-
-    def __init__(self, link: Jet, start_date: dt.datetime):
-        self.__link = link
-        self.__n_added = 0
-        self.__end = start_date + dt.timedelta(days=10)
-        self.__weekend = DateRange(start_date+dt.timedelta(days=3),
-                                   start_date+dt.timedelta(days=5))
-    
-    @property
-    def _prefix(self): return self.__link._prefix
-    @property
-    def id(self): return self.__link.id
-    @property
-    def n_ports(self): return self.__link.n_ports
-    @property
-    def port_range(self): return self.__link.port_range
-    @property
-    def avg_cycle(self): return self.__link.avg_cycle
-
-    @property
-    def last_job_end(self):
-        lje = self.__link.last_job_end + (self.avg_cycle*self.__n_added)
-        if self.__weekend.contains(lje):
-            return self.__weekend.maxval
-        return lje
-    
-    @property
-    def rem_time(self):
-        lje = self.last_job_end
-        rem = self.__end - lje
-        if self.__weekend.is_above(lje):
-            rem = rem - dt.timedelta(days=2)
-        return rem
-    
-    def inc_shadowed_jobs(self):
-        self.__n_added += 1
-    
-    def dec_shadowed_jobs(self):
-        self.__n_added -= 1
 
 def is_valid_roll(roll: RollView, greige: GreigeStyle, dmnd_lbs: float, jet: Jet) -> bool:
     if roll.size_class == SMALL:

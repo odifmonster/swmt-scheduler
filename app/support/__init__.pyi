@@ -40,12 +40,13 @@ class SuperView(Generic[_T_SV_co]):
     Super class for easy creation of view types. Type parameter is usually a Protocol.
     """
     def __init_subclass__(cls, no_access: list[str], overrides: list[str],
-                          dunders: list[str]) -> None:
+                          dunders: list[str], view_only: list[str] = []) -> None:
         """
         Define a new view type.
         no_access: a list of methods that the view should not have access to
         overrides: a list of overridden methods/properties (if any)
         dunders: a list of 'dunder' methods that can be used by the view (without underscores)
+        view_only: a list of attributes and methods that are specific to the view subclass
         """
         ...
     def __init__(self, link: _T_SV_co) -> None: ...

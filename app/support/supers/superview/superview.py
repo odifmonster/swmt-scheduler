@@ -15,11 +15,13 @@ class SuperView(Generic[T_co]):
     _no_access = []
     _overrides = []
     _dunders = []
+    _view_only = []
 
-    def __init_subclass__(cls, no_access, overrides, dunders):
+    def __init_subclass__(cls, no_access, overrides, dunders, view_only = []):
         super().__init_subclass__()
         cls._no_access = [x for x in no_access]
         cls._overrides = [x for x in overrides]
+        cls._view_only = view_only
         for dund in dunders:
             name = f'__{dund}__'
             setattr(cls, name, make_dunder(name))
@@ -28,16 +30,15 @@ class SuperView(Generic[T_co]):
         self.__link = link
 
     def __getattribute__(self, name):
-        if name == '_SuperView__link':
+        if name in ('_SuperView__link','_no_access','_overrides','_dunders','_view_only') \
+            or name in self._view_only or name in self._overrides:
             return object.__getattribute__(self, name)
         elif name in type(self)._no_access:
             raise AttributeError(f'\'{str(type(self))}\' object has no attribute \'{name}\'.')
-        elif name in type(self)._overrides:
-            return getattr(self, name)
         return getattr(self.__link, name)
     
     def __setattr__(self, name, value):
-        if name == '_SuperView__link':
+        if name == '_SuperView__link' or name in self._view_only:
             object.__setattr__(self, name, value)
         else:
             raise AttributeError('View-type objects cannot set values.')
