@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-from .superiter import SuperIter
-from .superview import SuperView
-from .superimmut import SuperImmut
+from .immutable import SuperImmut, ArgTup
+from .view import SuperView, setter_like
 
-__all__ = ['SuperIter', 'SuperView', 'SuperImmut']
+__all__ = ['SuperImmut', 'ArgTup', 'SuperView', 'setter_like']

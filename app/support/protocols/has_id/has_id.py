@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-from typing import TypeVar, Protocol, Self
+from typing import TypeVar, Protocol, Hashable
 from abc import abstractmethod
-from collections.abc import Hashable
 
-T = TypeVar('T', str, int)
+T = TypeVar('T', bound=Hashable)
 
 class HasID(Protocol[T], Hashable):
 
@@ -15,11 +14,11 @@ class HasID(Protocol[T], Hashable):
     
     @property
     @abstractmethod
-    def id(self):
+    def id(self) -> T:
         raise NotImplementedError()
-
-    def __eq__(self, value: Self):
-        return self.id == value.id and self._prefix == value._prefix
+    
+    def __eq__(self, value: 'HasID[T]'):
+        return self._prefix == value._prefix and self.id == value.id
     
     def __hash__(self):
-        return self.id.__hash__()
+        return hash(self.id)
