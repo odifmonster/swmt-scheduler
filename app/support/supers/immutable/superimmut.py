@@ -10,7 +10,13 @@ class SuperImmut:
                           frozen: ArgTup | None = None):
         super().__init_subclass__()
 
-        priv_attrs = tuple([f'_{cls.__name__}__{a}' for a in priv_attrs])
+        temp_pa = []
+        for a in priv_attrs:
+            if a[0] == '_':
+                temp_pa.append(a)
+            else:
+                temp_pa.append(f'_{cls.__name__}__{a}')
+        priv_attrs = tuple(temp_pa)
         all_attrs = set(attrs + priv_attrs)
 
         if frozen is None:
@@ -28,7 +34,10 @@ class SuperImmut:
         cls = type(self)
 
         for name, val in priv.items():
-            pname = f'_{cls.__name__}__{name}'
+            if name[0] != '_':
+                pname = f'_{cls.__name__}__{name}'
+            else:
+                pname = name
             if pname not in cls._priv_attrs:
                 raise AttributeError(f'Type \'{cls.__name__}\' has no private attribute \'{name}\'.')
             super(SuperImmut, self).__setattr__(pname, val)

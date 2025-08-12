@@ -1,0 +1,22 @@
+import unittest
+
+def fib(n: int) -> int:
+    if n <= 0 or type(n) is float:
+        raise AttributeError()
+    if n == 1:
+        return 0
+    if n == 2:
+        return 1
+    else:
+        return fib(n-1) + fib (n-2)
+
+
+class TestMethods(unittest.TestCase):
+    def test_fib(self):
+        with self.assertRaises(AttributeError):
+            fib(0)
+            fib(1.0)
+    
+        
+if __name__ == '__main__':
+    unittest.main()
