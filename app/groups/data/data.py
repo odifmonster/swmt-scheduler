@@ -23,20 +23,21 @@ class DataView(Generic[T], SuperView[HasID[T]]):
 
 class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
 
-    def __init_subclass__(cls, attrs = tuple(), priv_attrs = tuple(), frozen = tuple()):
-        if '_prefix' in attrs or 'id' in attrs or 'prefix' in priv_attrs or \
-            'id' in priv_attrs:
+    def __init_subclass__(cls, dattrs = tuple(), dpriv_attrs = tuple(), dfrozen = tuple()):
+        if '_prefix' in dattrs or 'id' in dattrs or 'prefix' in dpriv_attrs or \
+            'id' in dpriv_attrs:
             raise RuntimeError('Classes inheriting from \'Data\' should not define ' + \
                                'behavior relating to HasID protocol.')
 
-        super().__init_subclass__(attrs=('_prefix', 'id', *attrs),
-                                  priv_attrs=('id', *priv_attrs),
-                                  frozen=(f'_{cls.__name__}__id', *frozen))
+        subattrs = ('_prefix','id') + dattrs
+        sub_priv = ('_Data__id', '_Data__prefix') + dpriv_attrs
+        sub_frz = ('_Data__id', '_Data__prefix') + dfrozen
+        super().__init_subclass__(attrs=subattrs, priv_attrs=sub_priv, frozen=sub_frz)
     
     def __init__(self, id: T, prefix: str, priv = {}, **kwargs):
-        priv['id'] = id
-        priv['prefix'] = prefix
-        super().__init__(priv, **kwargs)
+        priv['_Data__id'] = id
+        priv['_Data__prefix'] = prefix
+        SuperImmut.__init__(self, priv=priv, **kwargs)
         object.__setattr__(self, '_in_group', False)
     
     @property
