@@ -6,8 +6,7 @@ type ArgTup = tuple[str, ...]
 
 class SuperImmut:
 
-    def __init_subclass__(cls, attrs: ArgTup = tuple(),
-                          priv_attrs: ArgTup = tuple(),
+    def __init_subclass__(cls, attrs: ArgTup = tuple(), priv_attrs: ArgTup = tuple(),
                           frozen: ArgTup | None = None):
         super().__init_subclass__()
 
