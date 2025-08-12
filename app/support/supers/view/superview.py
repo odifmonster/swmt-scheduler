@@ -49,20 +49,18 @@ class SuperView(Generic[T]):
             return object.__getattribute__(self, name)
         if name in attrs:
             return getattr(link, name)
+        
+        cls = type(self)
+        raise AttributeError(f'Type \'{cls.__name__}\' has no attribute \'{name}\'.')
 
     def __setattr__(self, name, value):
-        attrs = self._viewed_attrs
-        funcs = self._viewed_funcs
-        vfuncs = self._self_funcs
-        vattrs = self._self_attrs
-
         cls = type(self)
 
-        if name in attrs:
+        if name in cls._viewed_attrs:
             raise AttributeError(f'\'{name}\' is a viewed attribute on another object.')
-        if name in funcs or name in vfuncs:
+        if name in cls._viewed_funcs or name in cls._self_funcs:
             raise AttributeError(f'\'{name}\' is bound to a method and cannot be reassigned.')
-        if name not in vattrs:
+        if name not in cls._self_attrs:
             raise AttributeError(f'Type \'{cls.__name__}\' has no attribute \'{name}\'.')
 
         object.__setattr__(self, name, value)
