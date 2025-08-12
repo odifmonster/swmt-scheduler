@@ -1,0 +1,1 @@
+from app.support.protocols.has_id import HasID as HasID
