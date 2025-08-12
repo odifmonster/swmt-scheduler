@@ -75,3 +75,6 @@ class TestDataImpl(unittest.TestCase):
     def test_set_immutables(self):
         roll = Roll(random_str_id(), 'BLACK', 500)
         # see app/support/supers/supers_test.py for how to check error messages
+
+if __name__ == '__main__':
+    unittest.main()
