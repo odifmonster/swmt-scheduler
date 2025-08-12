@@ -68,6 +68,35 @@ class TestSuperImmut(unittest.TestCase):
 
         self.assertEqual(var1, var2)
         self.assertNotEqual(var1, var3)
+    
+    def test_with_props(self):
+
+        class Data(SuperImmut, attrs=('label','coords'), priv_attrs=('x','y'), frozen=tuple()):
+
+            def __init__(self, x: int, y: int):
+                super().__init__(priv={'x': x, 'y': y})
+            
+            @property
+            def label(self):
+                return 'Data'
+            
+            @property
+            def coords(self):
+                return (self.__x, self.__y)
+            @coords.setter
+            def coords(self, new: tuple[int, int]):
+                self.__x = new[0]
+                self.__y = new[1]
+
+        var = Data(5, 6)
+
+        with self.assertRaises(AttributeError):
+            var.label = 'Data2'
+        
+        self.assertNotEqual(var.label, 'Data2')
+        self.assertEqual(var.coords, (5,6))
+        var.coords = (1, 2)
+        self.assertEqual(var.coords, (1,2))
 
 class Data:
 
