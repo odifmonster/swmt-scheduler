@@ -24,17 +24,17 @@ def load_xref_df():
 def write_xref_df(df: pd.DataFrame):
     outfile = open(os.path.join(os.path.dirname('__file__'), OUTFILE), 'w+')
 
-    for i in df.index:
-        item = df.loc[i, 'PA FIN ITEM']
-        greige = df.loc[i, 'GREIGE ITEM']
-        yld = df.loc[i, 'Yield']
-        master = df.loc[i, 'STYLE']
-        clr_name = df.loc[i, 'COLOR NAME']
-        clr_num = df.loc[i, 'COLOR NUMBER']
-        shade = df.loc[i, 'SHADE RATING']
+    for idx in df.index:
+        item = df.loc[idx, 'PA FIN ITEM']
+        greige = df.loc[idx, 'GREIGE ITEM']
+        yld = df.loc[idx, 'Yield']
+        master = df.loc[idx, 'STYLE']
+        clr_name = df.loc[idx, 'COLOR NAME']
+        clr_num = df.loc[idx, 'COLOR NUMBER']
+        shade = df.loc[idx, 'SHADE RATING']
         jets = []
         for i in (1, 2, 3, 4, 7, 8, 9, 10):
-            if not pd.isnull(df.loc[i, f'JET {i}']):
+            if not pd.isnull(df.loc[idx, f'JET {i}']):
                 jets.append(f'Jet-{i:02}')
         
         jet_str = ' '.join(jets)

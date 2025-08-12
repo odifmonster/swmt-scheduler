@@ -58,7 +58,6 @@ class RollAlloc(TypedDict):
 
 def load_inv() -> Inventory:
     res = Inventory()
-
     inv_path = os.path.join(DIRPATH, INV_SRC[0])
     inv_df: pd.DataFrame = pd.read_excel(inv_path, **INV_SRC[1])
     inv_df = inv_df[(inv_df['Pounds'] > 0) & (inv_df['Quality'] == 'A') & inv_df['ASSIGNED_ORDER'].isna()]
@@ -164,7 +163,7 @@ def assign_combo(jet_lots: dict[Jet, list[DyeLot]], max_date: dt.datetime) -> No
             jet.add_job(job)
 
 def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
-                  checked: dict[int, bool], max_date: dt.datetime) -> bool:
+                  min_checked: int, max_date: dt.datetime) -> tuple[bool, int]:
     allocated: dict[str, set[DyeLot]] = {}
     empty: list[Roll] = []
     jet_lots: dict[Jet, list[DyeLot]] = {}
@@ -174,13 +173,13 @@ def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
     total_over = 0
     
     for jet in combo:
-        if checked[jet.n_ports]:
+        if min_checked <= jet.n_ports:
             break
 
         roll_splits = get_greige_rolls(inv, dmnd.item.greige, jet.n_ports*prt_avg, jet,
                                        allowance=max(0, total_over))
-        if not roll_splits:
-            checked[jet.n_ports] = True
+        if not roll_splits and jet.n_ports < min_checked:
+            min_checked = jet.n_ports
             break
 
         cur_lbs = sum(map(lambda x: x.lbs, roll_splits))
@@ -194,16 +193,14 @@ def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
 
     if dmnd.yards >= 100:
         tjc_reset(inv, allocated, empty)
-        return False
+        return False, min_checked
     
     assign_combo(jet_lots, max_date)
-    return True
+    return True, -1
 
 def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
                       inv: Inventory, ignore_due: bool = False) -> bool:
-    checked: dict[int, bool] = {}
-    for jet in jets:
-        checked[jet.n_ports] = False
+    min_checked = 10
 
     max_date = dmnd.due_date
     if ignore_due:
@@ -214,11 +211,10 @@ def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
         if combo is None:
             continue
 
-        print('Trying combo ' + ', '.join([j.id for j in combo]))
-        if all(map(lambda j: checked[j.n_ports], jets)):
+        if min_checked == 1:
             return False
-        if try_jet_combo(dmnd, combo, inv, checked, max_date):
-            print('Assigned to combo!')
+        success, min_checked = try_jet_combo(dmnd, combo, inv, min_checked, max_date)
+        if success:
             return True
     
     return False
@@ -231,11 +227,9 @@ def assign_single_jet(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
         max_date = start_date+dt.timedelta(days=10)
 
     for jet in single_jets:
-        print(f'Checking {jet.id}')
         roll_splits = get_greige_rolls(inv, dmnd.item.greige, dmnd.pounds, jet)
         if not roll_splits: continue
 
-        print(f'Assigning job to {jet.id}')
         lot = DyeLot(dmnd)
 
         for item in roll_splits:
@@ -256,12 +250,10 @@ def assign_demand(dmnd: Demand, start_date: dt.datetime, jets: list[Jet], inv: I
     prt_avg = (prt_rng.minval+prt_rng.maxval)/2
 
     if prt_avg*8 > dmnd.pounds:
-        print('Attempting to assign to single jet')
         success = assign_single_jet(start_date, dmnd, jets, inv, ignore_due=ignore_due)
         if success:
             return True
     
-    print('Attempting to assign to multiple jets')
     success = assign_multi_jets(start_date, dmnd, jets, inv, ignore_due=ignore_due)
     return success
 
@@ -279,8 +271,6 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
 
     pdates = sorted(iter(dmnd))
     for pdate in pdates:
-        date_str = pdate.strftime('%a %b %d %Y')
-        print(f'Scheduling for {date_str} ...')
         for grg in dmnd[pdate]:
             for clr in dmnd[pdate, grg]:
                 for req_id in dmnd[pdate, grg, clr]:
@@ -288,15 +278,13 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
                         continue
 
                     req = dmnd.remove(req_id)
-                    print(f'  Scheduling demand on item {req.item.id}...')
                     due_str = req.due_date.strftime('%a %b %d %Y')
-                    print(f'    Attempting to schedule before {due_str}...')
+
                     success = assign_demand(req, start, jets, inv)
                     if success:
                         dmnd.add(req)
                         continue
 
-                    print('    Attempting to schedule with no date restriction...')
                     success = assign_demand(req, start, jets, inv, ignore_due=True)
                     if not success:
                         not_scheduled['due_date'].append(req.due_date)
@@ -305,9 +293,7 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
                         not_scheduled['lbs_needed'].append(req.pounds)
                         not_scheduled['yds_needed'].append(req.yards)
 
-                    print(f'  Finished processing demand on item {req.item.id}!')
                     dmnd.add(req)
-        print(f'Finished scheduling all demand for {date_str}!')
     
     jet_alloc = JetAlloc(job_id=[], starttime=[], endtime=[], jet=[],
                          fin_item=[], greige_item=[], pounds=[], yards=[])
