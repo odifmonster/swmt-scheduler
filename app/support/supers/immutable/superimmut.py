@@ -34,7 +34,7 @@ class SuperImmut:
             super(SuperImmut, self).__setattr__(pname, val)
 
         for name, val in kwargs.items():
-            if name not in cls._priv_attrs:
+            if name not in cls._attrs:
                 raise AttributeError(f'Type \'{cls.__name__}\' has no public attribute \'{name}\'.')
             super(SuperImmut, self).__setattr__(name, val)
 

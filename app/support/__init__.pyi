@@ -1,1 +1,1 @@
-from app.support.supers import SuperImmut as SuperImmut
+from app.support.supers import ArgTup as ArgTup, SuperImmut as SuperImmut

@@ -25,7 +25,7 @@ class SuperImmut:
               If no argument is given, it will freeze all attributes.
         """
         ...
-    def __init__(self, priv: dict[str, Any], **kwargs: Unpack[dict[str, Any]]) -> None:
+    def __init__(self, priv: dict[str, Any] = {}, **kwargs: Unpack[dict[str, Any]]) -> None:
         """
         Initialize a new partly immutable object.
 

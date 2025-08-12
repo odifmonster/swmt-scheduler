@@ -2,4 +2,4 @@
 
 from .supers import *
 
-__all__ = ['SuperImmut']
+__all__ = ['ArgTup', 'SuperImmut']
