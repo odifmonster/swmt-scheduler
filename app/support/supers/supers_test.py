@@ -90,10 +90,12 @@ class TestSuperImmut(unittest.TestCase):
 
         var = Data(5, 6)
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AttributeError) as cm:
             var.label = 'Data2'
         
         self.assertNotEqual(var.label, 'Data2')
+        fullname = var.__class__.__qualname__
+        self.assertEqual(str(cm.exception), f'property \'label\' of \'{fullname}\' object has no setter')
         self.assertEqual(var.coords, (5,6))
         var.coords = (1, 2)
         self.assertEqual(var.coords, (1,2))
