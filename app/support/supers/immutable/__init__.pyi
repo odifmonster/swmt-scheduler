@@ -15,14 +15,13 @@ class SuperImmut:
         defined in 'attrs' and 'priv_attrs'.
 
             attrs:
-              A tuple of strings representing the publicly-accessible attributes of this type
+              The publicly-accessible attributes of this type.
             priv_attrs:
-              A tuple of strings representing the privately-accessible attributes of this type.
-              The names are mangled for you, and will be accessible within the class body as
-              self.__<name>
-            frozen:
-              An optional tuple of strings representing the attribute to freeze after initializing.
-              If no argument is given, it will freeze all attributes.
+              The privately-accessible attributes of this type. The names are mangled for you,
+              and will be accessible within the class body as self.__<name>.
+            frozen (opt):
+              The attributes to freeze after initializing. If no argument is given, it will
+              freeze all attributes.
         """
         ...
     def __init__(self, priv: dict[str, Any] = {}, **kwargs: Unpack[dict[str, Any]]) -> None:

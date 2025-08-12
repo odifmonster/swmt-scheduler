@@ -2,4 +2,4 @@
 
 from .supers import *
 
-__all__ = ['ArgTup', 'SuperImmut']
+__all__ = ['SuperImmut', 'ArgTup', 'SuperView', 'setter_like']

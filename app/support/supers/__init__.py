@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
-from .immutable import ArgTup, SuperImmut
+from .immutable import SuperImmut, ArgTup
+from .view import SuperView, setter_like
 
-__all__ = ['ArgTup', 'SuperImmut']
+__all__ = ['SuperImmut', 'ArgTup', 'SuperView', 'setter_like']
