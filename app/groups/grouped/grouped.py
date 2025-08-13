@@ -3,7 +3,7 @@
 from typing import TypeVar, Generic, Unpack, Hashable
 
 from ..data import Data
-from .helpers import _Atom, _match_props, _repr_props
+from .helpers import Atom, _match_props, _repr_props
 
 T = TypeVar('T', bound=Hashable)
 U = TypeVar('U', bound=Hashable)
@@ -18,7 +18,7 @@ class Grouped(Generic[T, U]):
         
         self.unbound = args
         self.props = kwargs
-        self.groups: dict[U, Grouped[T] | _Atom[T]] = {}
+        self.groups: dict[U, Grouped[T] | Atom[T]] = {}
 
     @property
     def depth(self):
@@ -53,10 +53,10 @@ class Grouped(Generic[T, U]):
             return ''
         return 'grouped({\n'+'\n'.join(contents)+'\n})'
     
-    def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> _Atom[Data[T]]:
-        return _Atom[Data[T]](data, *args)
+    def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> Atom[Data[T]]:
+        return Atom[Data[T]](data, *args)
     
-    def add_group(self, subprop: U, prev_props: dict[str]) -> None:
+    def make_group(self, data: Data[T], prev_props: dict[str]) -> 'Grouped[T] | Atom[T]':
         raise NotImplementedError()
     
     def add(self, data: Data[T]) -> None:
@@ -67,5 +67,6 @@ class Grouped(Generic[T, U]):
         
         subprop: U = getattr(data, self.unbound[0])
         if not subprop in self.groups:
-            self.add_group(subprop, self.props)
-        self.groups[subprop].add(data)
+            self.groups[subprop] = self.make_group(data, self.props)
+        if self.depth > 1:
+            self.groups[subprop].add(data)

@@ -30,7 +30,7 @@ class Data(Generic[_T], HasID[_T], Viewable[DataView[_T]], SuperImmut):
         only the private references for 'id' and '_prefix' will be used.
         """
         ...
-    def __init__(self, id: _T, prefix: str, priv: dict[str, Any] = {},
+    def __init__(self, id: _T, prefix: str, view: DataView[_T], priv: dict[str, Any] = {},
                  **kwargs: Unpack[dict[str, Any]]) -> None:
         """
         Initialize a new Data object.

@@ -30,13 +30,14 @@ class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
                                'behavior relating to HasID protocol.')
 
         subattrs = ('_prefix','id') + dattrs
-        sub_priv = ('_Data__id', '_Data__prefix') + dpriv_attrs
-        sub_frz = ('_Data__id', '_Data__prefix') + dfrozen
+        sub_priv = ('_Data__id', '_Data__prefix', '_Data__view') + dpriv_attrs
+        sub_frz = ('_Data__id', '_Data__prefix', '_Data__view') + dfrozen
         super().__init_subclass__(attrs=subattrs, priv_attrs=sub_priv, frozen=sub_frz)
     
-    def __init__(self, id: T, prefix: str, priv = {}, **kwargs):
+    def __init__(self, id: T, prefix: str, view: DataView[T], priv = {}, **kwargs):
         priv['_Data__id'] = id
         priv['_Data__prefix'] = prefix
+        priv['_Data__view'] = view
         SuperImmut.__init__(self, priv=priv, **kwargs)
         object.__setattr__(self, '_in_group', False)
     
@@ -57,4 +58,4 @@ class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
         object.__setattr__(self, '_in_group', val)
     
     def view(self):
-        raise NotImplementedError()
+        return self.__view

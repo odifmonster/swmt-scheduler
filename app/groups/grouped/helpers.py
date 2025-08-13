@@ -13,7 +13,7 @@ def _match_props(props: dict[str], data):
 def _repr_props(props: dict[str]):
     return '\n'.join(map(lambda x: f'  {x[0]}={repr(x[1])}', props.items()))
 
-class _Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__props',)):
+class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__props',)):
 
     def __init__(self, data: Data[T], *args: Unpack[tuple[str, ...]]):
         if 'id' not in args:
