@@ -33,9 +33,9 @@ def write_xref_df(df: pd.DataFrame):
         clr_num = df.loc[i, 'COLOR NUMBER']
         shade = df.loc[i, 'SHADE RATING']
         jets = []
-        for i in (1, 2, 3, 4, 7, 8, 9, 10):
-            if not pd.isnull(df.loc[i, f'JET {i}']):
-                jets.append(f'Jet-{i:02}')
+        for jeti in (1, 2, 3, 4, 7, 8, 9, 10):
+            if not pd.isnull(df.loc[i, f'JET {jeti}']):
+                jets.append(f'Jet-{jeti:02}')
         
         jet_str = ' '.join(jets)
         outfile.write(f'{item},{greige},{yld:.6f},{master},{clr_name},{clr_num:0.0f},{shade:0.0f},{jet_str}\n')

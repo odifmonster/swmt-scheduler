@@ -55,7 +55,7 @@ class RollSplit:
         
         x = round(self.__roll.weight / tgt_lbs)
         avg_split = self.__roll.weight / x
-        if wt_rng.contains(avg_split) and abs(avg_split - tgt_lbs) <= 20:
+        if wt_rng.contains(avg_split) and abs(avg_split - tgt_lbs) <= 30:
             self.__splits = [RollSplitItem(self.__roll, avg_split) for _ in range(x)]
         else:
             n_splits = int(self.__roll.weight / tgt_lbs)
@@ -101,22 +101,28 @@ def start_rolls(inv: Inventory, greige: GreigeStyle, dmnd_lbs: float, jet: Jet,
                 yield roll
 
 def get_roll_splits(options: list[RollSplit],
-                    start_roll: RollView,
-                    jet: Jet) -> list[RollSplit]:
+                    jet: Jet,
+                    start_roll: RollView | None = None,
+                    avg_lbs: float = 1) -> list[RollSplit]:
     res: list[RollSplitItem] = []
     
-    tgt_lbs = start_roll.weight / 2
-    if start_roll.size_class == PARTIAL:
-        tgt_lbs = start_roll.weight
+    tgt_lbs = avg_lbs
+    min_lbs = tgt_lbs-20
 
-    min_lbs = max(tgt_lbs-20, jet.port_range.minval, start_roll.item.port_range.minval)
+    if start_roll:
+        tgt_lbs = start_roll.weight / 2
+        min_lbs = start_roll.item.port_range.minval
+        if start_roll.size_class == PARTIAL:
+            tgt_lbs = start_roll.weight
+
+    min_lbs = max(tgt_lbs-20, jet.port_range.minval, min_lbs)
     max_lbs = jet.port_range.maxval
     wt_rng = FloatRange(min_lbs, max_lbs)
     
     for rsplit in options:
         rsplit.split(tgt_lbs, wt_rng)
 
-        if rsplit.roll == start_roll:
+        if not start_roll is None and rsplit.roll == start_roll:
             for item in rsplit:
                 if len(res) == jet.n_ports:
                     return res
@@ -125,7 +131,7 @@ def get_roll_splits(options: list[RollSplit],
     options.sort(key=lambda rs: rs.excess_cost)
 
     for rsplit in options:
-        if rsplit.roll == start_roll: continue
+        if not start_roll is None and rsplit.roll == start_roll: continue
         for item in rsplit:
             if len(res) == jet.n_ports:
                 return res
@@ -151,9 +157,16 @@ def get_greige_rolls(inv: Inventory,
     
     start_opts = start_rolls(inv, greige, dmnd_lbs, jet, allowance=allowance)
     for start in start_opts:
-        rsplits = get_roll_splits(options, start, jet)
+        rsplits = get_roll_splits(options, jet, start_roll=start)
         if len(rsplits) == jet.n_ports:
             return rsplits
         for x in options:
             x.reset()
+    
+    prt_rng = greige.port_range
+    prt_avg = (prt_rng.minval+prt_rng.maxval)/2
+
+    rsplits = get_roll_splits(options, jet, avg_lbs=prt_avg)
+    if len(rsplits) == jet.n_ports:
+        return rsplits
     return []
