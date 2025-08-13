@@ -2,7 +2,7 @@
 
 from typing import TypeVar, Generic, Unpack, Hashable
 
-from ..data import Data
+from ..data import DataView, Data
 from .helpers import Atom, _match_props, _repr_props
 
 T = TypeVar('T', bound=Hashable)
@@ -68,5 +68,11 @@ class Grouped(Generic[T, U]):
         subprop: U = getattr(data, self.unbound[0])
         if not subprop in self.groups:
             self.groups[subprop] = self.make_group(data, self.props)
-        if self.depth > 1:
-            self.groups[subprop].add(data)
+        self.groups[subprop].add(data)
+    
+    def remove(self, dview: DataView[T]) -> Data[T]:
+        subprop: U = getattr(dview, self.unbound[0])
+        if not subprop in self.groups:
+            raise ValueError(f'Object does not contain data with property {self.unbound[0]}={repr(subprop)}.')
+        
+        return self.groups[subprop].remove(dview)

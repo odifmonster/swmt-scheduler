@@ -17,8 +17,8 @@ class FabricStyle(HasID[str], SuperImmut,
         priv = {
             'prefix': 'FabricStyle', 'id': item, 'jets': tuple(allowed_jets)
         }
-        super().__init__(priv=priv, greige=greige, master=FabricMaster(master),
-                         color=color, yld=yld)
+        SuperImmut.__init__(self, priv=priv, greige=greige,
+                            master=FabricMaster(master), color=color, yld=yld)
     
     @property
     def _prefix(self):

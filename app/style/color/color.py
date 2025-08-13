@@ -36,7 +36,7 @@ class Color(HasID[str], SuperImmut,
     
     def __init__(self, name: str, number: int, raw_shade: RawShadeInt | RawShadeStr):
         priv = { 'prefix': 'Color', 'id': number }
-        super().__init__(priv, name=name, shade=_get_shade_grade(raw_shade))
+        SuperImmut.__init__(self, priv=priv, name=name, shade=_get_shade_grade(raw_shade))
     
     @property
     def _prefix(self):
