@@ -3,7 +3,7 @@
 from typing import TypeVar, Generic, Unpack, Hashable
 
 from app.support import SuperImmut
-from ..data import Data
+from ..data import Data, DataView
 
 T = TypeVar('T', bound=Hashable)
 
@@ -30,10 +30,14 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
         if self.__data is None:
             return ''
         return repr(self.__data)
+    
+    def is_empty(self):
+        return self.__data is None
 
     def add(self, data: Data[T]):
         if not self.__data is None:
-            raise RuntimeError('FATAL: Attempted to add data to non-empty Atom.')
+            return
+        
         if not _match_props(self.__props, data):
             msg = 'This Atom will only accept Data with the following properties:\n'
             msg += _repr_props(self.__props)
@@ -41,3 +45,15 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
 
         data._set_in_group(True)
         self.__data = data
+    
+    def remove(self, dview: DataView[T]) -> Data[T]:
+        if self.__data is None:
+            raise RuntimeError('Cannot remove data from empty Atom.')
+        if not self.__data != dview:
+            raise ValueError(f'Object does not contain data with id={repr(dview.id)}.')
+        
+        temp = self.__data
+        temp._set_in_group(False)
+        self.__data = None
+
+        return temp
