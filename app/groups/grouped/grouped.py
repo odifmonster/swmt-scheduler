@@ -53,6 +53,17 @@ class Grouped(Generic[T, U]):
             return ''
         return 'grouped({\n'+'\n'.join(contents)+'\n})'
     
+    def __len__(self):
+        return sum(map(lambda v: len(v) > 0, self.groups.values()))
+    
+    def __iter__(self):
+        for key in self.groups:
+            if len(self.groups[key]) > 0:
+                yield key
+
+    def __contains__(self, key):
+        return key in self.groups and len(self.groups[key]) > 0
+    
     def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> Atom[Data[T]]:
         return Atom[Data[T]](data, *args)
     

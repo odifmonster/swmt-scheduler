@@ -31,6 +31,18 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
             return ''
         return repr(self.__data)
     
+    def __len__(self):
+        return 0 if self.__data is None else 1
+    
+    def __iter__(self):
+        if not self.__data is None:
+            yield tuple()
+
+    def __contains__(self, key):
+        if self.__data is None:
+            return False
+        return key == tuple()
+    
     def is_empty(self):
         return self.__data is None
 
@@ -48,8 +60,8 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
     
     def remove(self, dview: DataView[T]) -> Data[T]:
         if self.__data is None:
-            raise RuntimeError('Cannot remove data from empty Atom.')
-        if not self.__data != dview:
+            raise ValueError('Cannot remove data from empty Atom.')
+        if self.__data != dview:
             raise ValueError(f'Object does not contain data with id={repr(dview.id)}.')
         
         temp = self.__data
