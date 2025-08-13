@@ -1,4 +1,17 @@
-"""
+#!/usr/bin/env python
+
+import unittest
+
+import random
+
+from app.groups import Grouped
+from testclasses import Roll, RollView, RSizeGroup, RStyleGroup, RollGroup, \
+    random_str_id
+
+
+class TestGrouped(unittest.TestCase):
+
+    """
     Tests to run:
 
         1. Grouped object throws an error on bad initialization
@@ -9,7 +22,7 @@
           Ensure that a ValueError is raised if any of the strings at the beginning appear as
           names. So
 
-          g = Grouped[int, int]('style', 'weight', 'id', style='STYLE1')
+          g = Grouped[int, int]('style', 'weight', 'id', style='hello')
 
           should raise a ValueError.
         
@@ -49,3 +62,18 @@
           Can be added as part of test 3. Exactly what it sounds like. Can use assertEqual
           on some attribute to ensure that it actually changed.
 """
+
+    def test_bad_initialization(self):
+        with self.assertRaises(ValueError) as cm:
+            g = Grouped[int, int]('style', 'weight', 'id', style='hello')
+        
+        error_msg = "Unbound properties \‘style\’ cannot be bound to values."
+        self.assertEqual(str(cm.exception), error_msg)
+
+    def test_RSizeGroup_properties(self) :
+        sg = RSizeGroup(style='STYLE1', weight = 100)
+        with self.assertRaises(ValueError):
+            sg.add(Roll('1', 'STYLE2', 100))
+        
+    
+            
