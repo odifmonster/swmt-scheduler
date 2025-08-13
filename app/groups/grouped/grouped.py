@@ -3,6 +3,7 @@
 from typing import TypeVar, Generic, Unpack, Hashable
 
 from ..data import Data
+from .helpers import _Atom, _match_props, _repr_props
 
 T = TypeVar('T', bound=Hashable)
 U = TypeVar('U', bound=Hashable)
@@ -17,73 +18,54 @@ class Grouped(Generic[T, U]):
         
         self.unbound = args
         self.props = kwargs
-        self.groups: dict[U, Grouped[T] | Data[T] | None] = {}
+        self.groups: dict[U, Grouped[T] | _Atom[T]] = {}
 
     @property
     def depth(self):
         return len(self.unbound)
     
-    def _match_props(self, data: Data[T]) -> bool:
-        return all(map(lambda x: x[1] == getattr(data, x[0]), self.props.items()))
-    
-    def _repr_props(self):
-        return '\n'.join(map(lambda x: f'  {x[0]}={repr(x[1])}', self.props.items()))
-    
-    def _repr_atom(self):
-        assert self.depth == 0, 'Do not call \'_repr_atom\' for Grouped objects with \'depth\' > 0.'
-        if len(self.groups) == 0 or self.groups[self.props['id']] is None:
-            return ''
-        return repr(self.groups[self.props['id']])
-    
-    def _repr_list(self):
-        assert self.depth == 1, 'Do not call \'_repr_list\' for Grouped objects with \'depth\' != 1.'
-        
-        contents = []
-        for val in self.groups.values():
-            vrep = repr(val)
-            if not vrep: continue
-            contents.append('  ' + vrep)
-        
-        if not contents: return ''
-        return 'grouped({\n' + ',\n'.join(contents) + '\n})'
-
     def __repr__(self):
-        if self.depth == 0:
-            return self._repr_atom()
-        if self.depth == 1:
-            return self._repr_list()
-        
         contents = []
-        max_k = max(map(lambda k: len(repr(k)), self.groups.keys()))
 
-        for key in self.groups.keys():
-            vrep = repr(self.groups[key])
-            if not vrep: continue
-
+        if self.depth == 1:
+            for val in self.groups.values():
+                vrep = repr(val)
+                if not vrep: continue
+                contents.append('  ' + vrep)
+        else:
+            max_k = max(map(lambda k: len(repr(k)), self.groups.keys()))
             key_prefix = ' '*(max_k+4)
-            vrep_start, *vrep_lines = vrep.split('\n')
 
-            gap = ' '*(max_k-len(repr(key))+1)
-            item_start = '  '+repr(key)+':'+gap+vrep_start
-            item_lines = list(map(lambda s: key_prefix+s, vrep_lines))
+            for key, val in self.groups.items():
+                krep = repr(key)
+                vrep = repr(val)
+                if not vrep: continue
 
-            item = '\n'.join([item_start] + item_lines)
-            contents.append(item)
+                vrep_start, *vrep_lines = vrep.split('\n')
+
+                gap = ' '*(max_k-len(krep)+1)
+                item_start = '  '+krep+':'+gap+vrep_start
+                item_lines = list(map(lambda l: key_prefix+l, vrep_lines))
+
+                contents.append('\n'.join([item_start]+item_lines))
         
-        if not contents: return ''
-        return 'grouped({\n' + ',\n'.join(contents) + '\n})'
+        if not contents:
+            return ''
+        return 'grouped({\n'+'\n'.join(contents)+'\n})'
     
-    def add(self, data: Data[T]):
-        if not self._match_props(data):
-            msg = 'All data in this object must have the following properties:\n'
-            msg += self._repr_props()
+    def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> _Atom[Data[T]]:
+        return _Atom[Data[T]](data, *args)
+    
+    def add_group(self, subprop: U, prev_props: dict[str]) -> None:
+        raise NotImplementedError()
+    
+    def add(self, data: Data[T]) -> None:
+        if not _match_props(self.props, data):
+            msg = 'Data in this object must share the following properties:\n'
+            msg += _repr_props(self.props)
             raise ValueError(msg)
         
         subprop: U = getattr(data, self.unbound[0])
-
-        if self.depth == 0:
-            self.groups[subprop] = data
-        else:
-            self.groups[subprop].add(data)
-        
-        data._add_to_group()
+        if not subprop in self.groups:
+            self.add_group(subprop, self.props)
+        self.groups[subprop].add(data)
