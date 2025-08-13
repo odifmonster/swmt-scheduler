@@ -53,8 +53,8 @@ class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
             raise RuntimeError('Objects cannot be mutated while in a group.')
         SuperImmut.__setattr__(self, name, value)
 
-    def add_to_group(self):
+    def _add_to_group(self):
         object.__setattr__(self, '_in_group', True)
     
-    def view(self):
+    def _view(self):
         raise NotImplementedError()

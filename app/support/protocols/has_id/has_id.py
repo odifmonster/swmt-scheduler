@@ -22,3 +22,6 @@ class HasID(Protocol[T], Hashable):
     
     def __hash__(self):
         return hash(self.id)
+    
+    def __repr__(self):
+        return f'{self._prefix}({self.id})'
