@@ -4,8 +4,7 @@ from app.support import HasID, SuperImmut, FloatRange
 
 class GreigeStyle(HasID[str], SuperImmut,
                   attrs=('_prefix','id','port_range','roll_range'),
-                  priv_attrs=('prefix','id'),
-                  frozen=('prefix','id','port_range','roll_range')):
+                  priv_attrs=('prefix','id')):
     
     def __init__(self, item: str, port_min: float, port_max: float):
         priv = { 'prefix': 'GreigeStyle', 'id': item }
