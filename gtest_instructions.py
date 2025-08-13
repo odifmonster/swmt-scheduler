@@ -67,13 +67,37 @@ class TestGrouped(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             g = Grouped[int, int]('style', 'weight', 'id', style='hello')
         
-        error_msg = "Unbound properties \‘style\’ cannot be bound to values."
+        error_msg = "Unbound properties \'style\' cannot be bound to values."
         self.assertEqual(str(cm.exception), error_msg)
 
     def test_RSizeGroup_properties(self) :
         sg = RSizeGroup(style='STYLE1', weight = 100)
         with self.assertRaises(ValueError):
             sg.add(Roll('1', 'STYLE2', 100))
+      
+    def test_mod_after_add(self):
+        roll = Roll('1', 'STYLE2', 100)
+        rg = RollGroup()
+        rg.add(roll)
+        with self.assertRaises(RuntimeError):
+            roll.weight = 90
         
+    def test_group_remove(self):
+        rg = RollGroup()
+        roll = Roll('1', 'STYLE2', 100)
+        with self.assertRaises(ValueError):
+            rg.remove(roll.view())
+        
+        roll2 = Roll('2', 'STYLE2', 100)
+        rg.add(roll2)
+        rg.remove(roll2.view())
+        with self.assertRaises(ValueError):
+            rg.remove(roll2.view())
+      
+        roll2.weight = 150
+        self.assertEqual(roll2.weight, 150)
     
-            
+    
+    
+if __name__ == '__main__':
+  unittest.main()
