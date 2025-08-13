@@ -47,13 +47,13 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
         return self.__data is None
 
     def add(self, data: Data[T]):
-        if not self.__data is None:
-            return
-        
         if not _match_props(self.__props, data):
             msg = 'This Atom will only accept Data with the following properties:\n'
             msg += _repr_props(self.__props)
             raise ValueError(msg)
+        
+        if not self.__data is None:
+            return
 
         data._set_in_group(True)
         self.__data = data
