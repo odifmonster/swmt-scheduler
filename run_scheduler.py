@@ -19,7 +19,7 @@ from app.schedule.job import Job
 from getjets import get_single_jets, get_multi_jets
 from getrolls import get_greige_rolls, RollSplitItem
 
-DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
+DIRPATH = '/Users/oliverwyner/Shawmut'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
                            'usecols': ['Roll', 'Item', 'Quality', 'Pounds',
                                        'ASSIGNED_ORDER'],
@@ -27,7 +27,7 @@ INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
                                      'Quality': 'string', 'ASSIGNED_ORDER': 'string'}})
 JET_SRC = ('master.xlsx', {'sheet_name': 'jet_info',
                            'dtype': {'id': 'string'}})
-DMND_SRC = ('Demand Planning 20250806.xlsx', {'sheet_name': 'Demand Planning20230927',
+DMND_SRC = ('Demand Planning 20250813a.xlsx', {'sheet_name': 'Demand Planning20230927',
                                               'usecols': 'D,M:P', 'header': 7,
                                               'dtype': {'PA Fin Item': 'string'}})
 OUT_WRITER = ('output.xlsx', {'datetime_format': 'YYYY-MM-DD HH:MM'})
@@ -55,6 +55,13 @@ class RollAlloc(TypedDict):
     greige_item: list[str]
     roll: list[str]
     pounds: list[float]
+    jet: list[str]
+    starttime: list[dt.datetime]
+    endtime: list[dt.datetime]
+    fin_item: list[str]
+    master: list[str]
+    color_name: list[str]
+    color_num: list[int]
 
 def load_inv() -> Inventory:
     res = Inventory()
@@ -311,7 +318,7 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
     
     jet_alloc = JetAlloc(job_id=[], starttime=[], endtime=[], jet=[],
                          fin_item=[], greige_item=[], pounds=[], yards=[])
-    roll_alloc = RollAlloc(alloc_id=[], job_id=[], greige_item=[], roll=[], pounds=[])
+    roll_alloc = RollAlloc(alloc_id=[], roll=[], job_id=[], jet=[], starttime=[], endtime=[], fin_item=[], greige_item=[], master=[], color_name=[], color_num=[], pounds=[])
 
     for jet in jets:
         for job in jet:
@@ -328,9 +335,16 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
             lot = job.lots[0]
             for aroll in lot:
                 roll_alloc['alloc_id'].append(f'{aroll.id:05}')
-                roll_alloc['job_id'].append(f'{job.id:05}')
-                roll_alloc['greige_item'].append(aroll.roll.item.id)
                 roll_alloc['roll'].append(aroll.roll.id)
+                roll_alloc['job_id'].append(f'{job.id:05}')
+                roll_alloc['jet'].append(jet.id)
+                roll_alloc['starttime'].append(job.start)
+                roll_alloc['endtime'].append(job.end)
+                roll_alloc['fin_item'].append(fab_item.id)
+                roll_alloc['greige_item'].append(aroll.roll.item.id)
+                roll_alloc['master'].append(fab_item.master)
+                roll_alloc['color_name'].append(fab_item.color.name)
+                roll_alloc['color_num'].append(fab_item.color.number)
                 roll_alloc['pounds'].append(aroll.lbs)
     
     ns_df = pd.DataFrame(data=not_scheduled)
@@ -350,7 +364,7 @@ def main():
     style.init()
     style.translation.init()
 
-    start = dt.datetime(2025, 8, 6)
+    start = dt.datetime(2025, 8, 13)
     jobs, rolls, not_sched = generate_schedule(start)
 
     writer: pd.ExcelWriter = pd.ExcelWriter(os.path.join(DIRPATH, OUT_WRITER[0]), **OUT_WRITER[1])
