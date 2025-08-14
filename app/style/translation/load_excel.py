@@ -3,7 +3,7 @@
 import pandas as pd
 import os
 
-EXCEL_DIR = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
+EXCEL_DIR = '/Users/oliverwyner/Shawmut'
 MASTER_FILE = 'master.xlsx'
 TRANS_SHEET = 'greige_translation'
 OUTFILE = 'translate.csv'
