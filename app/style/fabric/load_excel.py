@@ -22,7 +22,7 @@ def load_xref_df():
     return sub_df
 
 def write_xref_df(df: pd.DataFrame):
-    outfile = open(os.path.join(os.path.dirname('__file__'), OUTFILE), 'w+')
+    outfile = open(os.path.join(os.path.dirname(__file__), OUTFILE), 'w+')
 
     for i in df.index:
         item = df.loc[i, 'PA FIN ITEM']

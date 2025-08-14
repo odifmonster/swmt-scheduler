@@ -123,7 +123,7 @@ def load_dmnd(start: dt.datetime) -> DemandGroup:
 
         for prt in prts:
             yds = dmnd_df.loc[i, prt]
-            if yds == 0: continue
+            if pd.isna(yds) or yds == 0: continue
             cur_item = Demand(fab, yds, prts[prt])
             res.add(cur_item)
     
