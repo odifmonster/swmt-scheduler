@@ -3,7 +3,7 @@
 import pandas as pd
 import os
 
-FPATH = '/Users/oliverwyner/Shawmut/master.xlsx'
+FPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling/master.xlsx'
 XREF_SHEET = 'Xref'
 OUTFILE = 'styles.csv'
 

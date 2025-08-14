@@ -16,10 +16,10 @@ from app.schedule.demand import Demand, DemandGroup
 from app.schedule.dyelot import DyeLot
 from app.schedule.job import Job
 
-from getjets import get_single_jets, get_multi_jets
+from getjets import get_single_jets, get_multi_jets, get_partial_jets
 from getrolls import get_greige_rolls, RollSplitItem
 
-DIRPATH = '/Users/oliverwyner/Shawmut'
+DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
                            'usecols': ['Roll', 'Item', 'Quality', 'Pounds',
                                        'ASSIGNED_ORDER'],
@@ -43,6 +43,7 @@ class JetAlloc(TypedDict):
     job_id: list[str]
     starttime: list[dt.datetime]
     endtime: list[dt.datetime]
+    due_date: list[dt.datetime]
     jet: list[str]
     fin_item: list[str]
     greige_item: list[str]
@@ -61,7 +62,7 @@ class RollAlloc(TypedDict):
     fin_item: list[str]
     master: list[str]
     color_name: list[str]
-    color_num: list[int]
+    color_num: list[str]
 
 def load_inv() -> Inventory:
     res = Inventory()
@@ -117,10 +118,10 @@ def load_dmnd(start: dt.datetime) -> DemandGroup:
     dmnd_df = dmnd_df[~dmnd_df['PA Fin Item'].isna()]
 
     prts = {
-        'P1 New': start + dt.timedelta(days=2.5),
-        'P2 New': start + dt.timedelta(days=6.5),
-        'P3 New': start + dt.timedelta(days=9.5),
-        'P4 New': start + dt.timedelta(days=13.5)
+        'P1 New': start + dt.timedelta(days=3.5),
+        'P2 New': start + dt.timedelta(days=7.5),
+        'P3 New': start + dt.timedelta(days=10.5),
+        'P4 New': start + dt.timedelta(days=14.5)
     }
 
     for i in dmnd_df.index:
@@ -170,8 +171,7 @@ def assign_combo(jet_lots: dict[Jet, list[DyeLot]], max_date: dt.datetime) -> No
             job = Job(jet.last_job_end, jet.avg_cycle, max_date, lots=(lot,))
             jet.add_job(job)
 
-def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
-                  checked: dict[int, bool], max_date: dt.datetime) -> bool:
+def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory, max_date: dt.datetime) -> tuple[bool, int]:
     allocated: dict[str, set[DyeLot]] = {}
     empty: list[Roll] = []
     jet_lots: dict[Jet, list[DyeLot]] = {}
@@ -180,14 +180,12 @@ def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
     prt_avg = (prt_rng.minval+prt_rng.maxval)/2
     total_over = 0
     
+    min_checked = 10
     for jet in combo:
-        if checked[jet.n_ports]:
-            break
-
         roll_splits = get_greige_rolls(inv, dmnd.item.greige, jet.n_ports*prt_avg, jet,
                                        allowance=max(0, total_over))
         if not roll_splits:
-            checked[jet.n_ports] = True
+            min_checked = jet.n_ports
             break
 
         cur_lbs = sum(map(lambda x: x.lbs, roll_splits))
@@ -201,34 +199,32 @@ def try_jet_combo(dmnd: Demand, combo: tuple[Jet, ...], inv: Inventory,
 
     if dmnd.yards >= 100:
         tjc_reset(inv, allocated, empty)
-        return False
+        return False, min_checked
     
     assign_combo(jet_lots, max_date)
-    return True
+    return True, min_checked
 
 def assign_multi_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
                       inv: Inventory, ignore_due: bool = False) -> bool:
-    checked: dict[int, bool] = {}
-    for jet in jets:
-        checked[jet.n_ports] = False
-
     max_date = dmnd.due_date
     if ignore_due:
         max_date = start_date+dt.timedelta(days=10)
     jet_combos = get_multi_jets(start_date, dmnd, jets, ignore_due=ignore_due)
 
-    for combo in jet_combos:
-        if combo is None:
-            continue
-
-        print('Trying combo ' + ', '.join([j.id for j in combo]))
-        if all(map(lambda j: checked[j.n_ports], jets)):
+    min_checked = None
+    while True:
+        if min_checked and min_checked == 1:
             return False
-        if try_jet_combo(dmnd, combo, inv, checked, max_date):
-            print('Assigned to combo!')
-            return True
-    
-    return False
+        
+        try:
+            combo = jet_combos.send(min_checked)
+            success, cur_checked = try_jet_combo(dmnd, combo, inv, max_date)
+            if min_checked is None or cur_checked < min_checked:
+                min_checked = cur_checked
+            if success:
+                return True
+        except StopIteration:
+            return False
 
 def assign_single_jet(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
                       inv: Inventory, ignore_due: bool = False) -> bool:
@@ -238,11 +234,9 @@ def assign_single_jet(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
         max_date = start_date+dt.timedelta(days=10)
 
     for jet in single_jets:
-        print(f'Checking {jet.id}')
         roll_splits = get_greige_rolls(inv, dmnd.item.greige, dmnd.pounds, jet)
         if not roll_splits: continue
 
-        print(f'Assigning job to {jet.id}')
         lot = DyeLot(dmnd)
 
         for item in roll_splits:
@@ -257,18 +251,46 @@ def assign_single_jet(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
     
     return False
 
+def assign_partial_jets(start_date: dt.datetime, dmnd: Demand, jets: list[Jet],
+                        inv: Inventory) -> None:
+    prt_rng = dmnd.item.greige.port_range
+    prt_avg = (prt_rng.minval+prt_rng.maxval)/2
+
+    partial_jets = get_partial_jets(dmnd, jets)
+    min_checked = None
+
+    while dmnd.pounds > 0:
+        try:
+            jet = partial_jets.send(min_checked)
+            roll_splits = get_greige_rolls(inv, dmnd.item.greige, jet.n_ports*prt_avg, jet,
+                                           allowance=50)
+            if not roll_splits:
+                min_checked = jet.n_ports
+            else:
+                lot = DyeLot(dmnd)
+
+                for item in roll_splits:
+                    roll = inv.remove(item.roll.id)
+                    lot.assign_roll(roll, item.lbs)
+                    if roll.weight > 20:
+                        inv.add(roll)
+        
+                job = Job(jet.last_job_end, jet.avg_cycle, start_date+dt.timedelta(days=10.5),
+                          lots=(lot,))
+                jet.add_job(job)
+        except StopIteration:
+            return
+
 def assign_demand(dmnd: Demand, start_date: dt.datetime, jets: list[Jet], inv: Inventory,
                   ignore_due: bool = False) -> bool:
     prt_rng = dmnd.item.greige.port_range
     prt_avg = (prt_rng.minval+prt_rng.maxval)/2
 
     if prt_avg*8 > dmnd.pounds:
-        print('Attempting to assign to single jet')
         success = assign_single_jet(start_date, dmnd, jets, inv, ignore_due=ignore_due)
         if success:
             return True
     
-    print('Attempting to assign to multiple jets')
     success = assign_multi_jets(start_date, dmnd, jets, inv, ignore_due=ignore_due)
     return success
 
@@ -286,8 +308,6 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
 
     pdates = sorted(iter(dmnd))
     for pdate in pdates:
-        date_str = pdate.strftime('%a %b %d %Y')
-        print(f'Scheduling for {date_str} ...')
         for grg in dmnd[pdate]:
             for clr in dmnd[pdate, grg]:
                 for req_id in dmnd[pdate, grg, clr]:
@@ -295,28 +315,26 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
                         continue
 
                     req = dmnd.remove(req_id)
-                    print(f'  Scheduling demand on item {req.item.id}...')
-                    due_str = req.due_date.strftime('%a %b %d %Y')
-                    print(f'    Attempting to schedule before {due_str}...')
                     success = assign_demand(req, start, jets, inv)
-                    if success:
-                        dmnd.add(req)
-                        continue
-
-                    print('    Attempting to schedule with no date restriction...')
-                    success = assign_demand(req, start, jets, inv, ignore_due=True)
                     if not success:
+                        success = assign_demand(req, start, jets, inv, ignore_due=True)
+
+                    if not success and pdate < start+dt.timedelta(days=10.5):
+                        assign_partial_jets(start, req, jets, inv)
+
+                    if req.pounds > 0:
                         not_scheduled['due_date'].append(req.due_date)
                         not_scheduled['fin_item'].append(req.item.id)
                         not_scheduled['greige_item'].append(req.item.greige.id)
                         not_scheduled['lbs_needed'].append(req.pounds)
                         not_scheduled['yds_needed'].append(req.yards)
 
-                    print(f'  Finished processing demand on item {req.item.id}!')
                     dmnd.add(req)
-        print(f'Finished scheduling all demand for {date_str}!')
     
-    jet_alloc = JetAlloc(job_id=[], starttime=[], endtime=[], jet=[],
+    for jet in jets:
+        jet.sort_jobs()
+    
+    jet_alloc = JetAlloc(job_id=[], starttime=[], endtime=[], due_date=[], jet=[],
                          fin_item=[], greige_item=[], pounds=[], yards=[])
     roll_alloc = RollAlloc(alloc_id=[], roll=[], job_id=[], jet=[], starttime=[], endtime=[], fin_item=[], greige_item=[], master=[], color_name=[], color_num=[], pounds=[])
 
@@ -325,6 +343,8 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
             jet_alloc['job_id'].append(f'{job.id:05}')
             jet_alloc['starttime'].append(job.start)
             jet_alloc['endtime'].append(job.end)
+            dmnd = job.lots[0].dmnd
+            jet_alloc['due_date'].append(dmnd.due_date)
             jet_alloc['jet'].append(jet.id)
             fab_item = job.lots[0].item
             jet_alloc['fin_item'].append(fab_item.id)
@@ -355,7 +375,8 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
     jet_df.set_index('job_id')
 
     roll_df = pd.DataFrame(data=roll_alloc)
-    convert_cols_to_string(roll_df, ['alloc_id', 'job_id', 'greige_item'])
+    convert_cols_to_string(roll_df, ['alloc_id', 'roll', 'job_id', 'jet', 'greige_item',
+                                     'master', 'color_name', 'color_num'])
     roll_df.set_index('alloc_id')
 
     return jet_df, roll_df, ns_df

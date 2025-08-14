@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Generator
+from typing import Generator, Callable
 import math, datetime as dt
 
 from app.support import DateRange, SuperView
@@ -49,13 +49,18 @@ def nearest_jet(dmnd: Demand, lbs: float, jets: list[Jet], exceed_total: bool = 
     port_range = dmnd.item.greige.port_range
     port_avg = (port_range.minval+port_range.maxval)/2
 
-    best_diff = math.inf
+    best_wt_diff = math.inf
+    earliest_date = dt.datetime.now() + dt.timedelta(days=30)
     best_idx = 0
     for i, jet in enumerate(jets):
         if not dmnd.item.can_run_on_jet(jet.id): continue
         diff = jet.n_ports*port_avg - lbs
-        if abs(diff) < best_diff and (not exceed_total or diff > 0):
-            best_diff = abs(diff)
+        jdate = jet.last_job_end
+        if abs(diff) < best_wt_diff and (not exceed_total or diff > 0):
+            best_wt_diff = abs(diff)
+            best_idx = i
+        elif abs(diff) == best_wt_diff and jdate < earliest_date:
+            earliest_date = jdate
             best_idx = i
     
     return best_idx
@@ -73,11 +78,7 @@ def get_single_jets(dmnd: Demand, jets: list[Jet], ignore_due: bool = False) -> 
 def get_multi_jets(start_date: dt.datetime,
                    dmnd: Demand, jets: list[Jet],
                    prev: tuple[Jet, ...] = tuple(),
-                   ignore_due: bool = False) -> Generator[tuple[Jet, ...] | None]:
-    if len(prev) > 4:
-        yield None
-        return
-    
+                   ignore_due: bool = False) -> Generator[tuple[Jet, ...], int]:
     port_range = dmnd.item.greige.port_range
     port_avg = (port_range.minval+port_range.maxval)/2
 
@@ -94,8 +95,11 @@ def get_multi_jets(start_date: dt.datetime,
 
     jet_map = { j.id: (ShadowedJet(j, start_date), j) for j in from_best }
     map(lambda j: jet_map[j.id][0].inc_shadows(), prev)
+    max_ports = None
 
     for sjet, rjet in jet_map.values():
+        if max_ports and sjet.n_ports >= max_ports:
+            continue
         if not dmnd.item.can_run_on_jet(sjet.id):
             continue
         if sjet.rem_time < sjet.avg_cycle or \
@@ -104,4 +108,23 @@ def get_multi_jets(start_date: dt.datetime,
         
         res = get_multi_jets(start_date, dmnd, jets, prev=(*prev, rjet),
                              ignore_due=ignore_due)
-        yield from res
+        while True:
+            try:
+                combo = res.send(max_ports)
+                yield combo
+            except StopIteration:
+                return
+
+def get_partial_jets(dmnd: Demand, jets: list[Jet]) -> Generator[Jet, int]:
+    port_range = dmnd.item.greige.port_range
+    port_avg = (port_range.minval+port_range.maxval)/2
+    
+    sub_jets = [jet for jet in jets if dmnd.item.can_run_on_jet(jet.id)]
+    max_ports = 10
+    while True:
+        fltr_jets = filter(lambda j: j.n_ports < max_ports and j.rem_time >= j.avg_cycle, sub_jets)
+        sort_jets = sorted(fltr_jets, key=lambda j: abs(j.n_ports*port_avg-dmnd.pounds))
+        if len(sort_jets) == 0 or dmnd.pounds <= 0:
+            return
+        
+        max_ports = yield sort_jets[0]
