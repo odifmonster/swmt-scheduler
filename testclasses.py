@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import TypedDict, Unpack
+from typing import TypedDict, Unpack, overload
 import random
 
 from app.groups import DataView, Data, GroupedView, Grouped
@@ -33,12 +33,26 @@ class RSizeView(GroupedView[str, str]):
     
     def __init__(self, link: 'RSizeGroup') -> None:
         super().__init__(link)
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> 'RSizeView': ...
+    @overload
+    def __getitem__(self, key: str | tuple[str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
     
 class RSizeGroup(Grouped[str, str]):
 
     def __init__(self, **kwargs: Unpack[SizeProps]):
         view = RSizeView(self)
         super().__init__(view, 'id', **kwargs)
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> RSizeView: ...
+    @overload
+    def __getitem__(self, key: str | tuple[str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
 
     def make_group(self, data: Roll, prev_props: SizeProps):
         return self.make_atom(data, 'style', 'weight', 'id')
@@ -53,12 +67,30 @@ class RStyleView(GroupedView[str, int]):
 
     def __init__(self, link: 'RStyleGroup') -> None:
         super().__init__(link)
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> 'RStyleView': ...
+    @overload
+    def __getitem__(self, key: int | tuple[int]) -> RSizeView: ...
+    @overload
+    def __getitem__(self, key: tuple[int, str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
     
 class RStyleGroup(Grouped[str, int]):
     
     def __init__(self, **kwargs: Unpack[StyleProps]):
         view = RStyleView(self)
         super().__init__(view, 'weight', 'id', **kwargs)
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> RStyleView: ...
+    @overload
+    def __getitem__(self, key: int | tuple[int]) -> RSizeView: ...
+    @overload
+    def __getitem__(self, key: tuple[int, str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
 
     def make_group(self, data: Roll, prev_props: StyleProps) -> RSizeGroup:
         return RSizeGroup(weight=data.weight, **prev_props)
@@ -73,12 +105,34 @@ class RGroupView(GroupedView[str, str]):
 
     def __init__(self, link: 'RollGroup') -> None:
         super().__init__(link)
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> 'RGroupView': ...
+    @overload
+    def __getitem__(self, key: str | tuple[str]) -> RStyleView: ...
+    @overload
+    def __getitem__(self, key: tuple[str, int]) -> RSizeView: ...
+    @overload
+    def __getitem__(self, key: tuple[str, int, str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
     
 class RollGroup(Grouped[str, str]):
 
     def __init__(self):
         view = RGroupView(self)
         super().__init__(view, 'style', 'weight', 'id')
+
+    @overload
+    def __getitem__(self, key: tuple[()]) -> RGroupView: ...
+    @overload
+    def __getitem__(self, key: str | tuple[str]) -> RStyleView: ...
+    @overload
+    def __getitem__(self, key: tuple[str, int]) -> RSizeView: ...
+    @overload
+    def __getitem__(self, key: tuple[str, int, str]) -> RollView: ...
+    def __getitem__(self, key):
+        return super().__getitem__(key)
 
     def make_group(self, data: Roll, prev_props) -> RStyleGroup:
         return RStyleGroup(style=data.style)

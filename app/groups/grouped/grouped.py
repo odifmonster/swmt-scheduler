@@ -13,7 +13,7 @@ class GroupedView(Generic[T, U], SuperView['Grouped[T, U]']):
     
     def __init_subclass__(cls):
         super().__init_subclass__(funcs=['make_atom','make_group','add','remove'],
-                                  dunders=['repr','len','iter','contains'],
+                                  dunders=['repr','len','iter','contains','getitem'],
                                   attrs=['depth'])
 
 class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
@@ -78,6 +78,25 @@ class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
 
     def __contains__(self, key):
         return key in self.__groups and len(self.__groups[key]) > 0
+    
+    def __getitem__(self, key):
+        if not type(key) is tuple:
+            key = (key,)
+        
+        if len(key) == 0:
+            return self.view()
+
+        kitems = ', '.join([repr(x) for x in key])
+
+        if key[0] not in self:
+            raise KeyError(f'Object does not contain key ({kitems}).')
+        
+        try:
+            return self.__groups[key[0]][key[1:]]
+        except ValueError:
+            raise ValueError(f'{len(key)}-dimension key incompatible with {self.depth}-dimension object.')
+        except KeyError:
+            raise KeyError(f'Object does not contain key ({kitems}).')
     
     def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> Atom[Data[T]]:
         return Atom[Data[T]](data, *args)

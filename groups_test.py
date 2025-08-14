@@ -201,5 +201,50 @@ class TestGrouped(unittest.TestCase):
         self.assertTrue(to_remove in self.stg)
         self.assertTrue(to_remove in view)
 
+    def test_getitem_errors(self):
+        bad_style = 'A_BAD_STYLE'
+        bad_id = 'A_BAD_ID'
+
+        with self.assertRaises(KeyError) as cm:
+            v1 = self.rg[bad_style, 500, bad_id]
+
+        self.assertEqual(str(cm.exception), f'"Object does not contain key (\'{bad_style}\', 500, \'{bad_id}\')."')
+
+        with self.assertRaises(ValueError) as cm:
+            style1 = 'STYLE1'
+            wt1 = 700
+            id1 = list(self.rg_rids[style1][wt1].keys())[0]
+            v1 = self.rg[style1, wt1, id1, 'hello']
+        
+        self.assertEqual(str(cm.exception), f'4-dimension key incompatible with 3-dimension object.')
+    
+    def test_getitem_views(self):
+        style1 = 'STYLE1'
+        wt1 = 700
+
+        style1view = self.rg[style1]
+        size1view = self.rg[style1, wt1]
+
+        with self.assertRaises(TypeError) as cm:
+            style1view.add(Roll(random_str_id(10), style1, random.choice([500,600,700,800])))
+
+        err = 'Objects of type \'{}\' cannot call methods that mutate the objects they view.'
+        self.assertEqual(str(cm.exception), err.format(type(style1view).__name__))
+
+        with self.assertRaises(TypeError) as cm:
+            size1view.add(Roll(random_str_id(10), style1, wt1))
+
+        self.assertEqual(str(cm.exception), err.format(type(size1view).__name__))
+    
+    def test_getitem_live(self):
+        size1view = self.rg['STYLE1', 700]
+        size1ids = list(self.rg_rids['STYLE1'][700].keys())
+
+        for rid in self.rg_rids['STYLE1'][700]:
+            self.rg.remove(self.rg['STYLE1', 700, rid])
+            size1ids.remove(rid)
+            self.assertEqual(len(size1view), len(size1ids))
+            self.assertTrue(rid not in size1view)
+
 if __name__ == '__main__':
     unittest.main()

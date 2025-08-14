@@ -43,6 +43,15 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
             return False
         return key == tuple()
     
+    def __getitem__(self, key):
+        if not type(key) is tuple:
+            raise TypeError(f'Unrecognized key type \'{type(key)}\'.')
+        if len(key) > 0:
+            raise ValueError(f'{len(key)}-dimension key incompatible with 0-dimension object.')
+        if self.__data is None:
+            raise KeyError(f'Object does not contain key ().')
+        return self.__data.view()
+    
     def is_empty(self):
         return self.__data is None
 
