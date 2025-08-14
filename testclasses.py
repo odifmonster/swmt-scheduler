@@ -3,7 +3,7 @@
 from typing import TypedDict, Unpack
 import random
 
-from app.groups import DataView, Data, Grouped
+from app.groups import DataView, Data, GroupedView, Grouped
 
 class StyleProps(TypedDict):
     style: str
@@ -29,10 +29,16 @@ class Roll(Data[str], dattrs=('style','weight'), dfrozen=('style',)):
     def view(self) -> RollView:
         return super().view()
     
+class RSizeView(GroupedView[str, str]):
+    
+    def __init__(self, link: 'RSizeGroup') -> None:
+        super().__init__(link)
+    
 class RSizeGroup(Grouped[str, str]):
 
     def __init__(self, **kwargs: Unpack[SizeProps]):
-        super().__init__('id', **kwargs)
+        view = RSizeView(self)
+        super().__init__(view, 'id', **kwargs)
 
     def make_group(self, data: Roll, prev_props: SizeProps):
         return self.make_atom(data, 'style', 'weight', 'id')
@@ -40,10 +46,19 @@ class RSizeGroup(Grouped[str, str]):
     def remove(self, dview) -> Roll:
         return super().remove(dview)
     
+    def view(self) -> RSizeView:
+        return super().view()
+    
+class RStyleView(GroupedView[str, int]):
+
+    def __init__(self, link: 'RStyleGroup') -> None:
+        super().__init__(link)
+    
 class RStyleGroup(Grouped[str, int]):
     
     def __init__(self, **kwargs: Unpack[StyleProps]):
-        super().__init__('weight', 'id', **kwargs)
+        view = RStyleView(self)
+        super().__init__(view, 'weight', 'id', **kwargs)
 
     def make_group(self, data: Roll, prev_props: StyleProps) -> RSizeGroup:
         return RSizeGroup(weight=data.weight, **prev_props)
@@ -51,16 +66,28 @@ class RStyleGroup(Grouped[str, int]):
     def remove(self, dview) -> Roll:
         return super().remove(dview)
     
+    def view(self) -> RStyleView:
+        return super().view()
+    
+class RGroupView(GroupedView[str, str]):
+
+    def __init__(self, link: 'RollGroup') -> None:
+        super().__init__(link)
+    
 class RollGroup(Grouped[str, str]):
 
     def __init__(self):
-        super().__init__('style', 'weight', 'id')
+        view = RGroupView(self)
+        super().__init__(view, 'style', 'weight', 'id')
 
     def make_group(self, data: Roll, prev_props) -> RStyleGroup:
         return RStyleGroup(style=data.style)
     
     def remove(self, dview) -> Roll:
         return super().remove(dview)
+    
+    def view(self) -> RGroupView:
+        return super().view()
     
 def random_str_id(length: int) -> str:
     digits = [str(i) for i in range(10)]

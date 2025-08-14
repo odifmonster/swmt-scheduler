@@ -2,27 +2,36 @@
 
 from typing import TypeVar, Generic, Unpack, Hashable
 
-from app.support import SuperImmut
+from app.support import SuperImmut, SuperView, Viewable, setter_like
 from ..data import DataView, Data
 from .helpers import Atom, _match_props, _repr_props
 
 T = TypeVar('T', bound=Hashable)
 U = TypeVar('U', bound=Hashable)
 
-class Grouped(Generic[T, U], SuperImmut):
+class GroupedView(Generic[T, U], SuperView['Grouped[T, U]']):
+    
+    def __init_subclass__(cls):
+        super().__init_subclass__(funcs=['make_atom','make_group','add','remove'],
+                                  dunders=['repr','len','iter','contains'],
+                                  attrs=['depth'])
+
+class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
 
     def __init_subclass__(cls):
-        privs = map(lambda n: f'_Grouped__{n}', ['unbound', 'props', 'groups'])
+        privs = map(lambda n: f'_Grouped__{n}', ['unbound', 'props', 'groups', 'view'])
         privs = tuple(privs)
-        super().__init_subclass__(priv_attrs=privs, frozen=('_Grouped__unbound','_Grouped__props'))
+        super().__init_subclass__(priv_attrs=privs,
+                                  frozen=('_Grouped__unbound','_Grouped__props','_Grouped__view'))
 
-    def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs):
+    def __init__(self, view: GroupedView[T, U], *args: Unpack[tuple[str, ...]], **kwargs):
         aset = set(args)
         if not kwargs.keys().isdisjoint(aset):
             props = ', '.join([repr(x) for x in aset & kwargs.keys()])
             raise ValueError('Unbound properties ' + props + ' cannot be bound to values.')
         
-        SuperImmut.__init__(self, priv={'_Grouped__unbound': args,
+        SuperImmut.__init__(self, priv={'_Grouped__view': view,
+                                        '_Grouped__unbound': args,
                                         '_Grouped__props': kwargs,
                                         '_Grouped__groups': {}})
 
@@ -76,6 +85,7 @@ class Grouped(Generic[T, U], SuperImmut):
     def make_group(self, data: Data[T], prev_props: dict[str]) -> 'Grouped[T] | Atom[T]':
         raise NotImplementedError()
     
+    @setter_like
     def add(self, data: Data[T]) -> None:
         if not _match_props(self.__props, data):
             msg = 'Data in this object must share the following properties:\n'
@@ -87,9 +97,13 @@ class Grouped(Generic[T, U], SuperImmut):
             self.__groups[subprop] = self.make_group(data, self.__props)
         self.__groups[subprop].add(data)
     
+    @setter_like
     def remove(self, dview: DataView[T]) -> Data[T]:
         subprop: U = getattr(dview, self.__unbound[0])
         if not subprop in self.__groups:
             raise ValueError(f'Object does not contain data with property {self.__unbound[0]}={repr(subprop)}.')
         
         return self.__groups[subprop].remove(dview)
+    
+    def view(self):
+        return self.__view

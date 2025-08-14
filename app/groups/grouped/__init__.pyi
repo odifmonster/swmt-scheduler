@@ -1,8 +1,9 @@
 from typing import TypeVar, Generic, Unpack, Hashable, Generator
+from app.support import SuperImmut, SuperView, Viewable
 from app.groups import Data, DataView
 
 _T = TypeVar('_T', bound=Hashable)
-_U = TypeVar('U', bound=Hashable)
+_U = TypeVar('_U', bound=Hashable)
 
 class _Atom(Generic[_T]): # INTERNAL USE ONLY
     def __repr__(self) -> str: ...
@@ -12,17 +13,35 @@ class _Atom(Generic[_T]): # INTERNAL USE ONLY
     def add(self, data: Data[_T]) -> None: ...
     def remove(self, dview: DataView[_T]) -> Data[_T]: ...
 
-class Grouped(Generic[_T, _U]):
+class GroupedView(Generic[_T, _U], SuperView['Grouped[_T, _U]']):
+    """
+    A class for views of Grouped objects.
+    """
+    def __init_subclass__(cls) -> None: ...
+    @property
+    def depth(self) -> int: ...
+    def __repr__(self) -> str: ...
+    def __len__(self) -> int: ...
+    def __iter__(self) -> Generator[_U]: ...
+    def __contains__(self, key: _U) -> bool: ...
+    def make_atom(self, data: Data[_T], *args: Unpack[tuple[str, ...]]) -> _Atom[_T]: ...
+    def make_group(self, data: Data[_T], prev_props: dict[str]) -> 'Grouped[_T] | _Atom[_T]': ...
+    def add(self, data: Data[_T]) -> None: ...
+    def remove(self, dview: DataView[_T]) -> Data[_T]: ...
+
+class Grouped(Generic[_T, _U], Viewable[GroupedView[_T, _U]], SuperImmut):
     """
     A base class for Grouped objects. Must be subclassed to instantiate. The type parameters
     are 1) the type of the 'id' attribute of the Data objects this will hold, and 2) the
     type of property that defines the outermost "axis". This class provides mapping-like
     functions for grouping objects by several properties.
     """
-    def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs) -> None:
+    def __init__(self, view: GroupedView[_T, _U], *args: Unpack[tuple[str, ...]], **kwargs) -> None:
         """
         Initialize a new Grouped object.
 
+            view:
+              The view linked to this Grouped object.
             *args:
               The names of the properties used to organize the Grouped object.
             **kwargs:
@@ -73,3 +92,4 @@ class Grouped(Generic[_T, _U]):
             The Data object corresponding to the provided view.
         """
         ...
+    def view(self) -> GroupedView[_T, _U]: ...

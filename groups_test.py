@@ -68,20 +68,30 @@ class TestGrouped(unittest.TestCase):
     def test_len_1d(self):
         n_remove = random.randint(1,10)
         ids_to_remove = random.sample(list(self.szg_rids.keys()), n_remove)
-        
+        view = self.szg.view()
+
+        self.assertEqual(len(self.szg), 50)
+        self.assertEqual(len(view), 50)
+
         for rid in ids_to_remove:
             self.removed.append(self.szg.remove(self.szg_rids[rid].view()))
         
         self.assertEqual(len(self.szg), 50-n_remove)
+        self.assertEqual(len(view), 50-n_remove)
 
         for roll in self.removed:
             self.szg.add(roll)
 
         self.assertEqual(len(self.szg), 50)
+        self.assertEqual(len(view), 50)
 
     def test_len_2d(self):
         weights = list(self.stg_rids.keys())
         to_remove = weights[:2]
+        view = self.stg.view()
+
+        self.assertEqual(len(self.stg), len(weights))
+        self.assertEqual(len(view), len(weights))
 
         for wt in to_remove:
             for rid in self.stg_rids[wt]:
@@ -89,9 +99,11 @@ class TestGrouped(unittest.TestCase):
                 self.removed.append(r)
         
         self.assertEqual(len(self.stg), len(weights)-2)
+        self.assertEqual(len(view), len(weights)-2)
         added = self.removed[0]
         self.stg.add(self.removed[0])
         self.assertEqual(len(self.stg), len(weights)-1)
+        self.assertEqual(len(view), len(weights)-1)
 
         for roll in self.removed:
             if roll.weight != added.weight:
@@ -99,15 +111,18 @@ class TestGrouped(unittest.TestCase):
                 break
         
         self.assertEqual(len(self.stg), len(weights))
+        self.assertEqual(len(view), len(weights))
 
     def test_iter_1d(self):
         checked: set[str] = set()
+        view = self.szg.view()
 
         for rid in self.szg:
             self.assertFalse(rid in checked)
             checked.add(rid)
         
         self.assertEqual(set(self.szg_rids.keys()), checked)
+        self.assertEqual(set(view), checked)
 
         to_remove = random.sample(list(checked), 5)
         for rid in to_remove:
@@ -115,20 +130,24 @@ class TestGrouped(unittest.TestCase):
             self.removed.append(r)
         
         self.assertEqual(set(self.szg), set(self.szg_rids.keys()) - set(to_remove))
+        self.assertEqual(set(self.szg), set(self.szg_rids.keys()) - set(to_remove))
 
         for roll in self.removed:
             self.szg.add(roll)
         
         self.assertEqual(set(self.szg), set(self.szg_rids.keys()))
+        self.assertEqual(set(view), set(self.szg_rids.keys()))
 
     def test_iter_2d(self):
         checked: set[int] = set()
+        view = self.stg.view()
 
         for wt in self.stg:
             self.assertFalse(wt in checked)
             checked.add(wt)
         
         self.assertEqual(set(self.stg_rids.keys()), checked)
+        self.assertEqual(set(view), checked)
 
         to_remove = random.sample(list(checked), 2)
         for wt in to_remove:
@@ -137,29 +156,39 @@ class TestGrouped(unittest.TestCase):
                 self.removed.append(r)
         
         self.assertEqual(set(self.stg), set(self.stg_rids.keys()) - set(to_remove))
+        self.assertEqual(set(view), set(self.stg_rids.keys()) - set(to_remove))
 
         for roll in self.removed:
             self.stg.add(roll)
 
         self.assertEqual(set(self.stg), set(self.stg_rids.keys()))
+        self.assertEqual(set(view), set(self.stg_rids.keys()))
 
     def test_contains_1d(self):
+        view = self.szg.view()
+
         for rid in self.szg_rids:
             self.assertTrue(rid in self.szg)
+            self.assertTrue(rid in view)
 
         to_remove = random.sample(list(self.szg_rids.keys()), 5)
         for rid in to_remove:
             r = self.szg.remove(self.szg_rids[rid].view())
             self.removed.append(r)
             self.assertFalse(rid in self.szg)
+            self.assertFalse(rid in view)
         
         for roll in self.removed:
             self.szg.add(roll)
             self.assertTrue(roll.id in self.szg)
+            self.assertTrue(roll.id in view)
     
     def test_contains_2d(self):
+        view = self.stg.view()
+
         for wt in self.stg_rids:
             self.assertTrue(wt in self.stg)
+            self.assertTrue(wt in view)
 
         to_remove = random.choice(list(self.stg_rids.keys()))
         for rid in self.stg_rids[to_remove]:
@@ -167,8 +196,10 @@ class TestGrouped(unittest.TestCase):
             self.removed.append(r)
         
         self.assertFalse(to_remove in self.stg)
+        self.assertFalse(to_remove in view)
         self.stg.add(self.removed[0])
         self.assertTrue(to_remove in self.stg)
+        self.assertTrue(to_remove in view)
 
 if __name__ == '__main__':
     unittest.main()

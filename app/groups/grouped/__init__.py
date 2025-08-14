@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from .grouped import Grouped
+from .grouped import GroupedView, Grouped
 
-__all__ = ['Grouped']
+__all__ = ['GroupedView', 'Grouped']
