@@ -2,13 +2,19 @@
 
 from typing import TypeVar, Generic, Unpack, Hashable
 
+from app.support import SuperImmut
 from ..data import DataView, Data
 from .helpers import Atom, _match_props, _repr_props
 
 T = TypeVar('T', bound=Hashable)
 U = TypeVar('U', bound=Hashable)
 
-class Grouped(Generic[T, U]):
+class Grouped(Generic[T, U], SuperImmut):
+
+    def __init_subclass__(cls):
+        privs = map(lambda n: f'_Grouped__{n}', ['unbound', 'props', 'groups'])
+        privs = tuple(privs)
+        super().__init_subclass__(priv_attrs=privs, frozen=('_Grouped__unbound','_Grouped__props'))
 
     def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs):
         aset = set(args)
@@ -16,27 +22,27 @@ class Grouped(Generic[T, U]):
             props = ', '.join([repr(x) for x in aset & kwargs.keys()])
             raise ValueError('Unbound properties ' + props + ' cannot be bound to values.')
         
-        self.unbound = args
-        self.props = kwargs
-        self.groups: dict[U, Grouped[T] | Atom[T]] = {}
+        SuperImmut.__init__(self, priv={'_Grouped__unbound': args,
+                                        '_Grouped__props': kwargs,
+                                        '_Grouped__groups': {}})
 
     @property
     def depth(self):
-        return len(self.unbound)
+        return len(self.__unbound)
     
     def __repr__(self):
         contents = []
 
         if self.depth == 1:
-            for val in self.groups.values():
+            for val in self.__groups.values():
                 vrep = repr(val)
                 if not vrep: continue
                 contents.append('  ' + vrep)
         else:
-            max_k = max(map(lambda k: len(repr(k)), self.groups.keys()))
+            max_k = max(map(lambda k: len(repr(k)), self.__groups.keys()))
             key_prefix = ' '*(max_k+4)
 
-            for key, val in self.groups.items():
+            for key, val in self.__groups.items():
                 krep = repr(key)
                 vrep = repr(val)
                 if not vrep: continue
@@ -54,15 +60,15 @@ class Grouped(Generic[T, U]):
         return 'grouped({\n'+'\n'.join(contents)+'\n})'
     
     def __len__(self):
-        return sum(map(lambda v: len(v) > 0, self.groups.values()))
+        return sum(map(lambda v: len(v) > 0, self.__groups.values()))
     
     def __iter__(self):
-        for key in self.groups:
-            if len(self.groups[key]) > 0:
+        for key in self.__groups:
+            if len(self.__groups[key]) > 0:
                 yield key
 
     def __contains__(self, key):
-        return key in self.groups and len(self.groups[key]) > 0
+        return key in self.__groups and len(self.__groups[key]) > 0
     
     def make_atom(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> Atom[Data[T]]:
         return Atom[Data[T]](data, *args)
@@ -71,19 +77,19 @@ class Grouped(Generic[T, U]):
         raise NotImplementedError()
     
     def add(self, data: Data[T]) -> None:
-        if not _match_props(self.props, data):
+        if not _match_props(self.__props, data):
             msg = 'Data in this object must share the following properties:\n'
-            msg += _repr_props(self.props)
+            msg += _repr_props(self.__props)
             raise ValueError(msg)
         
-        subprop: U = getattr(data, self.unbound[0])
-        if not subprop in self.groups:
-            self.groups[subprop] = self.make_group(data, self.props)
-        self.groups[subprop].add(data)
+        subprop: U = getattr(data, self.__unbound[0])
+        if not subprop in self.__groups:
+            self.__groups[subprop] = self.make_group(data, self.__props)
+        self.__groups[subprop].add(data)
     
     def remove(self, dview: DataView[T]) -> Data[T]:
-        subprop: U = getattr(dview, self.unbound[0])
-        if not subprop in self.groups:
-            raise ValueError(f'Object does not contain data with property {self.unbound[0]}={repr(subprop)}.')
+        subprop: U = getattr(dview, self.__unbound[0])
+        if not subprop in self.__groups:
+            raise ValueError(f'Object does not contain data with property {self.__unbound[0]}={repr(subprop)}.')
         
-        return self.groups[subprop].remove(dview)
+        return self.__groups[subprop].remove(dview)
