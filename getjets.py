@@ -66,9 +66,15 @@ def nearest_jet(dmnd: Demand, lbs: float, jets: list[Jet], exceed_total: bool = 
     return best_idx
 
 def get_single_jets(dmnd: Demand, jets: list[Jet], ignore_due: bool = False) -> Generator[Jet]:
+    port_range = dmnd.item.greige.port_range
+    port_avg = (port_range.minval+port_range.maxval)/2
+
     start = nearest_jet(dmnd, dmnd.pounds, jets)
-    for i in range(start, len(jets)):
-        jet = jets[i]
+    from_best = jets
+    if start > 0:
+        from_best = jets[start:] + jets[start-1::-1]
+    for jet in from_best:
+        if jet.n_ports*port_avg < dmnd.pounds: continue
         if not dmnd.item.can_run_on_jet(jet.id): continue
         if jet.rem_time < jet.avg_cycle or \
             (not ignore_due and jet.last_job_end+dt.timedelta(days=1)>dmnd.due_date):
