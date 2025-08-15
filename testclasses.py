@@ -155,7 +155,7 @@ def main():
     for _ in range(100):
         grp.add(Roll(random_str_id(8), random.choice(styles), random.choice(sizes)))
 
-    print(grp)
+    print(grp[('STYLE1', 300)])
 
 if __name__ == '__main__':
     main()

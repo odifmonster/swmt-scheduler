@@ -1,3 +1,5 @@
+from app.groups.grouped.subviews import GKeys as GKeys
+
 from typing import TypeVar, Generic, Unpack, Hashable, Generator
 from app.support import SuperImmut, SuperView, Viewable
 from app.groups import Data, DataView
@@ -27,6 +29,7 @@ class GroupedView(Generic[_T, _U], SuperView['Grouped[_T, _U]']):
     def __getitem__(self, key: _U | tuple) -> 'GroupedView[_T] | DataView[_T]': ...
     def make_atom(self, data: Data[_T], *args: Unpack[tuple[str, ...]]) -> _Atom[_T]: ...
     def make_group(self, data: Data[_T], prev_props: dict[str]) -> 'Grouped[_T] | _Atom[_T]': ...
+    def fullkeys(self) -> GKeys[_T, _U]: ...
     def add(self, data: Data[_T]) -> None: ...
     def remove(self, dview: DataView[_T]) -> Data[_T]: ...
 
@@ -82,6 +85,12 @@ class Grouped(Generic[_T, _U], Viewable[GroupedView[_T, _U]], SuperImmut):
         """
         This function must be implemented in all subclasses. The default behavior raises a
         NotImplementedError().
+        """
+        ...
+    def fullkeys(self) -> GKeys[_T, _U]:
+        """
+        Get a live view of the depth-length tuple keys of this Grouped object. The resulting object
+        is set-like, but its contents are not mutable.
         """
         ...
     def add(self, data: Data[_T]) -> None:

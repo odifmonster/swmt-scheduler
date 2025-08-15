@@ -5,6 +5,7 @@ from typing import TypeVar, Generic, Unpack, Hashable
 from app.support import SuperImmut, SuperView, Viewable, setter_like
 from ..data import DataView, Data
 from .helpers import Atom, _match_props, _repr_props
+from .subviews import GKeys
 
 T = TypeVar('T', bound=Hashable)
 U = TypeVar('U', bound=Hashable)
@@ -12,17 +13,19 @@ U = TypeVar('U', bound=Hashable)
 class GroupedView(Generic[T, U], SuperView['Grouped[T, U]']):
     
     def __init_subclass__(cls):
-        super().__init_subclass__(funcs=['make_atom','make_group','add','remove'],
+        super().__init_subclass__(funcs=['make_atom','make_group','fullkeys','add','remove'],
                                   dunders=['repr','len','iter','contains','getitem'],
                                   attrs=['depth'])
 
 class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
 
     def __init_subclass__(cls):
-        privs = map(lambda n: f'_Grouped__{n}', ['unbound', 'props', 'groups', 'view'])
+        privs = map(lambda n: f'_Grouped__{n}', ['unbound', 'props', 'groups', 'view',
+                                                 'keys'])
         privs = tuple(privs)
         super().__init_subclass__(priv_attrs=privs,
-                                  frozen=('_Grouped__unbound','_Grouped__props','_Grouped__view'))
+                                  frozen=('_Grouped__unbound','_Grouped__props','_Grouped__view',
+                                          '_Grouped__keys'))
 
     def __init__(self, view: GroupedView[T, U], *args: Unpack[tuple[str, ...]], **kwargs):
         aset = set(args)
@@ -31,6 +34,7 @@ class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
             raise ValueError('Unbound properties ' + props + ' cannot be bound to values.')
         
         SuperImmut.__init__(self, priv={'_Grouped__view': view,
+                                        '_Grouped__keys': GKeys(self),
                                         '_Grouped__unbound': args,
                                         '_Grouped__props': kwargs,
                                         '_Grouped__groups': {}})
@@ -103,6 +107,9 @@ class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
     
     def make_group(self, data: Data[T], prev_props: dict[str]) -> 'Grouped[T] | Atom[T]':
         raise NotImplementedError()
+    
+    def fullkeys(self) -> GKeys[T, U]:
+        return self.__keys
     
     @setter_like
     def add(self, data: Data[T]) -> None:

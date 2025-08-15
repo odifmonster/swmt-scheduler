@@ -6,7 +6,7 @@ T = TypeVar('T')
 
 def copy_link_func(name):
     def func(slf, *args, **kwargs):
-        lnk = object.__getattribute__(slf, '_SuperView__link')
+        lnk = object.__getattribute__(slf, '_link')
         lnk_func = getattr(lnk, name)
         if hasattr(lnk_func, '_setter_like'):
             cls = type(slf)
@@ -33,13 +33,13 @@ class SuperView(Generic[T]):
         cls._self_attrs = vattrs
 
     def __init__(self, link: T):
-        object.__setattr__(self, '_SuperView__link', link)
+        object.__setattr__(self, '_link', link)
 
     def __getattribute__(self, name):
-        if name in ('_SuperView__link', '_viewed_funcs', '_viewed_attrs', '_self_attrs'):
+        if name in ('_link', '_viewed_funcs', '_viewed_attrs', '_self_attrs'):
             return object.__getattribute__(self, name)
             
-        link = object.__getattribute__(self, '_SuperView__link')
+        link = object.__getattribute__(self, '_link')
         funcs = object.__getattribute__(self, '_viewed_funcs')
         attrs = object.__getattribute__(self, '_viewed_attrs')
         vfuncs = object.__getattribute__(self, '_self_funcs')

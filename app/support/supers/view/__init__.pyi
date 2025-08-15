@@ -1,4 +1,4 @@
-from typing import ParamSpec, TypeVar, Generic, Callable, Any
+from typing import ParamSpec, TypeVar, Generic, Callable
 
 _P = ParamSpec('_P')
 _T = TypeVar('_T')
