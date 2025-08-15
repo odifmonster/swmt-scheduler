@@ -1,6 +1,6 @@
 .ipynb_checkpoints/
 __pycache__/
 *.ipynb
-*.txt
+temp*.txt
 tests.py
 datasrc/*
