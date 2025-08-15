@@ -26,6 +26,16 @@ class Atom(Generic[T], SuperImmut, priv_attrs=('props','data'), frozen=('_Atom__
         data._set_in_group(True)
         super().__init__(priv={'props':props, 'data':data})
 
+    @property
+    def depth(self):
+        return 0
+
+    @property
+    def n_items(self):
+        if self.__data is None:
+            return 0
+        return 1
+
     def __repr__(self):
         if self.__data is None:
             return ''

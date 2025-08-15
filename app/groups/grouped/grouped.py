@@ -43,6 +43,11 @@ class Grouped(Generic[T, U], Viewable[GroupedView[T, U]], SuperImmut):
     def depth(self):
         return len(self.__unbound)
     
+    @property
+    def n_items(self):
+        grps: dict[U, Grouped[T] | Atom[T]] = self.__groups
+        return sum(map(lambda grp: grp.n_items, grps.values()))
+    
     def __repr__(self):
         contents = []
 

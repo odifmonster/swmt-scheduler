@@ -2,6 +2,7 @@
 
 import unittest
 
+from typing import Generator, Any
 import random
 
 from testclasses import Roll, RSizeGroup, RStyleGroup, RollGroup, random_str_id
@@ -48,8 +49,74 @@ def random_roll_group(nrolls: int) -> tuple[RollGroup, dict[str, dict[int, dict[
     
     return rg, roll_ids
 
+def flatten_dict(d: dict | Roll) -> Generator[Roll]:
+    if not type(d) is dict:
+        yield d
+        return
+    
+    for key in d:
+        sub_gen = flatten_dict(d[key])
+        yield from sub_gen
+
 class TestGrouped(unittest.TestCase):
-    pass
+
+    def test_len_keys(self):
+        for _ in range(10):
+            nrolls = random.randint(100, 200)
+            grp, raw_dict = random_roll_group(nrolls)
+            grp_keys = grp.fullkeys()
+            rolls_list = list(flatten_dict(raw_dict))
+            self.assertEqual(len(grp_keys), nrolls)
+
+            n_remove = random.randint(1, nrolls-1)
+            to_remove = random.sample(rolls_list, n_remove)
+            for r in to_remove:
+                grp.remove(r)
+            
+            self.assertEqual(len(grp_keys), nrolls-n_remove)
+
+    def test_iter_keys(self):
+        for _ in range(10):
+            nrolls = random.randint(100, 200)
+            grp, raw_dict = random_roll_group(nrolls)
+            grp_keys = grp.fullkeys()
+            passes: dict[Roll, int] = { r: 0 for r in flatten_dict(raw_dict) }
+
+            for key in grp_keys:
+                rview = grp[key]
+                passes[rview] += 1
+            
+            self.assertTrue(all(map(lambda npass: npass == 1, passes.values())))
+            not_removed = list(passes.keys())
+
+            n_remove = random.randint(1, nrolls-1)
+            to_remove = random.sample(list(passes.keys()), n_remove)
+            for r in to_remove:
+                grp.remove(r)
+                not_removed.remove(r)
+            
+            for key in grp_keys:
+                passes[grp[key]] += 1
+            
+            self.assertTrue(all(map(lambda r: passes[r] == 1, to_remove)))
+            self.assertTrue(all(map(lambda r: passes[r] == 2, not_removed)))
+    
+    def test_contains_keys(self):
+        for _ in range(10):
+            nrolls = random.randint(100, 200)
+            grp, raw_dict = random_roll_group(nrolls)
+            grp_keys = grp.fullkeys()
+            rolls_list = list(flatten_dict(raw_dict))
+
+            for r in rolls_list:
+                self.assertTrue((r.style, r.weight, r.id) in grp_keys)
+
+            n_remove = random.randint(1, nrolls-1)
+            to_remove = random.sample(rolls_list, n_remove)
+            for r in to_remove:
+                grp.remove(r)
+            
+            self.assertTrue(all(map(lambda r: (r.style,r.weight,r.id) not in grp_keys, to_remove)))
 
 if __name__ == '__main__':
     unittest.main()

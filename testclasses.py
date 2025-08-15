@@ -3,7 +3,12 @@
 from typing import TypedDict, Unpack, overload
 import random
 
-from app.groups import DataView, Data, GroupedView, Grouped
+from app.support import setter_like
+from app.groups import DataView, Data, GroupedView, Grouped, GKeys
+
+type RSizeKeys = GKeys[str, str]
+type RStyleKeys = GKeys[str, int, str]
+type RGroupKeys = GKeys[str, str, int, str]
 
 class StyleProps(TypedDict):
     style: str
@@ -41,6 +46,9 @@ class RSizeView(GroupedView[str, str]):
     def __getitem__(self, key):
         return super().__getitem__(key)
     
+    def fullkeys(self) -> RSizeKeys:
+        return super().fullkeys()
+    
 class RSizeGroup(Grouped[str, str]):
 
     def __init__(self, **kwargs: Unpack[SizeProps]):
@@ -57,6 +65,10 @@ class RSizeGroup(Grouped[str, str]):
     def make_group(self, data: Roll, prev_props: SizeProps):
         return self.make_atom(data, 'style', 'weight', 'id')
     
+    def fullkeys(self) -> RSizeKeys:
+        return super().fullkeys()
+    
+    @setter_like
     def remove(self, dview) -> Roll:
         return super().remove(dview)
     
@@ -77,6 +89,9 @@ class RStyleView(GroupedView[str, int]):
     def __getitem__(self, key):
         return super().__getitem__(key)
     
+    def fullkeys(self) -> RStyleKeys:
+        return super().fullkeys()
+    
 class RStyleGroup(Grouped[str, int]):
     
     def __init__(self, **kwargs: Unpack[StyleProps]):
@@ -95,6 +110,10 @@ class RStyleGroup(Grouped[str, int]):
     def make_group(self, data: Roll, prev_props: StyleProps) -> RSizeGroup:
         return RSizeGroup(weight=data.weight, **prev_props)
     
+    def fullkeys(self) -> RStyleKeys:
+        return super().fullkeys()
+    
+    @setter_like
     def remove(self, dview) -> Roll:
         return super().remove(dview)
     
@@ -117,6 +136,9 @@ class RGroupView(GroupedView[str, str]):
     def __getitem__(self, key):
         return super().__getitem__(key)
     
+    def fullkeys(self) -> RGroupKeys:
+        return super().fullkeys()
+    
 class RollGroup(Grouped[str, str]):
 
     def __init__(self):
@@ -137,6 +159,10 @@ class RollGroup(Grouped[str, str]):
     def make_group(self, data: Roll, prev_props) -> RStyleGroup:
         return RStyleGroup(style=data.style)
     
+    def fullkeys(self) -> RGroupKeys:
+        return super().fullkeys()
+    
+    @setter_like
     def remove(self, dview) -> Roll:
         return super().remove(dview)
     
@@ -156,6 +182,10 @@ def main():
         grp.add(Roll(random_str_id(8), random.choice(styles), random.choice(sizes)))
 
     print(grp[('STYLE1', 300)])
+
+    for ktup in grp.fullkeys():
+        kstr = '(' + ', '.join([repr(x) for x in ktup]) + ')'
+        print(kstr)
 
 if __name__ == '__main__':
     main()
