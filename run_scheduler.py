@@ -19,7 +19,7 @@ from app.schedule.job import Job
 from getjets import get_single_jets, get_multi_jets, get_partial_jets
 from getrolls import get_greige_rolls, RollSplitItem
 
-DIRPATH = '/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling'
+DIRPATH = os.path.join(os.path.dirname(__file__), 'datasrc')
 INV_SRC = ('master.xlsx', {'sheet_name': 'inventory',
                            'usecols': ['Roll', 'Item', 'Quality', 'Pounds',
                                        'ASSIGNED_ORDER'],
@@ -129,11 +129,18 @@ def load_dmnd(start: dt.datetime) -> DemandGroup:
         fab = style.get_fabric_style(fab_id)
         if not fab: continue
 
+        dmnds: dict[dt.datetime, Demand] = {}
         for prt in prts:
             yds = dmnd_df.loc[i, prt]
             if pd.isna(yds) or yds == 0: continue
             cur_item = Demand(fab, yds, prts[prt])
+            dmnds[prt] = cur_item
             res.add(cur_item)
+
+        for prt1 in dmnds.keys():
+            for prt2 in dmnds.keys():
+                if prt2 > prt1:
+                    dmnds[prt1].subscribe(lambda yds: dmnds[prt2].add_overage(yds))
     
     return res
 
@@ -315,11 +322,12 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
                         continue
 
                     req = dmnd.remove(req_id)
+
                     success = assign_demand(req, start, jets, inv)
                     if not success:
                         success = assign_demand(req, start, jets, inv, ignore_due=True)
 
-                    if not success and pdate < start+dt.timedelta(days=10.5):
+                    if not success and pdate < start+dt.timedelta(days=10.5) and req.pounds > 0:
                         assign_partial_jets(start, req, jets, inv)
 
                     if req.pounds > 0:
@@ -328,6 +336,8 @@ def generate_schedule(start: dt.datetime) -> tuple[pd.DataFrame, pd.DataFrame, p
                         not_scheduled['greige_item'].append(req.item.greige.id)
                         not_scheduled['lbs_needed'].append(req.pounds)
                         not_scheduled['yds_needed'].append(req.yards)
+                    else:
+                        pass
 
                     dmnd.add(req)
     

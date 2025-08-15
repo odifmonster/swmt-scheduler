@@ -5,7 +5,7 @@ from app.schedule.demand.groups import ColorProps as ColorProps, \
     PriorityGroupView as PriorityGroupView, PriorityGroup as PriorityGroup, \
     DemandGroupView as DemandGroupView, DemandGroup as DemandGroup
 
-from typing import Unpack, Protocol
+from typing import Unpack, Protocol, Callable
 from abc import abstractmethod
 import datetime
 from app.support import PrettyArgsOpt, SuperView, Viewable
@@ -86,6 +86,8 @@ class Demand(DemandLike, Viewable[DemandView]):
         of greige unassigned as an argument.
         """
         ...
+    def add_overage(self, yds: float) -> None: ...
+    def subscribe(self, obs: Callable[[float], None]) -> None: ...
     def view(self) -> DemandView: ...
 
 EMPTY_DEMAND = Demand(...)

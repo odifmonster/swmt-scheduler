@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Unpack, Protocol
+from typing import Unpack, Protocol, Callable
 from abc import abstractmethod
 import datetime
 
@@ -76,6 +76,7 @@ class Demand(DemandLike, Viewable[DemandView]):
         self.__item = item
         self.__yards = yards
         self.__due_date = due_date
+        self.__observers: list[Callable[[float], None]] = []
         self.__view = DemandView(self)
     
     @property
@@ -99,12 +100,24 @@ class Demand(DemandLike, Viewable[DemandView]):
         return self.__due_date
 
     def assign(self, pounds: float):
-        yds = pounds * self.item.yds_per_lb * pounds
+        yds = pounds * self.item.yds_per_lb
         self.__yards -= yds
+        if self.__yards < 0:
+            for obs in self.__observers:
+                obs(self.__yards*-1)
 
     def unassign(self, pounds: float):
-        yds = pounds * self.item.yds_per_lb * pounds
+        yds = pounds * self.item.yds_per_lb
+        if self.__yards < 0 and self.__yards + yds > 0:
+            for obs in self.__observers:
+                obs(self.__yards)
         self.__yards += yds
+
+    def add_overage(self, yds: float):
+        self.__yards -= yds
+
+    def subscribe(self, obs: Callable[[float], None]):
+        self.__observers.append(obs)
     
     def view(self):
         return self.__view
