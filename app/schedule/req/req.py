@@ -24,6 +24,11 @@ class Req(Data[str], fg_flag = False,
         str_id = item.id + ' ' + due_date.strftime('%m %d')
         observer: Callable[[float], None] = lambda f: None
         if not subscriber is None:
+            if item != subscriber.item:
+                raise ValueError(f'Cannot subscribe requirement for item {subscriber.item} to ' + \
+                                 f'requirement for item {item}.')
+            if due_date >= subscriber.due_date:
+                raise ValueError('Subscribed requirements must have later due dates than their notifiers.')
             observer = lambda f: subscriber.fulfill(f)
 
         super().__init__(str_id, 'Req', ReqView(self),
