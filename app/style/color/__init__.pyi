@@ -1,5 +1,5 @@
 from app.style.color.color import ShadeGrade as ShadeGrade, SOLUTION as SOLUTION, \
-    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK, EMPTY as EMPTY
+    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK, STRIP as STRIP, EMPTY as EMPTY
 
 from typing import Literal
 from app.support import HasID, SuperImmut
@@ -24,6 +24,6 @@ class Color(HasID[str], SuperImmut):
             number:
               The dye formula as an integer. The 5-digit string will be used as the object's id.
             raw_shade:
-              An integer 1-5 or a string indicating the "shade" of this color.
+              An integer 1-6 or a string indicating the "shade" of this color.
         """
         ...
