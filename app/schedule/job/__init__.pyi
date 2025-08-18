@@ -12,6 +12,7 @@ class Job(HasID[str], SuperImmut):
     """
     color: Color
     cycle_time: dt.timedelta
+    max_date: dt.datetime
     @overload
     def __init__(self, start: dt.datetime, max_date: dt.datetime,
                  id = None, lots = None, cycle_time = None) -> None:

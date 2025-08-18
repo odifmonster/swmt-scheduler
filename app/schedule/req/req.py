@@ -68,4 +68,4 @@ class Req(Data[str], fg_flag = False,
             ret = used_yds
 
         self.__yds -= used_yds
-        self.__observer(ret)
+        self.__observer(ret / self.item.yld)
