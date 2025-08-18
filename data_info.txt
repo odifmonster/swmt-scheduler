@@ -3,15 +3,19 @@
 # Any text following a pound sign is ignored
 # End a line in ... if you want the next line to be included as part of the previous one
 
+# The 'folder' argument must be wrapped in quotes. If you are on a Windows computer, you also
+# need to use double backslash characters
+
 fabric_items: # information about fabric items (which jets they can run on, which greige style they use, etc.)
-    excel_book=master.xlsx
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="New XREF file.xlsx"
     sheet_name=Xref
     columns="GREIGE ITEM", STYLE, Yield, "COLOR NAME", "COLOR NUMBER", "PA FIN ITEM", ...
-        "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "SHADE RATING"
+        "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "JET 10", "SHADE RATING"
 
 greige_sizes: # information about target lbs per greige style roll
     excel_book=LamDemandPlanning.xlsx
-    sheet_name="Greige Sizes"
+    sheet_name="Griege Sizes"
 
 greige_translation:
     excel_book=LamDemandPlanning.xlsx
@@ -19,6 +23,10 @@ greige_translation:
     column_names=inventory, plan # only use this if the workbook has no column names
     excel_columns="A:B" # required if providing column names
     start_row=2 # the first row of data to start reading
+
+jet_info:
+    excel_book=jets.xlsx
+    sheet_name=Sheet1
 
 inventory:
     excel_book=LamDemandPlanning.xlsx
@@ -34,5 +42,5 @@ pa_demand_plan:
     excel_book="Demand Planning 20250813a.xlsx"
     sheet_name="Demand Planning20230927"
     start_row=8
-    excel_columns="D,M:P"
+    excel_columns="D,M:P" # this argument also has to be wrapped in quotes
     end_row=105
