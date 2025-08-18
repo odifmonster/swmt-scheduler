@@ -23,7 +23,7 @@ class Roll(Data[str], dattrs=('greige','lbs','size'), dpriv_attrs=('wt','temp_us
     
     def __init__(self, id: str, greige: GreigeStyle, wt: float):
         priv = { 'wt': wt, 'temp_used': 0 }
-        Data[str].__init__(self, id, 'Roll', RollView(self), priv=priv, greige=greige)
+        super().__init__(id, 'Roll', RollView(self), priv=priv, greige=greige)
 
     @property
     def lbs(self) -> float:
@@ -43,7 +43,7 @@ class Roll(Data[str], dattrs=('greige','lbs','size'), dpriv_attrs=('wt','temp_us
         return PARTIAL
     
     def __repr__(self):
-        return f'{self._prefix}(style={self.greige}, lbs={self.lbs}, size={self.size})'
+        return f'{self._prefix}(style={self.greige}, lbs={self.lbs:.2f}, size={self.size})'
     
     @setter_like
     def use(self, lbs: float, aroll: AllocRoll | None = None, temp: bool = False) -> AllocRoll:
