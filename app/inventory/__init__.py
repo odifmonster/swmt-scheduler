@@ -3,4 +3,7 @@
 from .groups import RSizeGroup, RStyleGroup, Inventory
 from . import roll
 
-__all__ = ['RSizeGroup', 'RStyleGroup', 'Inventory', 'roll']
+Roll = roll.Roll
+AllocRoll = roll.AllocRoll
+
+__all__ = ['RSizeGroup', 'RStyleGroup', 'Inventory', 'Roll', 'AllocRoll', 'roll']

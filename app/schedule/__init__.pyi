@@ -4,3 +4,4 @@ from app.schedule.req import ReqView as ReqView, Req as Req, \
     ReqColorView as ReqColorView, ReqColorGroup as ReqColorGroup, \
     ReqItemView as ReqItemView, ReqItemGroup as ReqItemGroup, \
     ReqPriorView as ReqPriorView, ReqPriorGroup as ReqPriorGroup
+from app.schedule.dyelot import DyeLot as DyeLot
