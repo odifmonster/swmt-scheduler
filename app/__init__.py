@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from . import support, groups, style, excel
+from . import support, groups, style
 
-__all__ = ['support', 'groups', 'style', 'excel']
+__all__ = ['support', 'groups', 'style']

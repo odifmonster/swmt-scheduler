@@ -14,8 +14,8 @@ fabric_items: # information about fabric items (which jets they can run on, whic
         "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "JET 10", "SHADE RATING"
 
 greige_sizes: # information about target lbs per greige style roll
-    excel_book=LamDemandPlanning.xlsx
-    sheet_name="Griege Sizes"
+    excel_book=master.xlsx
+    sheet_name="greige info"
 
 greige_translation:
     excel_book=LamDemandPlanning.xlsx
@@ -25,8 +25,8 @@ greige_translation:
     start_row=2 # the first row of data to start reading
 
 jet_info:
-    excel_book=jets.xlsx
-    sheet_name=Sheet1
+    excel_book=master.xlsx
+    sheet_name=jets
 
 inventory:
     excel_book=LamDemandPlanning.xlsx

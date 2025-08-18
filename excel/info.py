@@ -70,7 +70,7 @@ def make_excel_info(**kwargs: Unpack[InfoKWArgs]) -> ExcelInfo:
     }
     
     if kwargs['folder'] is None:
-        parent = _nth_parent(__file__, 3)
+        parent = _nth_parent(__file__, 2)
         dirpath = os.path.join(parent, 'datasrc')
     else:
         dirpath = kwargs['folder']
@@ -97,7 +97,7 @@ def make_excel_info(**kwargs: Unpack[InfoKWArgs]) -> ExcelInfo:
     return ExcelInfo(**create_args)
 
 def init() -> None:
-    parent = _nth_parent(__file__, 3)
+    parent = _nth_parent(__file__, 2)
     fpath = os.path.join(parent, 'data_info.txt')
     raw: dict[ParsedKey, dict[str, Any]] = parse_data_info(fpath)
 
@@ -115,7 +115,7 @@ def get_excel_info(name: ParsedKey) -> tuple[os.PathLike, PandasKWArgs]:
             str_cols += list(map(lambda i: f'JET {i}', (1,2,3,4,7,8,9,10)))
             res['dtype'] = { col: 'string' for col in str_cols }
         case 'greige_sizes':
-            res['dtype'] = { 'Greige': 'string' }
+            res['dtype'] = { 'greige': 'string' }
         case 'greige_translation':
             res['dtype'] = { 'inventory': 'string', 'plan': 'string' }
         case 'jet_info':
