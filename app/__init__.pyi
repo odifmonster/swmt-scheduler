@@ -1,2 +1,2 @@
 from app import support as support, groups as groups, style as style, \
-    excel as excel
+    inventory as inventory
