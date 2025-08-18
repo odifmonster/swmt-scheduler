@@ -5,16 +5,19 @@ import datetime as dt
 
 from app.support import setter_like
 from app.groups import DataView, Data
-from app.style import FabricStyle, Color
+from app.style import GreigeStyle, FabricStyle, Color
 
 class ReqView(DataView[str], funcs=['fulfill'],
-              attrs=['item','color','shade','yds','lbs','due_date'],
+              attrs=['item','color','shade','yds','lbs','due_date',
+                     'greige'],
               dunders=['repr']):
     pass
 
-class Req(Data[str], dattrs=('item','color','shade','yds','lbs','due_date'),
-                  dpriv_attrs=('yds','observer'),
-                  dfrozen=('item','due_date','_Req__observer')):
+class Req(Data[str], fg_flag = False,
+          dattrs=('item','color','shade','yds','lbs','due_date',
+                  'greige'),
+          dpriv_attrs=('yds','observer'),
+          dfrozen=('item','due_date','_Req__observer')):
     
     def __init__(self, item: FabricStyle, yds: float, due_date: dt.datetime,
                  subscriber: 'Req | None' = None):
@@ -26,7 +29,11 @@ class Req(Data[str], dattrs=('item','color','shade','yds','lbs','due_date'),
         super().__init__(str_id, 'Req', ReqView(self),
                          priv={'yds': yds, 'observer': observer},
                          item=item, due_date=due_date)
-        
+    
+    @property
+    def greige(self) -> GreigeStyle:
+        return self.item.greige
+
     @property
     def color(self) -> Color:
         return self.item.color

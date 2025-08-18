@@ -23,11 +23,12 @@ class Data(Generic[_T], HasID[_T], Viewable[DataView[_T]], SuperImmut):
     Defines correct behavior for HasID protocol and related functions. Requires
     implementation of 'view' method.
     """
-    def __init_subclass__(cls, dattrs: ArgTup = tuple(), dpriv_attrs: ArgTup = tuple(),
-                          dfrozen: ArgTup = tuple()) -> None:
+    def __init_subclass__(cls, fg_flag: bool = True, dattrs: ArgTup = tuple(),
+                          dpriv_attrs: ArgTup = tuple(), dfrozen: ArgTup = tuple()) -> None:
         """
         Create a new Data type. If no additional attributes are defined in 'dfrozen',
-        only the private references for 'id' and '_prefix' will be used.
+        only the private references for 'id' and '_prefix' will be used. If 'fg_flag' is
+        set to False, then instances can be modified while in Grouped objects.
         """
         ...
     def __init__(self, id: _T, prefix: str, view: DataView[_T], priv: dict[str, Any] = {},

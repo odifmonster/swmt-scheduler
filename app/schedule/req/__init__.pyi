@@ -1,6 +1,12 @@
+from app.schedule.req.groups import DemandView as DemandView, Demand as Demand, \
+    ReqGreigeView as ReqGreigeView, ReqGreigeGroup as ReqGreigeGroup, \
+    ReqColorView as ReqColorView, ReqColorGroup as ReqColorGroup, \
+    ReqItemView as ReqItemView, ReqItemGroup as ReqItemGroup, \
+    ReqPriorView as ReqPriorView, ReqPriorGroup as ReqPriorGroup
+
 import datetime as dt
 from app.groups import DataView, Data
-from app.style import FabricStyle, Color, color
+from app.style import GreigeStyle, FabricStyle, Color, color
 
 class ReqView(DataView[str]):
     """
@@ -9,6 +15,8 @@ class ReqView(DataView[str]):
     item: FabricStyle
     due_date: dt.datetime
     def __init__(self, link: 'Req') -> None: ...
+    @property
+    def greige(self) -> GreigeStyle: ...
     @property
     def color(self) -> Color: ...
     @property
@@ -42,6 +50,10 @@ class Req(Data[str]):
               requirement is fulfilled with more yards than it needs, the excess yards will be used to
               fulfill the subscriber.
         """
+        ...
+    @property
+    def greige(self) -> GreigeStyle:
+        """The GreigeStyle of the item for this requirement."""
         ...
     @property
     def color(self) -> Color:

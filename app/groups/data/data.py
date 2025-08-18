@@ -23,15 +23,12 @@ class DataView(Generic[T], SuperView[HasID[T]]):
 
 class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
 
-    def __init_subclass__(cls, dattrs = tuple(), dpriv_attrs = tuple(), dfrozen = tuple()):
-        if '_prefix' in dattrs or 'id' in dattrs or 'prefix' in dpriv_attrs or \
-            'id' in dpriv_attrs:
-            raise RuntimeError('Classes inheriting from \'Data\' should not define ' + \
-                               'behavior relating to HasID protocol.')
-
+    def __init_subclass__(cls, fg_flag = True, dattrs = tuple(), dpriv_attrs = tuple(),
+                          dfrozen = tuple()):
         subattrs = ('_prefix','id') + dattrs
         sub_priv = ('_Data__id', '_Data__prefix', '_Data__view') + dpriv_attrs
         sub_frz = ('_Data__id', '_Data__prefix', '_Data__view') + dfrozen
+        cls._fg_flag = fg_flag
         super().__init_subclass__(attrs=subattrs, priv_attrs=sub_priv, frozen=sub_frz)
     
     def __init__(self, id: T, prefix: str, view: DataView[T], priv = {}, **kwargs):
@@ -50,7 +47,7 @@ class Data(Generic[T], HasID[T], Viewable[DataView[T]], SuperImmut):
         return self.__id
     
     def __setattr__(self, name, value):
-        if hasattr(self, '_in_group') and getattr(self, '_in_group'):
+        if hasattr(self, '_in_group') and getattr(self, '_in_group') and type(self)._fg_flag:
             raise RuntimeError('Objects cannot be mutated while in a group.')
         SuperImmut.__setattr__(self, name, value)
 
