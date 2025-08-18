@@ -6,7 +6,7 @@ import os, sys
 
 import excel
 
-type InfoKey = Literal['fabric_items', 'greige_sizes', 'greige_translation']
+type InfoKey = Literal['fabric_items', 'greige_sizes', 'greige_translation', 'jet_info']
 
 APPDIR = os.path.join(os.path.dirname(__file__), 'app')
 
@@ -58,6 +58,9 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
             return f'{grg},{tgt_lbs:.2f}\n'
         case 'greige_translation':
             return f'{df.loc[i, 'inventory']},{df.loc[i, 'plan']}\n'
+        case 'jet_info':
+            return f'{df.loc[i, 'jet']},{df.loc[i, 'alt_jet']},{df.loc[i, 'n_ports']},' + \
+                f'{df.loc[i, 'min_load']},{df.loc[i, 'max_load']}\n'
 
 def write_csv(key: InfoKey) -> None:
     excel.init()

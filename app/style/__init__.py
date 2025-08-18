@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
-from .greige import GreigeStyle
+from . import greige, fabric
 from .color import Color, ShadeGrade
-from .fabric import FabricMaster, FabricStyle
+
+GreigeStyle = greige.GreigeStyle
+FabricMaster = fabric.FabricMaster
+FabricStyle = fabric.FabricStyle
 
 __all__ = ['GreigeStyle', 'Color', 'ShadeGrade', 'FabricMaster',
            'FabricStyle']

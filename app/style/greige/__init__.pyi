@@ -20,3 +20,16 @@ class GreigeStyle(HasID[str], SuperImmut):
               The maximum number of pounds to load on one port.
         """
         ...
+
+def init() -> None:
+    """
+    Initialize necessary components of app.style.greige sub-module. You must run this
+    function before using this sub-module.
+    """
+    ...
+
+def get_greige_style(id: str) -> GreigeStyle | None:
+    """
+    Returns the GreigeStyle object with the given id, or None if it does not exist.
+    """
+    ...

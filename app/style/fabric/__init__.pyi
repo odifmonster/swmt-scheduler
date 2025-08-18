@@ -34,3 +34,16 @@ class FabricStyle(HasID[str], SuperImmut):
         """
         ...
     def can_run_on_jet(self, jet_id: str) -> bool: ...
+
+def init() -> None:
+    """
+    Initialize necessary components of app.style.fabric sub-module. You must run this
+    function before using this sub-module.
+    """
+    ...
+
+def get_greige_style(id: str) -> GreigeStyle | None:
+    """
+    Returns the FabricStyle object with the given id, or None if it does not exist.
+    """
+    ...
