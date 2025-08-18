@@ -19,3 +19,5 @@ class GreigeStyle(HasID[str], SuperImmut,
     @property
     def id(self) -> str:
         return self.__id
+
+EMPTY = GreigeStyle('NONE', 0, 400)

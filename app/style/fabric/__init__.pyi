@@ -1,4 +1,4 @@
-from app.style.fabric.fabric import FabricMaster as FabricMaster
+from app.style.fabric.fabric import FabricMaster as FabricMaster, EMPTY as EMPTY
 
 from app.support import HasID, SuperImmut
 from app.style.greige import GreigeStyle

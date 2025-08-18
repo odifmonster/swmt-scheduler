@@ -1,11 +1,11 @@
 from app.style.color.color import ShadeGrade as ShadeGrade, SOLUTION as SOLUTION, \
-    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK
+    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK, EMPTY as EMPTY
 
 from typing import Literal
 from app.support import HasID, SuperImmut
 
-type _RawShadeInt = Literal[1, 2, 3, 4]
-type _RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION']
+type _RawShadeInt = Literal[1, 2, 3, 4, 5, 6]
+type _RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'STRIP', 'EMPTY']
 
 class Color(HasID[str], SuperImmut):
     """
@@ -24,6 +24,6 @@ class Color(HasID[str], SuperImmut):
             number:
               The dye formula as an integer. The 5-digit string will be used as the object's id.
             raw_shade:
-              An integer 1-4 or a string indicating the "shade" of this color.
+              An integer 1-5 or a string indicating the "shade" of this color.
         """
         ...

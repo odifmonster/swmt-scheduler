@@ -1,3 +1,5 @@
+from app.style.greige.greige import EMPTY as EMPTY
+
 from app.support import HasID, SuperImmut, FloatRange
 
 class GreigeStyle(HasID[str], SuperImmut):

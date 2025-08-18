@@ -5,13 +5,14 @@ from typing import NewType, Literal
 from app.support import HasID, SuperImmut
 
 ShadeGrade = NewType('ShadeGrade', str)
-SOLUTION = ShadeGrade('0_SOLUTION')
-LIGHT = ShadeGrade('1_LIGHT')
-MEDIUM = ShadeGrade('2_MEDIUM')
-BLACK = ShadeGrade('3_BLACK')
+EMPTY = ShadeGrade('1_EMPTY')
+SOLUTION = ShadeGrade('2_SOLUTION')
+LIGHT = ShadeGrade('3_LIGHT')
+MEDIUM = ShadeGrade('4_MEDIUM')
+BLACK = ShadeGrade('5_BLACK')
 
-type RawShadeInt = Literal[1, 2, 3, 4]
-type RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION']
+type RawShadeInt = Literal[1, 2, 3, 4, 5]
+type RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'EMPTY']
 
 def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
     if type(raw) is int:
@@ -20,6 +21,7 @@ def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
             case 2: return MEDIUM
             case 3: return BLACK
             case 4: return SOLUTION
+            case 5: return EMPTY
             case _: raise ValueError(f'Unknown shade grade: {raw}')
     if type(raw) is str:
         match raw:
@@ -27,6 +29,7 @@ def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
             case 'MEDIUM': return MEDIUM
             case 'BLACK': return BLACK
             case 'SOLUTION': return SOLUTION
+            case 'EMPTY': return EMPTY
             case _: raise ValueError(f'Unknown shade grade: {repr(raw)}.')
     raise TypeError(f'\'raw\' argument must be type \'int\' or \'str\'.')
 

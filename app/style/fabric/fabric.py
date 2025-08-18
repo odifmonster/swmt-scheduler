@@ -3,8 +3,8 @@
 from typing import NewType
 
 from app.support import HasID, SuperImmut
-from ..greige import GreigeStyle
-from ..color import Color, BLACK
+from ..greige import GreigeStyle, EMPTY as EMPTY_GRG
+from ..color import Color, BLACK, EMPTY as EMPTY_SHD
 
 FabricMaster = NewType('FabricMaster', str)
 
@@ -29,4 +29,8 @@ class FabricStyle(HasID[str], SuperImmut,
         return self.__id
     
     def can_run_on_jet(self, jet_id: str):
+        if self.color.shade == EMPTY_SHD:
+            return True
         return jet_id in self.__jets and (jet_id != 'Jet-09' or self.color.shade == BLACK)
+
+EMPTY = FabricStyle('NONE', EMPTY_GRG, 'NONE', Color('NONE', 0, 5), 1, [])
