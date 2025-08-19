@@ -4,9 +4,9 @@ import unittest
 
 import random, datetime as dt
 
-from app.style import GreigeStyle, Color, FabricMaster, FabricStyle
+from app.style import color, GreigeStyle, Color, FabricMaster, FabricStyle
 from app.inventory import AllocRoll
-from app.schedule import DyeLot
+from app.schedule import DyeLot, Job
 
 def make_greige_styles(n: int) -> list[GreigeStyle]:
     tgts = [350, 362.5, 375]
@@ -70,6 +70,46 @@ class TestDyeLot(unittest.TestCase):
 
         self.assertEqual(str(cm.exception), '\'end\' is a viewed attribute on another object.')
 
+class TestJob(unittest.TestCase):
+
+    def setUp(self):
+        self.greiges = make_greige_styles(10)
+        self.colors = make_colors(15)
+        self.masters = make_masters(15)
+        self.fabrics = make_fabric_styles(100, self.greiges, self.masters, self.colors)
+
+    def test_init_times(self):
+        fab = self.fabrics[0]
+        if fab.color.shade == color.BLACK:
+            cycle_time = dt.timedelta(hours=10)
+        elif fab.color.shade == color.SOLUTION:
+            cycle_time = dt.timedelta(hours=6)
+        else:
+            cycle_time = dt.timedelta(hours=8)
+
+        lots: list[DyeLot] = []
+        for i in range(3):
+            roll = AllocRoll(f'roll_{i+1:02}', fab.greige, 350)
+            lot = DyeLot(dt.datetime.fromtimestamp(0), dt.datetime.fromtimestamp(10), [roll],
+                         fab)
+            lots.append(lot)
+        
+        start1 = dt.datetime(2025, 8, 18)
+        start2 = dt.datetime(2025, 8, 19)
+        job = Job.make_job(start1, lots=tuple(lots))
+
+        for lot in lots:
+            self.assertEqual(lot.start, start1)
+            self.assertEqual(lot.end, start1+cycle_time)
+
+        job.start = start2
+
+        for lot in lots:
+            self.assertEqual(lot.start, start2)
+            self.assertEqual(lot.end, start2+cycle_time)
+
+# class TestReq(unittest.TestCase):
+#     pass
 
 if __name__ == '__main__':
     unittest.main()

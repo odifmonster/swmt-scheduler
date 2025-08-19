@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from typing import Protocol
 import datetime as dt
 
 from app.support import HasID, SuperImmut, SuperView, Viewable

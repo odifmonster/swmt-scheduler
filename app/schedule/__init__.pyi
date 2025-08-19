@@ -1,2 +1,3 @@
 from app.schedule.dyelot import DyeLot as DyeLot, DyeLotView as DyeLotView
 from app.schedule.job import Job as Job
+from app.schedule.req import Bucket as Bucket, Req as Req

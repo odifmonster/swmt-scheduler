@@ -10,8 +10,8 @@ _CTR = 0
 
 class Job(HasID[str], SuperImmut,
           attrs=('_prefix','id','shade','item','start','end','cycle_time','lots'),
-          priv_attrs=('prefix','id','lots'),
-          frozen=('_Job__prefix','_Job__id','_Job__lots','_Job__start','shade','item','cycle_time')):
+          priv_attrs=('prefix','id','start','lots'),
+          frozen=('_Job__prefix','_Job__id','_Job__lots','shade','item','cycle_time')):
     
     @classmethod
     def make_job(cls, start: dt.datetime, lots: tuple[DyeLot, ...]) -> 'Job':
@@ -25,6 +25,9 @@ class Job(HasID[str], SuperImmut,
         else:
             cycle_time = dt.timedelta(hours=8)
 
+        for lot in lots:
+            lot.start = start
+            lot.end = start + cycle_time
         return cls(id, item.color.shade, item, start, cycle_time, lots)
 
     def __init__(self, id: str, shade: color.ShadeGrade, item: FabricStyle,
