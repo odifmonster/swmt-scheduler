@@ -44,8 +44,7 @@ class TestDyeLot(unittest.TestCase):
         fab = self.fabrics[0]
         rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
                     for i in range(6)]
-        lot = DyeLot(dt.datetime(2025, 8, 18), dt.datetime(2025, 8, 18, hour=8),
-                     rolls, fab)
+        lot = DyeLot(rolls, fab)
         
         self.assertAlmostEqual(sum(map(lambda r: r.lbs, rolls)), lot.lbs, places=4)
         self.assertAlmostEqual(sum(map(lambda r: r.lbs*fab.yld, rolls)), lot.yds, places=4)
@@ -54,8 +53,7 @@ class TestDyeLot(unittest.TestCase):
         fab = self.fabrics[0]
         rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
                     for i in range(6)]
-        lot = DyeLot(dt.datetime(2025, 8, 18), dt.datetime(2025, 8, 18, hour=8),
-                     rolls, fab)
+        lot = DyeLot(rolls, fab)
         
         lot_view = lot.view()
 
@@ -90,8 +88,7 @@ class TestJob(unittest.TestCase):
         lots: list[DyeLot] = []
         for i in range(3):
             roll = AllocRoll(f'roll_{i+1:02}', fab.greige, 350)
-            lot = DyeLot(dt.datetime.fromtimestamp(0), dt.datetime.fromtimestamp(10), [roll],
-                         fab)
+            lot = DyeLot([roll], fab)
             lots.append(lot)
         
         start1 = dt.datetime(2025, 8, 18)
@@ -129,6 +126,64 @@ class TestReq(unittest.TestCase):
         self.assertAlmostEqual(req.bucket(2).lbs, 1500*self.fabrics[0].yld, places=4)
         self.assertAlmostEqual(req.bucket(3).lbs, 1500*self.fabrics[0].yld, places=4)
         self.assertAlmostEqual(req.bucket(4).lbs, 5500*self.fabrics[0].yld, places=4)
+    
+    def test_add_lots(self):
+        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
+                  (0, 1500, 0, 4000))
+
+        lbs = int(1500/(req.item.yld*50))*50 + 150
+        lots: list[DyeLot] = []
+        for i in range(3):
+            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
+        
+        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
+        self.assertAlmostEqual(req.bucket(1).yds, -1*job.yds, places=4)
+        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
+        self.assertEqual(req.bucket(3).yds, req.bucket(2).yds)
+        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+
+        newlot = req.assign_lot([AllocRoll('roll_4', req.greige, 350)])
+        job2 = Job.make_job(dt.datetime(2025, 8, 20), (newlot,))
+
+        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
+        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds - job2.yds, places=4)
+
+    def test_move_lots(self):
+        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
+                  (0, 1500, 0, 4000))
+
+        lbs = int(1500/(req.item.yld*50))*50 + 150
+        lots: list[DyeLot] = []
+        for i in range(3):
+            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
+        
+        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
+        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
+        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+        job.start = dt.datetime(2025, 8, 20)
+        self.assertEqual(req.bucket(2).yds, 1500)
+        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+    
+    def test_remove_lots(self):
+        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
+                  (0, 1500, 0, 4000))
+
+        lbs = int(1500/(req.item.yld*50))*50 + 150
+        lots: list[DyeLot] = []
+        for i in range(3):
+            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
+
+        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
+        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
+        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+
+        for lotview in job.lots:
+            req.unassign_lot(lotview)
+        
+        self.assertEqual(req.bucket(1).yds, 0)
+        self.assertEqual(req.bucket(2).yds, 1500)
+        self.assertEqual(req.bucket(3).yds, 1500)
+        self.assertEqual(req.bucket(4).yds, 5500)
 
 if __name__ == '__main__':
     unittest.main()

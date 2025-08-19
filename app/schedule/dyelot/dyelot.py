@@ -19,13 +19,14 @@ class DyeLot(HasID[int], Viewable[DyeLotView], SuperImmut,
              priv_attrs=('prefix','id','view'),
              frozen=('_DyeLot__prefix','_DyeLot__id','_DyeLot__view','rolls','item')):
     
-    def __init__(self, start: dt.datetime, end: dt.datetime, rolls: list[AllocRoll],
-                 item: FabricStyle) -> None:
+    def __init__(self, rolls: list[AllocRoll], item: FabricStyle) -> None:
         globals()['_CTR'] += 1
         priv={
             'prefix': 'DyeLot', 'id': globals()['_CTR'], 'view': DyeLotView(self)
         }
-        SuperImmut.__init__(self, priv=priv, start=start, end=end, rolls=tuple(rolls), item=item)
+        SuperImmut.__init__(self, priv=priv, start=dt.datetime.fromtimestamp(0),
+                            end=dt.datetime.fromtimestamp(10), rolls=tuple(rolls),
+                            item=item)
     
     @property
     def _prefix(self):

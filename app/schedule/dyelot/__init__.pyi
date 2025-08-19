@@ -26,8 +26,7 @@ class DyeLot(HasID[int], Viewable[DyeLotView], SuperImmut):
     end: dt.datetime
     rolls: tuple[AllocRoll, ...]
     item: FabricStyle
-    def __init__(self, start: dt.datetime, end: dt.datetime, rolls: list[AllocRoll],
-                 item: FabricStyle) -> None: ...
+    def __init__(self, rolls: list[AllocRoll], item: FabricStyle) -> None: ...
     @property
     def _prefix(self) -> str: ...
     @property

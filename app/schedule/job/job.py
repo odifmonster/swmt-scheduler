@@ -9,7 +9,8 @@ from ..dyelot import DyeLot, DyeLotView
 _CTR = 0
 
 class Job(HasID[str], SuperImmut,
-          attrs=('_prefix','id','shade','item','start','end','cycle_time','lots'),
+          attrs=('_prefix','id','shade','item','start','end','cycle_time','lots',
+                 'lbs','yds'),
           priv_attrs=('prefix','id','start','lots'),
           frozen=('_Job__prefix','_Job__id','_Job__lots','shade','item','cycle_time')):
     
@@ -61,3 +62,11 @@ class Job(HasID[str], SuperImmut,
     @property
     def lots(self) -> list[DyeLotView]:
         return [d.view() for d in self.__lots]
+    
+    @property
+    def lbs(self) -> float:
+        return sum(map(lambda l: l.lbs, self.lots))
+    
+    @property
+    def yds(self) -> float:
+        return sum(map(lambda l: l.yds, self.lots))
