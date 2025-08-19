@@ -1,0 +1,26 @@
+import datetime as dt
+from app.support import HasID, SuperImmut
+from app.style import color, FabricStyle
+from app.schedule import DyeLot, DyeLotView
+
+class Job(HasID[str], SuperImmut):
+    shade: color.ShadeGrade
+    item: FabricStyle
+    cycle_time: dt.timedelta
+    @classmethod
+    def make_job(cls, start: dt.datetime, lots: tuple[DyeLot, ...]) -> 'Job': ...
+    def __init__(self, id: str, shade: color.ShadeGrade, item: FabricStyle,
+                 start: dt.datetime, cycle_time: dt.datetime,
+                 lots: tuple[DyeLot, ...]) -> None: ...
+    @property
+    def _prefix(self) -> str: ...
+    @property
+    def id(self) -> str: ...
+    @property
+    def start(self) -> dt.datetime: ...
+    @start.setter
+    def start(self, new: dt.datetime) -> None: ...
+    @property
+    def end(self) -> dt.datetime: ...
+    @property
+    def lots(self) -> list[DyeLotView]: ...
