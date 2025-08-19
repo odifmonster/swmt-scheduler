@@ -61,15 +61,13 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
         if self.__jobs and self.__jobs[-1].end > job.start + dt.timedelta(minutes=2):
             raise ValueError('Cannot add job that starts before the last job ends.')
         if job.color.shade == color.BLACK:
-            self.__soil_level += 5
-        elif job.color.shade == color.MEDIUM:
+            self.__soil_level += 7
+        elif job.color.shade in (color.MEDIUM, color.EMPTY):
             self.__soil_level += 3
-        elif job.color.shade == color.EMPTY:
-            self.__soil_level += 2
         elif job.color.shade in (color.LIGHT, color.SOLUTION):
             self.__soil_level += 1
         elif job.color.shade == color.STRIP:
-            self.__soil_level -= 25
+            self.__soil_level -= 27
             self.__soil_level = max(0, self.__soil_level)
 
         if job.color.shade == color.STRIP:
