@@ -9,10 +9,9 @@ from ..dyelot import DyeLot
 _CTR = 0
 
 class Job(HasID[str], SuperImmut, attrs=('_prefix','id','color','cycle_time',
-                                         'start','end'),
+                                         'start','end','max_date'),
           priv_attrs=('prefix','id','start','lots'),
-          frozen=('_Job__prefix','_Job__id','_Job__lots','_Job__color',
-                  '_Job__cycle_time')):
+          frozen=('_Job__prefix','_Job__id','_Job__lots','color','cycle_time')):
     
     @classmethod
     def make_strip(cls, start: dt.datetime, id: str | None = None,
@@ -22,7 +21,7 @@ class Job(HasID[str], SuperImmut, attrs=('_prefix','id','color','cycle_time',
                 raise ValueError('Explicit strip cycle must provide an id and an end time.')
             globals()['_CTR'] += 1
             id = f'STRIP_{globals()['_CTR']:05}'
-            cycle_time = dt.timedelta(hours=8)
+            cycle_time = dt.timedelta(hours=7)
             end_time = start + cycle_time
         else:
             cycle_time = end_time - start
@@ -48,8 +47,8 @@ class Job(HasID[str], SuperImmut, attrs=('_prefix','id','color','cycle_time',
 
     def __init__(self, start: dt.datetime, max_date: dt.datetime, id: str,
                  lots: tuple[DyeLot, ...], clr: Color, cycle_time: dt.timedelta):
-        super().__init__(priv={'prefix': 'Job', 'id': id, 'start': start, 'lots': lots}, color=clr,
-                         cycle_time=cycle_time, max_date=max_date)
+        SuperImmut.__init__(self, priv={'prefix': 'Job', 'id': id, 'start': start, 'lots': lots},
+                            color=clr, cycle_time=cycle_time, max_date=max_date)
     
     @property
     def _prefix(self):
@@ -72,6 +71,4 @@ class Job(HasID[str], SuperImmut, attrs=('_prefix','id','color','cycle_time',
     
     @property
     def lots(self):
-        if self.__lots is None:
-            return tuple()
         return self.__lots

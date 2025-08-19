@@ -8,16 +8,17 @@ from ..job import Job
 
 class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end','rem_time',
                                          'jobs_since_strip','port_range','soil_level'),
-          priv_attrs=('prefix','id','min_date','max_date','soil_level','jobs'),
+          priv_attrs=('prefix','id','min_date','max_date','jss','soil_level','jobs'),
           frozen=('_Jet__prefix','_Jet__id','_Jet__min_date','_Jet__max_date')):
 
     def __init__(self, id: str, n_ports: int, port_min: float, port_max: float,
                  min_date: dt.datetime, max_date: dt.datetime):
         priv = {
             'prefix': 'Jet', 'id': id, 'min_date': min_date, 
-            'max_date': max_date, 'soil_level': 0, 'jobs': []
+            'max_date': max_date, 'jss': 0, 'soil_level': 0, 'jobs': []
         }
-        super().__init__(priv=priv, n_ports=n_ports, port_range=FloatRange(port_min, port_max))
+        SuperImmut.__init__(self, priv=priv, n_ports=n_ports,
+                            port_range=FloatRange(port_min, port_max))
     
     @property
     def _prefix(self):
@@ -35,7 +36,7 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
         if lje.weekday() > 4:
             days_til_monday = 7-lje.weekday()
             monday = lje + dt.timedelta(days=days_til_monday)
-            return dt.datetime(monday.year, monday.month, monday.day)
+            lje = dt.datetime(monday.year, monday.month, monday.day)
         return max(lje, self.__min_date)
     
     @property
@@ -46,16 +47,7 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
     
     @property
     def jobs_since_strip(self) -> int:
-        if not self.__jobs:
-            return 0
-        jobs: list[Job] = self.__jobs
-        n = 0
-        for job in jobs[::-1]:
-            if job.color.shade == color.STRIP:
-                n = 0
-            else:
-                n += 1
-        return n
+        return self.__jss
     
     @property
     def soil_level(self) -> int:
@@ -80,6 +72,11 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
             self.__soil_level -= 25
             self.__soil_level = max(0, self.__soil_level)
 
+        if job.color.shade == color.STRIP:
+            self.__jss = 0
+        else:
+            self.__jss += 1
+
         self.__jobs.append(job)
 
     def sort_jobs(self) -> None:
@@ -89,7 +86,7 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
 
         self.__jobs: list[Job] = []
         self.__soil_level = 0
-        oldjobs = sorted(oldjobs, key=lambda j: (j.max_date, j.color))
+        oldjobs = sorted(oldjobs, key=lambda j: (j.max_date, j.color.shade))
 
         for j in oldjobs:
             if strips and strips[0].start - self.last_job_end <= dt.timedelta(hours=1):

@@ -17,7 +17,7 @@ class DyeLot(HasID[str], SuperImmut, attrs=('_prefix', 'id', 'item', 'color', 'g
         priv = {
             'prefix': 'DyeLot', 'id': globals()['_CTR'], 'req': req, 'rolls': []
         }
-        super().__init__(priv=priv)
+        SuperImmut.__init__(self, priv=priv)
     
     @property
     def _prefix(self):
