@@ -3,7 +3,7 @@
 from typing import Literal
 import datetime as dt
 
-from app.support import HasID, SuperImmut, SuperView
+from app.support import HasID, SuperImmut, SuperView, Viewable, setter_like
 from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
 from ..dyelot import DyeLot, DyeLotView
@@ -35,15 +35,21 @@ class Bucket(SuperView['Req'],
     def date(self) -> dt.datetime:
         return self.__date
 
-class Req(HasID[str], SuperImmut,
+class ReqView(SuperView['Req'],
+              funcs=['bucket','assign_lot','unassign_lot'],
+              dunders=['repr','eq','hash'],
+              attrs=['_prefix','id','item','greige','color','lots']):
+    pass
+
+class Req(HasID[str], Viewable[ReqView], SuperImmut,
           attrs=('_prefix','id','item','greige','color','lots'),
-          priv_attrs=('prefix','id','buckets','lots'),
-          frozen=('_Req__prefix','_Req__id','_Req__buckets','item')):
+          priv_attrs=('prefix','id','view','buckets','lots'),
+          frozen=('_Req__prefix','_Req__id','_Req__view','_Req__buckets','item')):
     
     def __init__(self, item: FabricStyle, p1date: dt.datetime,
                  buckets: tuple[float, float, float, float]):
         priv = {
-            'prefix': 'Req', 'id': 'REQ ' + item.id,
+            'prefix': 'Req', 'id': 'REQ ' + item.id, 'view': ReqView(self),
             'buckets': (Bucket(self, buckets[0], p1date),
                         Bucket(self, sum(buckets[:2]), p1date+dt.timedelta(days=4)),
                         Bucket(self, sum(buckets[:3]), p1date+dt.timedelta(days=7)),
@@ -75,10 +81,15 @@ class Req(HasID[str], SuperImmut,
     def bucket(self, pnum: Literal[1, 2, 3, 4]) -> Bucket:
         return self.__buckets[pnum-1]
     
+    @setter_like
     def assign_lot(self, rolls: list[AllocRoll]) -> DyeLot:
-        newlot = DyeLot(rolls, self.item)
+        newlot = DyeLot(rolls, self.item, self.__view)
         self.__lots.append(newlot)
         return newlot
     
+    @setter_like
     def unassign_lot(self, lot: DyeLotView) -> None:
         self.__lots.remove(lot)
+
+    def view(self):
+        return self.__view

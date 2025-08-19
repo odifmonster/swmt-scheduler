@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from .req import Bucket, Req
+from .req import Bucket, ReqView, Req
 
-__all__ = ['Bucket', 'Req']
+__all__ = ['Bucket', 'ReqView', 'Req']

@@ -42,18 +42,20 @@ class TestDyeLot(unittest.TestCase):
 
     def test_lot_qty(self):
         fab = self.fabrics[0]
+        req = Req(fab, dt.datetime.now(), (0,0,0,0))
         rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
                     for i in range(6)]
-        lot = DyeLot(rolls, fab)
+        lot = DyeLot(rolls, fab, req.view())
         
         self.assertAlmostEqual(sum(map(lambda r: r.lbs, rolls)), lot.lbs, places=4)
         self.assertAlmostEqual(sum(map(lambda r: r.lbs*fab.yld, rolls)), lot.yds, places=4)
 
     def test_dl_view(self):
         fab = self.fabrics[0]
+        req = Req(fab, dt.datetime.now(), (0,0,0,0))
         rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
                     for i in range(6)]
-        lot = DyeLot(rolls, fab)
+        lot = DyeLot(rolls, fab, req.view())
         
         lot_view = lot.view()
 
@@ -78,6 +80,7 @@ class TestJob(unittest.TestCase):
 
     def test_init_times(self):
         fab = self.fabrics[0]
+        req = Req(fab, dt.datetime.now(), (0,0,0,0))
         if fab.color.shade == color.BLACK:
             cycle_time = dt.timedelta(hours=10)
         elif fab.color.shade == color.SOLUTION:
@@ -88,7 +91,7 @@ class TestJob(unittest.TestCase):
         lots: list[DyeLot] = []
         for i in range(3):
             roll = AllocRoll(f'roll_{i+1:02}', fab.greige, 350)
-            lot = DyeLot([roll], fab)
+            lot = DyeLot([roll], fab, req.view())
             lots.append(lot)
         
         start1 = dt.datetime(2025, 8, 18)
