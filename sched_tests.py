@@ -6,7 +6,7 @@ import random, datetime as dt
 
 from app.style import color, GreigeStyle, Color, FabricMaster, FabricStyle
 from app.inventory import AllocRoll
-from app.schedule import DyeLot, Job
+from app.schedule import DyeLot, Job, Req
 
 def make_greige_styles(n: int) -> list[GreigeStyle]:
     tgts = [350, 362.5, 375]
@@ -108,8 +108,27 @@ class TestJob(unittest.TestCase):
             self.assertEqual(lot.start, start2)
             self.assertEqual(lot.end, start2+cycle_time)
 
-# class TestReq(unittest.TestCase):
-#     pass
+class TestReq(unittest.TestCase):
+
+    def setUp(self):
+        self.greiges = make_greige_styles(10)
+        self.colors = make_colors(15)
+        self.masters = make_masters(15)
+        self.fabrics = make_fabric_styles(100, self.greiges, self.masters, self.colors)
+
+    def test_init_buckets(self):
+        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
+                  (0, 1500, 0, 4000))
+        
+        self.assertEqual(req.bucket(1).yds, 0)
+        self.assertEqual(req.bucket(2).yds, 1500)
+        self.assertEqual(req.bucket(3).yds, 1500)
+        self.assertEqual(req.bucket(4).yds, 5500)
+
+        self.assertEqual(req.bucket(1).lbs, 0)
+        self.assertAlmostEqual(req.bucket(2).lbs, 1500*self.fabrics[0].yld, places=4)
+        self.assertAlmostEqual(req.bucket(3).lbs, 1500*self.fabrics[0].yld, places=4)
+        self.assertAlmostEqual(req.bucket(4).lbs, 5500*self.fabrics[0].yld, places=4)
 
 if __name__ == '__main__':
     unittest.main()

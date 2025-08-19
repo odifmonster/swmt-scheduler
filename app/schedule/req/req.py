@@ -37,9 +37,9 @@ class Req(HasID[str], SuperImmut,
         priv = {
             'prefix': 'Req', 'id': 'REQ ' + item.id,
             'buckets': (Bucket(self, buckets[0], p1date),
-                        Bucket(self, buckets[1], p1date+dt.timedelta(days=4)),
-                        Bucket(self, buckets[2], p1date+dt.timedelta(days=7)),
-                        Bucket(self, buckets[3], p1date+dt.timedelta(days=11)))
+                        Bucket(self, sum(buckets[:2]), p1date+dt.timedelta(days=4)),
+                        Bucket(self, sum(buckets[:3]), p1date+dt.timedelta(days=7)),
+                        Bucket(self, sum(buckets), p1date+dt.timedelta(days=11)))
         }
         SuperImmut.__init__(self, priv=priv, item=item)
 
