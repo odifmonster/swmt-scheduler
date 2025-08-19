@@ -6,3 +6,4 @@ from app.schedule.req import ReqView as ReqView, Req as Req, \
     ReqPriorView as ReqPriorView, ReqPriorGroup as ReqPriorGroup
 from app.schedule.dyelot import DyeLot as DyeLot
 from app.schedule.job import Job as Job
+from app.schedule.jet import Jet as Jet

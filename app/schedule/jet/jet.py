@@ -7,15 +7,15 @@ from app.style import color
 from ..job import Job
 
 class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end','rem_time',
-                                         'jobs_since_strip'),
-          priv_attrs=('prefix','id','min_date','jobs'),
-          frozen=('_Jet__prefix','_Jet__id','_Jet__min_date')):
+                                         'jobs_since_strip','port_range','soil_level'),
+          priv_attrs=('prefix','id','min_date','max_date','soil_level','jobs'),
+          frozen=('_Jet__prefix','_Jet__id','_Jet__min_date','_Jet__max_date')):
 
     def __init__(self, id: str, n_ports: int, port_min: float, port_max: float,
                  min_date: dt.datetime, max_date: dt.datetime):
         priv = {
             'prefix': 'Jet', 'id': id, 'min_date': min_date, 
-            'max_date': max_date, 'jobs': []
+            'max_date': max_date, 'soil_level': 0, 'jobs': []
         }
         super().__init__(priv=priv, n_ports=n_ports, port_range=FloatRange(port_min, port_max))
     
@@ -58,12 +58,28 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
         return n
     
     @property
+    def soil_level(self) -> int:
+        return self.__soil_level
+    
+    @property
     def jobs(self) -> list[Job]:
         return [j for j in self.__jobs]
     
     def add_job(self, job: Job) -> None:
-        if self.__jobs and self.__jobs[-1].end > job.start:
+        if self.__jobs and self.__jobs[-1].end > job.start + dt.timedelta(minutes=2):
             raise ValueError('Cannot add job that starts before the last job ends.')
+        if job.color.shade == color.BLACK:
+            self.__soil_level += 5
+        elif job.color.shade == color.MEDIUM:
+            self.__soil_level += 3
+        elif job.color.shade == color.EMPTY:
+            self.__soil_level += 2
+        elif job.color.shade in (color.LIGHT, color.SOLUTION):
+            self.__soil_level += 1
+        elif job.color.shade == color.STRIP:
+            self.__soil_level -= 25
+            self.__soil_level = max(0, self.__soil_level)
+
         self.__jobs.append(job)
 
     def sort_jobs(self) -> None:
@@ -72,6 +88,7 @@ class Jet(HasID[str], SuperImmut, attrs=('_prefix','id','n_ports','last_job_end'
         strips = sorted(strips, key=lambda j: j.max_date)
 
         self.__jobs: list[Job] = []
+        self.__soil_level = 0
         oldjobs = sorted(oldjobs, key=lambda j: (j.max_date, j.color))
 
         for j in oldjobs:
