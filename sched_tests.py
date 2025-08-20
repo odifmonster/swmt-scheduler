@@ -88,5 +88,34 @@ class TestJetSched(unittest.TestCase):
             sched.add_job(job)
             self.assertEqual(sched.jobs_since_strip, i+1)
 
+class TestJet(unittest.TestCase):
+
+    def setUp(self):
+        self.greige = GreigeStyle('GREIGE', 330, 370)
+        self.sol_fab = FabricStyle('FABRIC1', self.greige, 'MASTER1',
+                                   Color('SOLUTION COLOR', 100, 'SOLUTION'),
+                                   2.5, ['Jet'])
+        self.lt_fab = FabricStyle('FABRIC2', self.greige, 'MASTER2',
+                                  Color('LIGHT COLOR', 200, 'LIGHT'),
+                                  2.5, ['Jet'])
+        self.md_fab = FabricStyle('FABRIC3', self.greige, 'MASTER3',
+                                  Color('MEDIUM COLOR', 300, 'MEDIUM'),
+                                  2.5, ['Jet'])
+        self.blk_fab = FabricStyle('FABRIC4', self.greige, 'MASTER4',
+                                   Color('BLACK COLOR', 400, 'BLACK'),
+                                   2.5, ['Jet'])
+
+    def test_basic_start(self):
+        jet = 0
+
+    def test_sequenced_start(self):
+        pass
+
+    def test_dated_start(self):
+        pass
+
+    def test_combined_start(self):
+        pass
+
 if __name__ == '__main__':
     unittest.main()

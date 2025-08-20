@@ -3,7 +3,7 @@
 import datetime as dt
 
 from app.support import SuperImmut, DateRange
-from app.style.color import SOLUTION, LIGHT, MEDIUM, BLACK, STRIP, HEAVYSTRIP
+from app.style.color import SOLUTION, LIGHT, MEDIUM, STRIP, HEAVYSTRIP
 from ...job import Job
 
 class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_since_strip',

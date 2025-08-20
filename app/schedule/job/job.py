@@ -3,7 +3,7 @@
 import datetime as dt
 
 from app.support import HasID, SuperImmut
-from app.style import color, fabric, FabricStyle
+from app.style import color
 from ..dyelot import DyeLot, DyeLotView
 
 _CTR = 0
@@ -29,11 +29,11 @@ class Job(HasID[str], SuperImmut,
         for lot in lots:
             lot.start = start
             lot.end = start + cycle_time
-        return cls(id, item.color.shade, item, start, cycle_time, lots)
+        return cls(id, item.color.shade, start, cycle_time, lots)
 
     @classmethod
     def make_placeholder(cls, id: str, start: dt.datetime, end: dt.datetime) -> 'Job':
-        return cls(id, color.EMPTY, fabric.EMPTY, start, end - start, tuple())
+        return cls(id, color.EMPTY, start, end - start, tuple())
     
     @classmethod
     def make_strip(cls, is_heavy: bool, start: dt.datetime, end: dt.datetime | None = None,
@@ -54,13 +54,12 @@ class Job(HasID[str], SuperImmut,
             shade = color.STRIP
             cycle_time = end - start
         
-        return cls(id, shade, fabric.EMPTY, start, cycle_time, tuple())
+        return cls(id, shade, start, cycle_time, tuple())
 
-    def __init__(self, id: str, shade: color.ShadeGrade, item: FabricStyle,
-                 start: dt.datetime, cycle_time: dt.datetime,
+    def __init__(self, id: str, shade: color.ShadeGrade, start: dt.datetime, cycle_time: dt.datetime,
                  lots: tuple[DyeLot, ...]) -> None:
         priv = { 'prefix': 'Job', 'id': id, 'lots': lots, 'start': start }
-        SuperImmut.__init__(self, priv=priv, shade=shade, item=item, cycle_time=cycle_time)
+        SuperImmut.__init__(self, priv=priv, shade=shade, cycle_time=cycle_time)
     
     @property
     def _prefix(self):

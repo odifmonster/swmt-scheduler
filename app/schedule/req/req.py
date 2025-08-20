@@ -65,7 +65,7 @@ class Bucket(SuperView['Req'],
         return (yds / self.item.yld, time)
 
 class ReqView(SuperView['Req'],
-              funcs=['bucket','assign_lot','unassign_lot'],
+              funcs=['bucket','late_yd_buckets','late_lb_buckets','assign_lot','unassign_lot'],
               dunders=['repr','eq','hash'],
               attrs=['_prefix','id','item','greige','color','lots']):
     pass
@@ -110,7 +110,7 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut,
     def bucket(self, pnum: Literal[1, 2, 3, 4]) -> Bucket:
         return self.__buckets[pnum-1]
     
-    def late_yd_buckets(self) -> list[tuple[float, dt.datetime]]:
+    def late_yd_buckets(self) -> list[tuple[float, dt.timedelta]]:
         table = []
         for i in range(1,4):
             late_pair = self.bucket(i).late_yds
@@ -118,7 +118,7 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut,
                 table.append(late_pair)
         return table
     
-    def late_lb_buckets(self) -> list[tuple[float, dt.datetime]]:
+    def late_lb_buckets(self) -> list[tuple[float, dt.timedelta]]:
         table = []
         for i in range(1,4):
             late_pair = self.bucket(i).late_lbs
@@ -127,8 +127,8 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut,
         return table
     
     @setter_like
-    def assign_lot(self, rolls: list[AllocRoll]) -> DyeLot:
-        newlot = DyeLot(rolls, self.item, self.__view)
+    def assign_lot(self, rolls: list[AllocRoll], pnum: int) -> DyeLot:
+        newlot = DyeLot(rolls, self.item, self.__view, pnum)
         self.__lots.append(newlot)
         return newlot
     
