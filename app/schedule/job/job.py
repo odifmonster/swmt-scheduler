@@ -3,7 +3,7 @@
 import datetime as dt
 
 from app.support import HasID, SuperImmut
-from app.style import color, FabricStyle
+from app.style import color, fabric, FabricStyle
 from ..dyelot import DyeLot, DyeLotView
 
 _CTR = 0
@@ -30,6 +30,10 @@ class Job(HasID[str], SuperImmut,
             lot.start = start
             lot.end = start + cycle_time
         return cls(id, item.color.shade, item, start, cycle_time, lots)
+
+    @classmethod
+    def make_placeholder(cls, id: str, start: dt.datetime, end: dt.datetime) -> 'Job':
+        return cls(id, color.EMPTY, fabric.EMPTY, start, end - start, tuple())
 
     def __init__(self, id: str, shade: color.ShadeGrade, item: FabricStyle,
                  start: dt.datetime, cycle_time: dt.datetime,

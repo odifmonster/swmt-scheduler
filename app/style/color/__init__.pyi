@@ -1,11 +1,12 @@
 from app.style.color.color import ShadeGrade as ShadeGrade, SOLUTION as SOLUTION, \
-    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK, STRIP as STRIP, EMPTY as EMPTY
+    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK, STRIP as STRIP, \
+    HEAVYSTRIP as HEAVYSTRIP, EMPTY as EMPTY
 
 from typing import Literal
 from app.support import HasID, SuperImmut
 
-type _RawShadeInt = Literal[1, 2, 3, 4, 5, 6]
-type _RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'STRIP', 'EMPTY']
+type _RawShadeInt = Literal[1, 2, 3, 4, 5, 6, 7]
+type _RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'STRIP', 'HEAVYSTRIP', 'EMPTY']
 
 class Color(HasID[str], SuperImmut):
     """
@@ -13,7 +14,7 @@ class Color(HasID[str], SuperImmut):
     """
 
     name: str # The English name of the color
-    shade: ShadeGrade # Either 0_SOLUTION, 1_LIGHT, 2_MEDIUM, or 3_BLACK
+    shade: ShadeGrade # Either 4_SOLUTION, 5_LIGHT, 6_MEDIUM, or 7_BLACK
 
     def __init__(self, name: str, number: int, raw_shade: _RawShadeInt | _RawShadeStr) -> None:
         """
@@ -24,6 +25,7 @@ class Color(HasID[str], SuperImmut):
             number:
               The dye formula as an integer. The 5-digit string will be used as the object's id.
             raw_shade:
-              An integer 1-6 or a string indicating the "shade" of this color.
+              An integer 1-7 or a string indicating the "shade" of this color. 5-7 are for strip
+              cycles and placeholder jobs.
         """
         ...

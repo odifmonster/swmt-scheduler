@@ -10,12 +10,17 @@ from ..dyelot import DyeLot, DyeLotView
 
 class Bucket(SuperView['Req'],
              attrs=['item','greige','color','lots'],
-             vattrs=['_Bucket__yds','_Bucket__date','yds','lbs','date']):
+             vattrs=['_Bucket__yds','_Bucket__date','date','yds','lbs',
+                     'total_yds','total_lbs','late_yds','late_lbs']):
     
     def __init__(self, link: 'Req', yds: float, date: dt.datetime):
         self.__yds = yds
         self.__date = date
         super().__init__(link)
+    
+    @property
+    def date(self) -> dt.datetime:
+        return self.__date
 
     @property
     def yds(self) -> float:
@@ -29,11 +34,36 @@ class Bucket(SuperView['Req'],
     
     @property
     def lbs(self) -> float:
-        return self.yds * self.item.yld
+        return self.yds / self.item.yld
     
     @property
-    def date(self) -> dt.datetime:
-        return self.__date
+    def total_yds(self) -> float:
+        lots: list[DyeLotView] = self.lots
+        return self.__yds - sum(map(lambda l: l.yds, lots))
+    
+    @property
+    def total_lbs(self) -> float:
+        return self.total_yds / self.item.yld
+    
+    @property
+    def late_yds(self) -> tuple[float, dt.timedelta]:
+        overdue_yds = self.yds
+        lots: list[DyeLotView] = self.lots
+        total_yds = 0
+        end_time = self.date
+        for lot in lots:
+            if lot.end + dt.timedelta(hours=16) <= self.date:
+                continue
+            if total_yds >= overdue_yds:
+                return (overdue_yds, end_time - self.date)
+            total_yds += lot.yds
+            end_time = lot.end + dt.timedelta(hours=16)
+        return (overdue_yds, dt.timedelta(days=7))
+    
+    @property
+    def late_lbs(self) -> tuple[float, dt.timedelta]:
+        yds, time = self.late_yds
+        return (yds / self.item.yld, time)
 
 class ReqView(SuperView['Req'],
               funcs=['bucket','assign_lot','unassign_lot'],
@@ -80,6 +110,22 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut,
     
     def bucket(self, pnum: Literal[1, 2, 3, 4]) -> Bucket:
         return self.__buckets[pnum-1]
+    
+    def late_yd_buckets(self) -> list[tuple[float, dt.datetime]]:
+        table = []
+        for i in range(1,4):
+            late_pair = self.bucket(i).late_yds
+            if late_pair[0] > 0:
+                table.append(late_pair)
+        return table
+    
+    def late_lb_buckets(self) -> list[tuple[float, dt.datetime]]:
+        table = []
+        for i in range(1,4):
+            late_pair = self.bucket(i).late_lbs
+            if late_pair[0] > 0:
+                table.append(late_pair)
+        return table
     
     @setter_like
     def assign_lot(self, rolls: list[AllocRoll]) -> DyeLot:

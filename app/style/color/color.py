@@ -6,14 +6,15 @@ from app.support import HasID, SuperImmut
 
 ShadeGrade = NewType('ShadeGrade', str)
 STRIP = ShadeGrade('0_STRIP')
-EMPTY = ShadeGrade('1_EMPTY')
-SOLUTION = ShadeGrade('2_SOLUTION')
-LIGHT = ShadeGrade('3_LIGHT')
-MEDIUM = ShadeGrade('4_MEDIUM')
-BLACK = ShadeGrade('5_BLACK')
+HEAVYSTRIP = ShadeGrade('1_HEAVYSTRIP')
+EMPTY = ShadeGrade('2_EMPTY')
+SOLUTION = ShadeGrade('3_SOLUTION')
+LIGHT = ShadeGrade('4_LIGHT')
+MEDIUM = ShadeGrade('5_MEDIUM')
+BLACK = ShadeGrade('6_BLACK')
 
-type RawShadeInt = Literal[1, 2, 3, 4, 5, 6]
-type RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'STRIP', 'EMPTY']
+type RawShadeInt = Literal[1, 2, 3, 4, 5, 6, 7]
+type RawShadeStr = Literal['LIGHT', 'MEDIUM', 'BLACK', 'SOLUTION', 'STRIP', 'HEAVYSTRIP', 'EMPTY']
 
 def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
     if type(raw) is int:
@@ -23,7 +24,8 @@ def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
             case 3: return BLACK
             case 4: return SOLUTION
             case 5: return STRIP
-            case 6: return EMPTY
+            case 6: return HEAVYSTRIP
+            case 7: return EMPTY
             case _: raise ValueError(f'Unknown shade grade: {raw}')
     if type(raw) is str:
         match raw:
@@ -32,6 +34,7 @@ def _get_shade_grade(raw: RawShadeInt | RawShadeStr):
             case 'BLACK': return BLACK
             case 'SOLUTION': return SOLUTION
             case 'STRIP': return STRIP
+            case 'HEAVYSTRIP': return HEAVYSTRIP
             case 'EMPTY': return EMPTY
             case _: raise ValueError(f'Unknown shade grade: {repr(raw)}.')
     raise TypeError(f'\'raw\' argument must be type \'int\' or \'str\'.')
