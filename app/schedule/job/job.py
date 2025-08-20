@@ -85,7 +85,7 @@ class Job(HasID[str], SuperImmut,
     
     @property
     def due_date(self) -> dt.datetime:
-        return min(self.lots, key=lambda l: l.due_date)
+        return min(self.lots, key=lambda l: l.due_date).due_date
 
     @property
     def lots(self) -> list[DyeLotView]:

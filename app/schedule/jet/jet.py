@@ -18,7 +18,7 @@ class Jet(HasID[str], SuperImmut,
             'prefix': 'Jet', 'id': id
         }
         SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
-                            date_rng=DateRange(min_date, max_date), sched=JetSched(min_date, max_date))
+                            date_rng=DateRange(min_date, max_date), sched=JetSched(min_date, max_date, 0))
         
     @property
     def _prefix(self) -> str:
@@ -33,14 +33,9 @@ class Jet(HasID[str], SuperImmut,
         return self.sched.jobs
     
     def get_start_idx(self, job: Job):
-        for i, j in enumerate(self.jobs):
-            job.start = j.start
-            if job.end + dt.timedelta(hours=16) > job.due_date:
-                return max(0, i-1)
-            if j.shade in (STRIP, HEAVYSTRIP): continue
-            if j.shade < job.shade:
-                return max(0, i-1)
-        return len(self.jobs)
+        curjobs = self.jobs # keep this line, use this variable
+
+        return 0
     
     def insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]]:
         newjobs = self.jobs

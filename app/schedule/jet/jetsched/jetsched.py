@@ -58,3 +58,6 @@ class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_sin
             else:
                 self.__soil_level += 7
         self.__jobs.append(job)
+    
+    def clear_jobs(self):
+        self.__jobs = []

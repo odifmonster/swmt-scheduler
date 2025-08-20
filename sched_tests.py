@@ -22,6 +22,12 @@ def random_job(start: dt.datetime, fabric: FabricStyle) -> Job:
     lot = DyeLot([roll], fabric, req.view(), 1)
     return Job.make_job(start, (lot,))
 
+def job_with_due_date(fabric: FabricStyle, due_date: dt.datetime) -> Job:
+    req = Req(fabric, due_date, (0,0,0,0))
+    roll = AllocRoll(random_str_id(), fabric.greige, 350)
+    lot = DyeLot([roll], fabric, req.view(), 1)
+    return Job.make_job(dt.datetime.fromtimestamp(0), (lot,))
+
 def make_colors(n: int) -> list[Color]:
     clrs: list[Color] = []
     shades = ['SOLUTION', 'LIGHT', 'MEDIUM', 'BLACK']
@@ -106,16 +112,97 @@ class TestJet(unittest.TestCase):
                                    2.5, ['Jet'])
 
     def test_basic_start(self):
-        jet = 0
+        start = dt.datetime(2025, 8, 18)
+        end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
+        due_date = dt.datetime(2025, 9, 1)
+        jet = Jet('Jet', 4, 300, 400, start, end)
+
+        for i in range(4):
+            job = job_with_due_date(self.md_fab, due_date)
+            idx = jet.get_start_idx(job)
+            self.assertEqual(idx, i)
+            job.start = jet.sched.last_job_end
+            jet.sched.add_job(job)
 
     def test_sequenced_start(self):
-        pass
+        start = dt.datetime(2025, 8, 18)
+        end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
+        due_date = dt.datetime(2025, 9, 1)
+        jet = Jet('Jet', 4, 300, 400, start, end)
+
+        for _ in range(4):
+            job = job_with_due_date(self.md_fab, due_date)
+            job.start = jet.sched.last_job_end
+            jet.sched.add_job(job)
+
+        blk_job = job_with_due_date(self.blk_fab, due_date)
+        blk_idx = jet.get_start_idx(blk_job)
+        self.assertEqual(blk_idx, 4)
+
+        lt_job = job_with_due_date(self.lt_fab, due_date)
+        lt_idx = jet.get_start_idx(lt_job)
+        self.assertEqual(lt_idx, 0)
+
+        jet.sched.clear_jobs()
+        for i in range(8):
+            if i < 4:
+                job = job_with_due_date(self.lt_fab, due_date)
+            else:
+                job = job_with_due_date(self.blk_fab, due_date)
+            job.start = jet.sched.last_job_end
+            jet.sched.add_job(job)
+
+        md_job = job_with_due_date(self.md_fab, due_date)
+        md_idx = jet.get_start_idx(md_job)
+        self.assertEqual(md_idx, 4)
 
     def test_dated_start(self):
-        pass
+        start = dt.datetime(2025, 8, 18)
+        end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
+        due_date = dt.datetime(2025, 9, 1)
+        jet = Jet('Jet', 4, 300, 400, start, end)
+
+        for _ in range(6):
+            job = job_with_due_date(self.md_fab, due_date)
+            job.start = jet.sched.last_job_end
+            jet.sched.add_job(job)
+
+        early_job = job_with_due_date(self.md_fab, dt.datetime(2025, 8, 18, hour=8))
+        early_idx = jet.get_start_idx(early_job)
+        self.assertEqual(early_idx, -1)
+
+        late_job = job_with_due_date(self.md_fab, due_date)
+        late_idx = jet.get_start_idx(late_job)
+        self.assertEqual(late_idx, 6)
+
+        mid_job = job_with_due_date(self.md_fab, dt.datetime(2025, 8, 19, hour=17))
+        mid_idx = jet.get_start_idx(mid_job)
+        self.assertEqual(mid_idx, 2)
 
     def test_combined_start(self):
-        pass
+        self.assertEqual(1+1, 2)
+
+        """
+        schedule:
+            mon 0-8 = lt
+            mon 8-16 = md
+            mon 16-tues 0 = md
+            tues 0-10 = blk
+            tues 10-20 = blk
+            tues 20-wed 2 = sol
+            wed 2-8 = sol
+            wed 8-16 = lt
+            wed 16-thurs 0 = md
+            thurs 0-8 = md
+            thurs 8-18 = blk
+            thurs 18-fri 4 = blk
+
+        insertion points:
+            solution before tuesday (0)
+            lt before tuesday (2)
+            blk before tuesday (0)
+            solution before thursday 
+        """
 
 if __name__ == '__main__':
     unittest.main()
