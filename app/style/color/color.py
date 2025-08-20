@@ -54,3 +54,12 @@ class Color(HasID[str], SuperImmut,
     @property
     def id(self):
         return f'{self.__id:05}'
+    
+    def get_needed_strip(self, soil_level: int) -> ShadeGrade | None:
+        if self.shade == LIGHT and soil_level >= 25:
+            if soil_level - 27 > 10:
+                return HEAVYSTRIP
+            return STRIP
+        if self.shade == MEDIUM and soil_level >= 45:
+            return STRIP
+        return None

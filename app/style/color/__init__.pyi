@@ -12,10 +12,8 @@ class Color(HasID[str], SuperImmut):
     """
     A class for fabric color information. All properties are immutable.
     """
-
     name: str # The English name of the color
     shade: ShadeGrade # Either 4_SOLUTION, 5_LIGHT, 6_MEDIUM, or 7_BLACK
-
     def __init__(self, name: str, number: int, raw_shade: _RawShadeInt | _RawShadeStr) -> None:
         """
         Initialize a new Color object.
@@ -29,3 +27,4 @@ class Color(HasID[str], SuperImmut):
               cycles and placeholder jobs.
         """
         ...
+    def get_needed_strip(self, soil_level: int) -> ShadeGrade | None: ...

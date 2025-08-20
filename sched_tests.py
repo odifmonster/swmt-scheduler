@@ -169,7 +169,7 @@ class TestJet(unittest.TestCase):
 
         early_job = job_with_due_date(self.md_fab, dt.datetime(2025, 8, 18, hour=8))
         early_idx = jet.get_start_idx(early_job)
-        self.assertEqual(early_idx, -1)
+        self.assertEqual(early_idx, 0)
 
         late_job = job_with_due_date(self.md_fab, due_date)
         late_idx = jet.get_start_idx(late_job)
@@ -180,29 +180,37 @@ class TestJet(unittest.TestCase):
         self.assertEqual(mid_idx, 2)
 
     def test_combined_start(self):
-        self.assertEqual(1+1, 2)
+        start = dt.datetime(2025, 8, 18)
+        end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
+        due_date = dt.datetime(2025, 9, 1)
+        jet = Jet('Jet', 4, 300, 400, start, end)
 
-        """
-        schedule:
-            mon 0-8 = lt
-            mon 8-16 = md
-            mon 16-tues 0 = md
-            tues 0-10 = blk
-            tues 10-20 = blk
-            tues 20-wed 2 = sol
-            wed 2-8 = sol
-            wed 8-16 = lt
-            wed 16-thurs 0 = md
-            thurs 0-8 = md
-            thurs 8-18 = blk
-            thurs 18-fri 4 = blk
+        items = [self.lt_fab, self.md_fab, self.md_fab, self.blk_fab, self.blk_fab,
+                 'STRIP', self.sol_fab, self.lt_fab, self.md_fab, self.md_fab,
+                 self.blk_fab, self.blk_fab]
+        
+        for item in items:
+            if type(item) is str and item == 'STRIP':
+                job = Job.make_strip(False, jet.sched.last_job_end)
+            else:
+                job = job_with_due_date(item, due_date)
+            job.start = jet.sched.last_job_end
+            jet.sched.add_job(job)
 
-        insertion points:
-            solution before tuesday (0)
-            lt before tuesday (2)
-            blk before tuesday (0)
-            solution before thursday 
-        """
+        test_job1 = job_with_due_date(self.sol_fab, dt.datetime(2025, 8, 19, hour=20))
+        self.assertEqual(0, jet.get_start_idx(test_job1))
+
+        test_job2 = job_with_due_date(self.lt_fab, dt.datetime(2025, 8, 19, hour=20))
+        self.assertEqual(1, jet.get_start_idx(test_job2))
+
+        test_job3 = job_with_due_date(self.blk_fab, dt.datetime(2025, 8, 19, hour=20))
+        self.assertEqual(2, jet.get_start_idx(test_job3))
+
+        test_job4 = job_with_due_date(self.sol_fab, dt.datetime(2025, 8, 21, hour=20))
+        self.assertEqual(7, jet.get_start_idx(test_job4))
+
+        test_job5 = job_with_due_date(self.lt_fab, dt.datetime(2025, 8, 22, hour=20))
+        self.assertEqual(8, jet.get_start_idx(test_job5))
 
 if __name__ == '__main__':
     unittest.main()

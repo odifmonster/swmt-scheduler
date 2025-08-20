@@ -1,8 +1,9 @@
 from app.schedule.jet.jetsched import JetSched as JetSched
 
+from typing import Callable
 import datetime as dt
 from app.support import HasID, SuperImmut, FloatRange, DateRange
-from app.schedule import Job
+from app.schedule import ReqView, Job
 
 class Jet(HasID[str], SuperImmut):
     """
@@ -52,7 +53,7 @@ class Jet(HasID[str], SuperImmut):
         -1.
         """
         ...
-    def insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]]:
+    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]] | None:
         """
         Create a new schedule, inserting 'job' at the provided 'idx'.
 
@@ -65,3 +66,7 @@ class Jet(HasID[str], SuperImmut):
         insertion.
         """
         ...
+    def get_sched_cost(self, newsched: JetSched, kicked: list[Job],
+                       cost_func: Callable[[JetSched, 'Jet', set[ReqView]], float]) -> float: ...
+    def get_all_options(self, job: Job,
+                        cost_func: Callable[[JetSched, 'Jet', set[ReqView]]]) -> list[tuple[int, float]]: ...
