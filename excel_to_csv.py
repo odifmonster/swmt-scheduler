@@ -33,6 +33,8 @@ def get_out_path(key: InfoKey) -> os.PathLike:
             return os.path.join(APPDIR, 'style', 'greige', 'styles.csv')
         case 'greige_translation':
             return os.path.join(APPDIR, 'style', 'translation', 'translate.csv')
+        case 'jet_info':
+            return os.path.join(APPDIR, 'schedule', 'jet', 'jets.csv')
 
 def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
     match key:

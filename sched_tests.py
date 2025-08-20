@@ -116,6 +116,7 @@ class TestGetStart(unittest.TestCase):
         end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
         due_date = dt.datetime(2025, 9, 1)
         jet = Jet('Jet', 4, 300, 400, start, end)
+        jet.init_new_sched()
 
         for i in range(4):
             job = job_with_due_date(self.md_fab, due_date)
@@ -129,6 +130,7 @@ class TestGetStart(unittest.TestCase):
         end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
         due_date = dt.datetime(2025, 9, 1)
         jet = Jet('Jet', 4, 300, 400, start, end)
+        jet.init_new_sched()
 
         for _ in range(4):
             job = job_with_due_date(self.md_fab, due_date)
@@ -161,6 +163,7 @@ class TestGetStart(unittest.TestCase):
         end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
         due_date = dt.datetime(2025, 9, 1)
         jet = Jet('Jet', 4, 300, 400, start, end)
+        jet.init_new_sched()
 
         for _ in range(6):
             job = job_with_due_date(self.md_fab, due_date)
@@ -184,6 +187,7 @@ class TestGetStart(unittest.TestCase):
         end = dt.datetime(2025, 8, 22, hour=23, minute=59, second=59)
         due_date = dt.datetime(2025, 9, 1)
         jet = Jet('Jet', 4, 300, 400, start, end)
+        jet.init_new_sched()
 
         items = [self.lt_fab, self.md_fab, self.md_fab, self.blk_fab, self.blk_fab,
                  'STRIP', self.sol_fab, self.lt_fab, self.md_fab, self.md_fab,
@@ -211,9 +215,6 @@ class TestGetStart(unittest.TestCase):
 
         test_job5 = job_with_due_date(self.lt_fab, dt.datetime(2025, 8, 22, hour=20))
         self.assertEqual(8, jet.get_start_idx(test_job5))
-
-class TestTryInsert(unittest.TestCase):
-    pass
 
 if __name__ == '__main__':
     unittest.main()

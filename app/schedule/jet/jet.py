@@ -11,16 +11,16 @@ from .jetsched import JetSched
 
 class Jet(HasID[str], SuperImmut,
           attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','sched'),
-          priv_attrs=('prefix','id'),
-          frozen=('_Jet__prefix','_Jet__id','n_ports','load_rng','date_rng','sched')):
+          priv_attrs=('prefix','id','init_sched'),
+          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng','date_rng')):
     
     def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
                  max_date: dt.datetime):
         priv = {
-            'prefix': 'Jet', 'id': id
+            'prefix': 'Jet', 'id': id, 'init_sched': JetSched(min_date, max_date, 0)
         }
         SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
-                            date_rng=DateRange(min_date, max_date), sched=JetSched(min_date, max_date, 0))
+                            date_rng=DateRange(min_date, max_date), sched=None)
         
     @property
     def _prefix(self) -> str:
@@ -32,7 +32,16 @@ class Jet(HasID[str], SuperImmut,
     
     @property
     def jobs(self) -> list[Job]:
+        if self.sched is None:
+            return []
         return self.sched.jobs
+    
+    def add_placeholder(self, job: Job) -> None:
+        self.__init_sched.add_job(job)
+    
+    def init_new_sched(self) -> None:
+        self.sched = JetSched(max(self.__init_sched.last_job_end, self.date_rng.minval),
+                              self.date_rng.maxval, self.__init_sched.soil_level)
     
     def get_start_idx(self, job: Job):
         curjobs = self.jobs
@@ -47,8 +56,7 @@ class Jet(HasID[str], SuperImmut,
     
     def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]] | None:
         curjobs = self.jobs
-        cursched: JetSched = self.sched
-        newsched = JetSched(cursched.date_rng.minval, cursched.date_rng.maxval)
+        newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval)
         kicked: list[Job] = []
 
         for i in range(idx):
@@ -59,7 +67,7 @@ class Jet(HasID[str], SuperImmut,
         
         fits = newsched.check_for_strip(job)
         if not fits:
-            cursched.set_times()
+            self.sched.set_times()
             return None
         
         job.start = newsched.last_job_end
@@ -92,14 +100,13 @@ class Jet(HasID[str], SuperImmut,
             for lot in job.lots:
                 all_reqs.add(lot.req)
 
-        cursched: JetSched = self.sched
-        cursched.set_times()
-        curcost = cost_func(cursched, self, all_reqs)
+        self.sched.set_times()
+        curcost = cost_func(self.sched, self, all_reqs)
         newsched.set_times()
         for kjob in kicked:
             kjob.start = None
         newcost = cost_func(newsched, self, all_reqs)
-        cursched.set_times()
+        self.sched.set_times()
 
         return newcost - curcost
     

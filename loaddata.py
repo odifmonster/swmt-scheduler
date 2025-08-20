@@ -4,7 +4,7 @@ import pandas as pd, datetime as dt
 
 from app import style
 from app.inventory import Inventory, Roll
-from app.schedule import Req, Demand
+from app.schedule import Req, Demand, Jet, JetSched, jet
 
 import excel
 excel.init()
