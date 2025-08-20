@@ -52,12 +52,11 @@ class Bucket(SuperView['Req'],
         total_yds = 0
         end_time = self.date
         for lot in lots:
-            if lot.end + dt.timedelta(hours=16) <= self.date:
-                continue
-            if total_yds >= overdue_yds:
+            if lot.end + dt.timedelta(hours=16) <= self.date or total_yds < overdue_yds:
+                total_yds += lot.yds
+                end_time = lot.end + dt.timedelta(hours=16)
+            else:
                 return (overdue_yds, end_time - self.date)
-            total_yds += lot.yds
-            end_time = lot.end + dt.timedelta(hours=16)
         return (overdue_yds, dt.timedelta(days=7))
     
     @property

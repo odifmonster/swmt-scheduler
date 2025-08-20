@@ -3,6 +3,6 @@
 from .dyelot import DyeLot, DyeLotView
 from .job import Job
 from .req import Bucket, Req
-from .jet import JetSched
+from .jet import JetSched, Jet
 
-__all__ = ['DyeLot', 'DyeLotView', 'Job', 'Bucket', 'Req', 'JetSched']
+__all__ = ['DyeLot', 'DyeLotView', 'Job', 'Bucket', 'Req', 'JetSched', 'Jet']

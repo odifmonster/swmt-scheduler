@@ -9,8 +9,8 @@ from ..dyelot import DyeLot, DyeLotView
 _CTR = 0
 
 class Job(HasID[str], SuperImmut,
-          attrs=('_prefix','id','shade','item','start','end','cycle_time','lots',
-                 'lbs','yds'),
+          attrs=('_prefix','id','shade','item','start','end','cycle_time','due_date',
+                 'lots','lbs','yds'),
           priv_attrs=('prefix','id','start','lots'),
           frozen=('_Job__prefix','_Job__id','_Job__lots','shade','item','cycle_time')):
     
@@ -83,6 +83,10 @@ class Job(HasID[str], SuperImmut,
     @property
     def end(self) -> dt.datetime:
         return self.__start + self.cycle_time
+    
+    @property
+    def due_date(self) -> dt.datetime:
+        return min(self.lots, key=lambda l: l.due_date)
 
     @property
     def lots(self) -> list[DyeLotView]:

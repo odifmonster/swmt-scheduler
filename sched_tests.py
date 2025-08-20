@@ -7,7 +7,7 @@ import datetime as dt, random
 from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
 from app.schedule import Job, DyeLot, Req
-from app.schedule.jet import JetSched
+from app.schedule.jet import JetSched, Jet
 
 def dt_is_close(date: dt.datetime, tgt: dt.datetime):
     return abs(tgt - date) <= dt.timedelta(minutes=2)
@@ -19,7 +19,7 @@ def random_str_id() -> str:
 def random_job(start: dt.datetime, fabric: FabricStyle) -> Job:
     req = Req(fabric, dt.datetime.now(), (0,0,0,0))
     roll = AllocRoll(random_str_id(), fabric.greige, 350)
-    lot = DyeLot([roll], fabric, req.view())
+    lot = DyeLot([roll], fabric, req.view(), 1)
     return Job.make_job(start, (lot,))
 
 def make_colors(n: int) -> list[Color]:
@@ -59,13 +59,13 @@ class TestJetSched(unittest.TestCase):
         self.fabrics = make_fabrics(100, self.greige1, self.masters, self.colors)
 
     def test_time_calcs(self):
-        sched = JetSched(dt.datetime(2025, 8, 22, hour=17), dt.datetime(2025, 9, 1))
+        sched = JetSched(dt.datetime(2025, 8, 22, hour=17), dt.datetime(2025, 9, 1), 0)
 
         self.assertEqual(sched.last_job_end, dt.datetime(2025, 8, 22, hour=17))
 
         test_req = Req(self.fabric1, dt.datetime.now(), (0,0,0,0))
         test_roll = AllocRoll('ROLL', self.greige1, 350)
-        test_lot = DyeLot([test_roll], self.fabric1, test_req.view())
+        test_lot = DyeLot([test_roll], self.fabric1, test_req.view(), 1)
         job = Job.make_job(sched.last_job_end, (test_lot,))
 
         sched.add_job(job)
@@ -73,7 +73,7 @@ class TestJetSched(unittest.TestCase):
     
     def test_sched_strips(self):
         sched = JetSched(dt.datetime(2025, 8, 18), dt.datetime(2025, 8, 22, hour=23, minute=59,
-                                                               second=59))
+                                                               second=59), 0)
         
         for i in range(6):
             job = random_job(sched.last_job_end, random.choice(self.fabrics))
