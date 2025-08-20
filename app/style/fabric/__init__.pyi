@@ -42,7 +42,7 @@ def init() -> None:
     """
     ...
 
-def get_greige_style(id: str) -> GreigeStyle | None:
+def get_fabric_style(id: str) -> GreigeStyle | None:
     """
     Returns the FabricStyle object with the given id, or None if it does not exist.
     """

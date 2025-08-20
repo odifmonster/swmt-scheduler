@@ -79,7 +79,7 @@ def make_excel_info(**kwargs: Unpack[InfoKWArgs]) -> ExcelInfo:
     
     create_args['fpath'] = os.path.join(dirpath, kwargs['excel_book'])
     create_args['sheet_name'] = kwargs['sheet_name']
-    create_args['skiprows'] = kwargs['start_row']
+    create_args['skiprows'] = kwargs['start_row']-1
 
     if not kwargs['column_names'] is None:
         if kwargs['excel_columns'] is None:
@@ -90,6 +90,8 @@ def make_excel_info(**kwargs: Unpack[InfoKWArgs]) -> ExcelInfo:
         create_args['header'] = None
     elif not kwargs['columns'] is None:
         create_args['usecols'] = kwargs['columns']
+    elif not kwargs['excel_columns'] is None:
+        create_args['usecols'] = kwargs['excel_columns']
     
     if not kwargs['end_row'] is None:
         create_args['nrows'] = kwargs['end_row'] - kwargs['start_row'] + 1

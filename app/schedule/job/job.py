@@ -70,17 +70,20 @@ class Job(HasID[str], SuperImmut,
         return self.__id
     
     @property
-    def start(self) -> dt.datetime:
+    def start(self) -> dt.datetime | None:
         return self.__start
     @start.setter
-    def start(self, new: dt.datetime) -> None:
+    def start(self, new: dt.datetime | None) -> None:
         self.__start = new
         for lot in self.__lots:
             lot.start = new
-            lot.end = new + self.cycle_time
+            if not new is None:
+                lot.end = new + self.cycle_time
     
     @property
-    def end(self) -> dt.datetime:
+    def end(self) -> dt.datetime | None:
+        if self.__start is None:
+            return None
         return self.__start + self.cycle_time
     
     @property

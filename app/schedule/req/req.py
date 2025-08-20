@@ -3,6 +3,7 @@
 from typing import Literal
 import datetime as dt
 
+from app.groups import DataView, Data
 from app.support import HasID, SuperImmut, SuperView, Viewable, setter_like
 from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
@@ -27,6 +28,9 @@ class Bucket(SuperView['Req'],
         lots: list[DyeLotView] = self.lots
         total_yds = 0
         for lot in lots:
+            if lot.end is None:
+                continue
+
             if lot.end + dt.timedelta(hours=16) <= self.date:
                 total_yds += lot.yds
 
@@ -39,7 +43,7 @@ class Bucket(SuperView['Req'],
     @property
     def total_yds(self) -> float:
         lots: list[DyeLotView] = self.lots
-        return self.__yds - sum(map(lambda l: l.yds, lots))
+        return self.__yds - sum(map(lambda l: l.yds, filter(lambda l: not l.start is None, lots)))
     
     @property
     def total_lbs(self) -> float:
@@ -52,6 +56,9 @@ class Bucket(SuperView['Req'],
         total_yds = 0
         end_time = self.date
         for lot in lots:
+            if lot.end is None:
+                continue
+            
             if lot.end + dt.timedelta(hours=16) <= self.date or total_yds < overdue_yds:
                 total_yds += lot.yds
                 end_time = lot.end + dt.timedelta(hours=16)
@@ -64,36 +71,30 @@ class Bucket(SuperView['Req'],
         yds, time = self.late_yds
         return (yds / self.item.yld, time)
 
-class ReqView(SuperView['Req'],
+class ReqView(DataView[str],
               funcs=['bucket','late_yd_buckets','late_lb_buckets','assign_lot','unassign_lot'],
-              dunders=['repr','eq','hash'],
-              attrs=['_prefix','id','item','greige','color','lots']):
+              dunders=['repr'],
+              attrs=['item','greige','color','lots']):
     pass
 
-class Req(HasID[str], Viewable[ReqView], SuperImmut,
-          attrs=('_prefix','id','item','greige','color','lots'),
-          priv_attrs=('prefix','id','view','buckets','lots'),
-          frozen=('_Req__prefix','_Req__id','_Req__view','_Req__buckets','item')):
+class Req(Data[str], fg_flag=False, dattrs=('item','greige','color','lots'),
+          dpriv_attrs=('buckets','lots'), dfrozen=('_Req__buckets','item')):
     
     def __init__(self, item: FabricStyle, p1date: dt.datetime,
                  buckets: tuple[float, float, float, float]):
         priv = {
-            'prefix': 'Req', 'id': 'REQ ' + item.id, 'view': ReqView(self),
             'buckets': (Bucket(self, buckets[0], p1date),
                         Bucket(self, sum(buckets[:2]), p1date+dt.timedelta(days=4)),
                         Bucket(self, sum(buckets[:3]), p1date+dt.timedelta(days=7)),
                         Bucket(self, sum(buckets), p1date+dt.timedelta(days=11))),
             'lots': []
         }
-        SuperImmut.__init__(self, priv=priv, item=item)
+        Data.__init__(self, 'REQ ' + item.id, 'Req', ReqView(self), priv=priv,
+                      item=item)
 
-    @property
-    def _prefix(self) -> str:
-        return self.__prefix
-    
-    @property
-    def id(self) -> str:
-        return self.__id
+    def __repr__(self):
+        bucket_rep = ', '.join([f'p{i}={self.bucket(i).yds:.1f}' for i in range(1,5)])
+        return f'Req(item={self.item}, ' + bucket_rep + ')'
 
     @property
     def greige(self) -> GreigeStyle:
@@ -135,6 +136,3 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut,
     @setter_like
     def unassign_lot(self, lot: DyeLotView) -> None:
         self.__lots.remove(lot)
-
-    def view(self):
-        return self.__view

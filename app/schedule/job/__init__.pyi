@@ -85,14 +85,14 @@ class Job(HasID[str], SuperImmut):
     @property
     def id(self) -> str: ...
     @property
-    def start(self) -> dt.datetime:
-        """The start date and time of this job."""
+    def start(self) -> dt.datetime | None:
+        """The start date and time of this job. None if it has not been scheduled."""
         ...
     @start.setter
-    def start(self, new: dt.datetime) -> None: ...
+    def start(self, new: dt.datetime | None) -> None: ...
     @property
-    def end(self) -> dt.datetime:
-        """The end date and time of this job."""
+    def end(self) -> dt.datetime | None:
+        """The end date and time of this job. None if it has not been scheduled."""
         ...
     @property
     def due_date(self) -> dt.datetime:

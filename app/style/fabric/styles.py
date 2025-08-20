@@ -24,7 +24,7 @@ def init() -> None:
             clr_name = clr_name.strip()
             clr_num = int(clr_num)
             yld = float(yld)
-            shade = int(shade)
+            shade = int(float(shade))
             jets = jets_str.split()
 
             cur_color = Color(clr_name, clr_num, shade)

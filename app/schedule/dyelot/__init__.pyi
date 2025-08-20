@@ -129,8 +129,8 @@ class DyeLotView(SuperView['DyeLot']):
     """
     A class for views of DyeLot objects.
     """
-    start: dt.datetime
-    end: dt.datetime
+    start: dt.datetime | None
+    end: dt.datetime | None
     rolls: tuple[AllocRoll, ...]
     item: FabricStyle
     @property
@@ -159,8 +159,8 @@ class DyeLot(HasID[int], Viewable[DyeLotView], SuperImmut):
     and a link to the requirement it is fulfilling. Its start and end attributes are mutable, but
     should generally only be modified by the enclosing Jobs unless being used in unittests.
     """
-    start: dt.datetime
-    end: dt.datetime
+    start: dt.datetime | None
+    end: dt.datetime | None
     rolls: tuple[AllocRoll, ...]
     item: FabricStyle
     def __init__(self, rolls: list[AllocRoll], item: FabricStyle, rview: _ReqView,

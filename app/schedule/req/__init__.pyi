@@ -1,3 +1,8 @@
+from app.schedule.req.groups import ReqColorKeys as ReqColorKeys, \
+    ReqGreigeKeys as ReqGreigeKeys, DemandKeys as DemandKeys, ReqColorView as ReqColorView, \
+    ReqGreigeView as ReqGreigeView, DemandView as DemandView, ReqColorGroup as ReqColorGroup, \
+    ReqGreigeGroup as ReqGreigeGroup, Demand as Demand
+
 from typing import Literal
 import datetime as dt
 from app.support import HasID, SuperImmut, SuperView, Viewable
@@ -25,6 +30,7 @@ class Bucket(SuperView['Req']):
               The date and time the truck for this bucket will leave.
         """
         ...
+    def __repr__(self) -> str: ...
     @property
     def greige(self) -> GreigeStyle:
         """The greige style for this object."""

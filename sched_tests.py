@@ -94,7 +94,7 @@ class TestJetSched(unittest.TestCase):
             sched.add_job(job)
             self.assertEqual(sched.jobs_since_strip, i+1)
 
-class TestJet(unittest.TestCase):
+class TestGetStart(unittest.TestCase):
 
     def setUp(self):
         self.greige = GreigeStyle('GREIGE', 330, 370)
@@ -211,6 +211,9 @@ class TestJet(unittest.TestCase):
 
         test_job5 = job_with_due_date(self.lt_fab, dt.datetime(2025, 8, 22, hour=20))
         self.assertEqual(8, jet.get_start_idx(test_job5))
+
+class TestTryInsert(unittest.TestCase):
+    pass
 
 if __name__ == '__main__':
     unittest.main()

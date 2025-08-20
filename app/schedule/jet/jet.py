@@ -96,6 +96,8 @@ class Jet(HasID[str], SuperImmut,
         cursched.set_times()
         curcost = cost_func(cursched, self, all_reqs)
         newsched.set_times()
+        for kjob in kicked:
+            kjob.start = None
         newcost = cost_func(newsched, self, all_reqs)
         cursched.set_times()
 
