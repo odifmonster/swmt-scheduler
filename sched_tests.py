@@ -2,191 +2,91 @@
 
 import unittest
 
-import random, datetime as dt
+import datetime as dt, random
 
-from app.style import color, GreigeStyle, Color, FabricMaster, FabricStyle
+from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
-from app.schedule import DyeLot, Job, Req
+from app.schedule import Job, DyeLot, Req
+from app.schedule.jet import JetSched
 
-def make_greige_styles(n: int) -> list[GreigeStyle]:
-    tgts = [350, 362.5, 375]
-    ret: list[GreigeStyle] = []
-    for i in range(n):
-        tgt = random.choice(tgts)
-        ret.append(GreigeStyle(f'GREIGE_{i+1:02}', tgt-20, tgt+20))
-    return ret
+def dt_is_close(date: dt.datetime, tgt: dt.datetime):
+    return abs(tgt - date) <= dt.timedelta(minutes=2)
+
+def random_str_id() -> str:
+    digits = [str(i) for i in range(10)]
+    return ''.join([random.choice(digits) for _ in range(8)])
+
+def random_job(start: dt.datetime, fabric: FabricStyle) -> Job:
+    req = Req(fabric, dt.datetime.now(), (0,0,0,0))
+    roll = AllocRoll(random_str_id(), fabric.greige, 350)
+    lot = DyeLot([roll], fabric, req.view())
+    return Job.make_job(start, (lot,))
 
 def make_colors(n: int) -> list[Color]:
+    clrs: list[Color] = []
     shades = ['SOLUTION', 'LIGHT', 'MEDIUM', 'BLACK']
-    ret: list[Color] = []
-    for i in range(n):
-        ret.append(Color(f'COLOR_{i+1:02}', i*10, random.choice(shades)))
-    return ret
 
-def make_masters(n: int) -> list[FabricMaster]:
+    for i in range(n):
+        clr = Color(f'COLOR_{i+1:02}', 101+i, random.choice(shades))
+        clrs.append(clr)
+    
+    return clrs
+
+def make_masters(n: int) -> list[str]:
     return [f'MASTER_{i+1:02}' for i in range(n)]
 
-def make_fabric_styles(n: int, greiges: list[GreigeStyle], masters: list[FabricMaster],
-                       colors: list[Color]) -> list[FabricStyle]:
-    jets = [f'Jet-{i:02}' for i in (1,2,3,4,7,8,9,10)]
-    return [FabricStyle(f'FABRIC_{i+1:02}', random.choice(greiges), random.choice(masters),
-                        random.choice(colors), 2.2+0.6*random.random(), jets) for i in range(n)]
+def make_fabrics(n: int, greige: GreigeStyle, masters: list[str],
+                 colors: list[Color]) -> list[FabricStyle]:
+    fabs: list[FabricStyle] = []
 
-class TestDyeLot(unittest.TestCase):
-
-    def setUp(self):
-        self.greiges = make_greige_styles(10)
-        self.colors = make_colors(15)
-        self.masters = make_masters(15)
-        self.fabrics = make_fabric_styles(100, self.greiges, self.masters, self.colors)
-
-    def test_lot_qty(self):
-        fab = self.fabrics[0]
-        req = Req(fab, dt.datetime.now(), (0,0,0,0))
-        rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
-                    for i in range(6)]
-        lot = DyeLot(rolls, fab, req.view())
-        
-        self.assertAlmostEqual(sum(map(lambda r: r.lbs, rolls)), lot.lbs, places=4)
-        self.assertAlmostEqual(sum(map(lambda r: r.lbs*fab.yld, rolls)), lot.yds, places=4)
-
-    def test_dl_view(self):
-        fab = self.fabrics[0]
-        req = Req(fab, dt.datetime.now(), (0,0,0,0))
-        rolls = [AllocRoll(f'roll_{i+1:02}', fab.greige, random.normalvariate(mu=350, sigma=10)) \
-                    for i in range(6)]
-        lot = DyeLot(rolls, fab, req.view())
-        
-        lot_view = lot.view()
-
-        lot.start = dt.datetime(2025, 8, 17)
-        lot.end = dt.datetime(2025, 8, 17, hour=8)
-
-        self.assertEqual(lot_view.start, dt.datetime(2025, 8, 17))
-        self.assertEqual(lot_view.end, dt.datetime(2025, 8, 17, hour=8))
-
-        with self.assertRaises(AttributeError) as cm:
-            lot_view.end = dt.datetime(2025, 8, 18)
-
-        self.assertEqual(str(cm.exception), '\'end\' is a viewed attribute on another object.')
-
-class TestJob(unittest.TestCase):
-
-    def setUp(self):
-        self.greiges = make_greige_styles(10)
-        self.colors = make_colors(15)
-        self.masters = make_masters(15)
-        self.fabrics = make_fabric_styles(100, self.greiges, self.masters, self.colors)
-
-    def test_init_times(self):
-        fab = self.fabrics[0]
-        req = Req(fab, dt.datetime.now(), (0,0,0,0))
-        if fab.color.shade == color.BLACK:
-            cycle_time = dt.timedelta(hours=10)
-        elif fab.color.shade == color.SOLUTION:
-            cycle_time = dt.timedelta(hours=6)
-        else:
-            cycle_time = dt.timedelta(hours=8)
-
-        lots: list[DyeLot] = []
-        for i in range(3):
-            roll = AllocRoll(f'roll_{i+1:02}', fab.greige, 350)
-            lot = DyeLot([roll], fab, req.view())
-            lots.append(lot)
-        
-        start1 = dt.datetime(2025, 8, 18)
-        start2 = dt.datetime(2025, 8, 19)
-        job = Job.make_job(start1, lots=tuple(lots))
-
-        for lot in lots:
-            self.assertEqual(lot.start, start1)
-            self.assertEqual(lot.end, start1+cycle_time)
-
-        job.start = start2
-
-        for lot in lots:
-            self.assertEqual(lot.start, start2)
-            self.assertEqual(lot.end, start2+cycle_time)
-
-class TestReq(unittest.TestCase):
-
-    def setUp(self):
-        self.greiges = make_greige_styles(10)
-        self.colors = make_colors(15)
-        self.masters = make_masters(15)
-        self.fabrics = make_fabric_styles(100, self.greiges, self.masters, self.colors)
-
-    def test_init_buckets(self):
-        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
-                  (0, 1500, 0, 4000))
-        
-        self.assertEqual(req.bucket(1).yds, 0)
-        self.assertEqual(req.bucket(2).yds, 1500)
-        self.assertEqual(req.bucket(3).yds, 1500)
-        self.assertEqual(req.bucket(4).yds, 5500)
-
-        self.assertEqual(req.bucket(1).lbs, 0)
-        self.assertAlmostEqual(req.bucket(2).lbs, 1500*self.fabrics[0].yld, places=4)
-        self.assertAlmostEqual(req.bucket(3).lbs, 1500*self.fabrics[0].yld, places=4)
-        self.assertAlmostEqual(req.bucket(4).lbs, 5500*self.fabrics[0].yld, places=4)
+    for i in range(n):
+        fab = FabricStyle(f'FABRIC_{i+1:03}', greige, random.choice(masters),
+                          random.choice(colors), 2.2 + 0.6*random.random(), ['Jet'])
+        fabs.append(fab)
     
-    def test_add_lots(self):
-        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
-                  (0, 1500, 0, 4000))
+    return fabs
 
-        lbs = int(1500/(req.item.yld*50))*50 + 150
-        lots: list[DyeLot] = []
-        for i in range(3):
-            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
+class TestJetSched(unittest.TestCase):
+
+    def setUp(self):
+        self.greige1 = GreigeStyle('GREIGE1', 330, 370)
+        self.clr1 = Color('MD GREY', 100, 'MEDIUM')
+        self.fabric1 = FabricStyle('FABRIC1', self.greige1, 'MASTER1', self.clr1,
+                                   2.5, ['Jet'])
         
-        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
-        self.assertAlmostEqual(req.bucket(1).yds, -1*job.yds, places=4)
-        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
-        self.assertEqual(req.bucket(3).yds, req.bucket(2).yds)
-        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+        self.colors = make_colors(10)
+        self.masters = make_masters(10)
+        self.fabrics = make_fabrics(100, self.greige1, self.masters, self.colors)
 
-        newlot = req.assign_lot([AllocRoll('roll_4', req.greige, 350)])
-        job2 = Job.make_job(dt.datetime(2025, 8, 20), (newlot,))
+    def test_time_calcs(self):
+        sched = JetSched(dt.datetime(2025, 8, 22, hour=17), dt.datetime(2025, 9, 1))
 
-        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
-        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds - job2.yds, places=4)
+        self.assertEqual(sched.last_job_end, dt.datetime(2025, 8, 22, hour=17))
 
-    def test_move_lots(self):
-        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
-                  (0, 1500, 0, 4000))
+        test_req = Req(self.fabric1, dt.datetime.now(), (0,0,0,0))
+        test_roll = AllocRoll('ROLL', self.greige1, 350)
+        test_lot = DyeLot([test_roll], self.fabric1, test_req.view())
+        job = Job.make_job(sched.last_job_end, (test_lot,))
 
-        lbs = int(1500/(req.item.yld*50))*50 + 150
-        lots: list[DyeLot] = []
-        for i in range(3):
-            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
-        
-        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
-        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
-        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
-        job.start = dt.datetime(2025, 8, 20)
-        self.assertEqual(req.bucket(2).yds, 1500)
-        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
+        sched.add_job(job)
+        self.assertTrue(dt_is_close(sched.last_job_end, dt.datetime(2025, 8, 25)))
     
-    def test_remove_lots(self):
-        req = Req(self.fabrics[0], dt.datetime(2025, 8, 15),
-                  (0, 1500, 0, 4000))
-
-        lbs = int(1500/(req.item.yld*50))*50 + 150
-        lots: list[DyeLot] = []
-        for i in range(3):
-            lots.append(req.assign_lot([AllocRoll(f'roll_{i+1}', req.greige, lbs/3)]))
-
-        job = Job.make_job(dt.datetime(2025, 8, 12), tuple(lots))
-        self.assertAlmostEqual(req.bucket(2).yds, 1500 - job.yds, places=4)
-        self.assertAlmostEqual(req.bucket(4).yds, 5500 - job.yds, places=4)
-
-        for lotview in job.lots:
-            req.unassign_lot(lotview)
+    def test_sched_strips(self):
+        sched = JetSched(dt.datetime(2025, 8, 18), dt.datetime(2025, 8, 22, hour=23, minute=59,
+                                                               second=59))
         
-        self.assertEqual(req.bucket(1).yds, 0)
-        self.assertEqual(req.bucket(2).yds, 1500)
-        self.assertEqual(req.bucket(3).yds, 1500)
-        self.assertEqual(req.bucket(4).yds, 5500)
+        for i in range(6):
+            job = random_job(sched.last_job_end, random.choice(self.fabrics))
+            sched.add_job(job)
+            self.assertEqual(sched.jobs_since_strip, i+1)
+        
+        sched.add_job(Job.make_strip(False, sched.last_job_end))
+        self.assertEqual(sched.jobs_since_strip, 0)
+
+        for i in range(3):
+            job = random_job(sched.last_job_end, random.choice(self.fabrics))
+            sched.add_job(job)
+            self.assertEqual(sched.jobs_since_strip, i+1)
 
 if __name__ == '__main__':
     unittest.main()

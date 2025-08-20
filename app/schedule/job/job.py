@@ -34,6 +34,27 @@ class Job(HasID[str], SuperImmut,
     @classmethod
     def make_placeholder(cls, id: str, start: dt.datetime, end: dt.datetime) -> 'Job':
         return cls(id, color.EMPTY, fabric.EMPTY, start, end - start, tuple())
+    
+    @classmethod
+    def make_strip(cls, is_heavy: bool, start: dt.datetime, end: dt.datetime | None = None,
+                   id: str | None = None) -> 'Job':
+        if end is None or id is None:
+            if not (end is None and id is None):
+                raise ValueError('Cannot create placeholder strip cycle without id and end.')
+            globals()['_CTR'] += 1
+            if is_heavy:
+                id = f'HEAVYSTRIP_{globals()['_CTR']:05}'
+                shade = color.HEAVYSTRIP
+                cycle_time = dt.timedelta(hours=14)
+            else:
+                id = f'STRIP_{globals()['_CTR']:05}'
+                shade = color.STRIP
+                cycle_time = dt.timedelta(hours=7)
+        else:
+            shade = color.STRIP
+            cycle_time = end - start
+        
+        return cls(id, shade, fabric.EMPTY, start, cycle_time, tuple())
 
     def __init__(self, id: str, shade: color.ShadeGrade, item: FabricStyle,
                  start: dt.datetime, cycle_time: dt.datetime,
