@@ -11,8 +11,9 @@ class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_sin
                priv_attrs=('jobs','jss','init_soil','added_soil'),
                frozen=('_JetSched__init_soil','date_rng')):
     
-    def __init__(self, min_date: dt.datetime, max_date: dt.datetime, soil_level: int):
-        super().__init__(priv={'jobs': [], 'jss': 0, 'init_soil': soil_level, 'added_soil': 0},
+    def __init__(self, min_date: dt.datetime, max_date: dt.datetime, soil_level: int = 0,
+                 njobs: int = 0):
+        super().__init__(priv={'jobs': [], 'jss': njobs, 'init_soil': soil_level, 'added_soil': 0},
                          date_rng=DateRange(min_date, max_date))
 
     @property

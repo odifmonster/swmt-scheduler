@@ -17,7 +17,7 @@ class Jet(HasID[str], SuperImmut,
     def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
                  max_date: dt.datetime):
         priv = {
-            'prefix': 'Jet', 'id': id, 'init_sched': JetSched(min_date, max_date, 0)
+            'prefix': 'Jet', 'id': id, 'init_sched': JetSched(min_date, max_date)
         }
         SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
                             date_rng=DateRange(min_date, max_date), sched=None)
@@ -33,15 +33,16 @@ class Jet(HasID[str], SuperImmut,
     @property
     def jobs(self) -> list[Job]:
         if self.sched is None:
-            return []
-        return self.sched.jobs
+            return self.__init_sched.jobs
+        return self.__init_sched.jobs + self.sched.jobs
     
     def add_placeholder(self, job: Job) -> None:
         self.__init_sched.add_job(job)
     
     def init_new_sched(self) -> None:
         self.sched = JetSched(max(self.__init_sched.last_job_end, self.date_rng.minval),
-                              self.date_rng.maxval, self.__init_sched.soil_level)
+                              self.date_rng.maxval, soil_level=self.__init_sched.soil_level,
+                              njobs=self.__init_sched.jobs_since_strip)
     
     def get_start_idx(self, job: Job):
         curjobs = self.jobs

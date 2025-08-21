@@ -101,3 +101,9 @@ class Job(HasID[str], SuperImmut,
     @property
     def yds(self) -> float:
         return sum(map(lambda l: l.yds, self.lots))
+    
+    def __repr__(self):
+        date_fstr = '%m/%d %H:%M'
+        shade_name = self.shade.split('_')[1]
+        return f'{self._prefix}(shade={shade_name}, start={self.start.strftime(date_fstr)}' + \
+            f', end={self.end.strftime(date_fstr)})'

@@ -65,7 +65,7 @@ class TestJetSched(unittest.TestCase):
         self.fabrics = make_fabrics(100, self.greige1, self.masters, self.colors)
 
     def test_time_calcs(self):
-        sched = JetSched(dt.datetime(2025, 8, 22, hour=17), dt.datetime(2025, 9, 1), 0)
+        sched = JetSched(dt.datetime(2025, 8, 22, hour=17), dt.datetime(2025, 9, 1))
 
         self.assertEqual(sched.last_job_end, dt.datetime(2025, 8, 22, hour=17))
 
@@ -79,7 +79,7 @@ class TestJetSched(unittest.TestCase):
     
     def test_sched_strips(self):
         sched = JetSched(dt.datetime(2025, 8, 18), dt.datetime(2025, 8, 22, hour=23, minute=59,
-                                                               second=59), 0)
+                                                               second=59))
         
         for i in range(6):
             job = random_job(sched.last_job_end, random.choice(self.fabrics))

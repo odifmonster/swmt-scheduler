@@ -3,4 +3,5 @@ from app.inventory.groups import RSizeGroup as RSizeGroup, RStyleGroup as RStyle
 from app.inventory import roll as roll
 
 Roll = roll.Roll
+RollView = roll.RollView
 AllocRoll = roll.AllocRoll

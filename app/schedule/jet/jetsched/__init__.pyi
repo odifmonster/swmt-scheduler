@@ -4,7 +4,8 @@ from app.schedule import Job
 
 class JetSched(SuperImmut):
     date_rng: DateRange
-    def __init__(self, min_date: dt.datetime, max_date: dt.datetime, soil_level: int) -> None: ...
+    def __init__(self, min_date: dt.datetime, max_date: dt.datetime, soil_level: int = 0,
+                 njobs: int = 0) -> None: ...
     @property
     def last_job_end(self) -> dt.datetime: ...
     @property
