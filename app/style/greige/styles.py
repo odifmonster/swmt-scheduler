@@ -15,7 +15,7 @@ def init():
 
             item, tgt_lbs = line.split(',')
             tgt_lbs = float(tgt_lbs)
-            globals()['_GREIGE_STYLES'][item] = GreigeStyle(item, tgt_lbs-20, tgt_lbs+20)
+            globals()['_GREIGE_STYLES'][item] = GreigeStyle(item, tgt_lbs-40, tgt_lbs+40)
 
 def get_greige_style(id: str) -> GreigeStyle | None:
     if id not in globals()['_GREIGE_STYLES']:

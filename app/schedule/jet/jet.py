@@ -5,12 +5,14 @@ import datetime as dt
 
 from app.support import HasID, SuperImmut, FloatRange, DateRange
 from app.style.color import STRIP, HEAVYSTRIP
-from ..req import ReqView
+from ..req import Req, Demand
 from ..job import Job
 from .jetsched import JetSched
 
+type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float, float, float, float]]
+
 class Jet(HasID[str], SuperImmut,
-          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','sched'),
+          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs','sched'),
           priv_attrs=('prefix','id','init_sched'),
           frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng','date_rng')):
     
@@ -36,6 +38,12 @@ class Jet(HasID[str], SuperImmut,
             return self.__init_sched.jobs
         return self.__init_sched.jobs + self.sched.jobs
     
+    @property
+    def new_jobs(self) -> list[Job]:
+        if self.sched is None:
+            return []
+        return self.sched.jobs
+    
     def add_placeholder(self, job: Job) -> None:
         self.__init_sched.add_job(job)
     
@@ -45,7 +53,7 @@ class Jet(HasID[str], SuperImmut,
                               njobs=self.__init_sched.jobs_since_strip)
     
     def get_start_idx(self, job: Job):
-        curjobs = self.jobs
+        curjobs = self.new_jobs
         finish_time = dt.timedelta(hours=16)
 
         for i in range(len(curjobs), 0, -1):
@@ -56,72 +64,72 @@ class Jet(HasID[str], SuperImmut,
         return 0
     
     def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]] | None:
-        curjobs = self.jobs
-        newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval)
+        curjobs = self.new_jobs
+        newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval,
+                            soil_level=self.__init_sched.soil_level,
+                            njobs=self.__init_sched.jobs_since_strip)
         kicked: list[Job] = []
 
         for i in range(idx):
             if newsched.rem_time < curjobs[i].cycle_time:
                 kicked.append(curjobs[i])
-            curjobs[i].start = newsched.last_job_end
             newsched.add_job(curjobs[i])
         
-        fits = newsched.check_for_strip(job)
+        strip, fits = newsched.check_for_strip(job)
         if not fits:
             self.sched.set_times()
             return None
         
-        job.start = newsched.last_job_end
+        if strip:
+            newsched.add_job(strip)
         newsched.add_job(job)
         
         for j in curjobs[idx:]:
             if j.shade in (STRIP, HEAVYSTRIP):
                 continue
+            strip, fits = newsched.check_for_strip(j)
             if not fits:
                 kicked.append(j)
-            
-            fits = newsched.check_for_strip(j)
-            if fits:
-                j.start = newsched.last_job_end
-                newsched.add_job(j)
             else:
-                kicked.append(j)
+                if strip:
+                    newsched.add_job(strip)
+                newsched.add_job(j)
         
         return newsched, kicked
 
-    def get_sched_cost(self, newsched: JetSched, kicked: list[Job],
-                       cost_func: Callable[[JetSched, 'Jet', set[ReqView]], float]) -> float:
-        all_reqs: set[ReqView] = set()
-
-        for job in newsched.jobs:
-            for lot in job.lots:
-                all_reqs.add(lot.req)
-        
-        for job in kicked:
-            for lot in job.lots:
-                all_reqs.add(lot.req)
-
+    def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job],
+                       cur_req: Req, dmnd: Demand, cost_func: CostFunc) \
+                        -> tuple[float, float, float, float, float]:
+        newjob.start = None
         self.sched.set_times()
-        curcost = cost_func(self.sched, self, all_reqs)
+        curcost = cost_func(self.sched, self, cur_req, dmnd)
+            
         newsched.set_times()
         for kjob in kicked:
             kjob.start = None
-        newcost = cost_func(newsched, self, all_reqs)
+        newcost = cost_func(newsched, self, cur_req, dmnd)
+        newjob.start = None
         self.sched.set_times()
 
-        return newcost - curcost
+        late_cost = newcost[0]
+        return tuple([late_cost] + [x - y for x, y in zip(newcost[1:], curcost[1:])])
     
-    def get_all_options(self, job: Job,
-                        cost_func: Callable[[JetSched, 'Jet', set[ReqView]], float]) -> \
-                        list[tuple[int, float]]:
+    def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
+                        list[tuple[int, tuple[float, float, float, float, float]]]:
         idx = self.get_start_idx(job)
         costs: list[tuple[int, float]] = []
+        flag = job.lots[0].item.id == 'FF TR570B-39777-62'
+        cur_req = job.lots[0].req
 
-        for i in range(idx, len(self.jobs)+1):
+        for i in range(idx, len(self.new_jobs)+1):
+            if flag:
+                print(cur_req.late_yd_buckets())
             res = self.try_insert_job(job, i)
             if not res: continue
+            if flag:
+                print(cur_req.late_yd_buckets())
             newsched, kicked = res
-            cost = self.get_sched_cost(newsched, kicked, cost_func)
+            cost = self.get_sched_cost(job, newsched, kicked, cur_req, dmnd, cost_func)
             costs.append((i, cost))
         
         return costs

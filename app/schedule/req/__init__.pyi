@@ -5,7 +5,8 @@ from app.schedule.req.groups import ReqColorKeys as ReqColorKeys, \
 
 from typing import Literal
 import datetime as dt
-from app.support import HasID, SuperImmut, SuperView, Viewable
+from app.support import SuperView
+from app.groups import DataView, Data
 from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
 from app.schedule import DyeLot, DyeLotView
@@ -64,29 +65,18 @@ class Bucket(SuperView['Req']):
         """The total pounds remaining to fulfill this bucket, ignoring the due date."""
         ...
     @property
-    def late_yds(self) -> tuple[float, dt.timedelta]:
+    def late_yds(self) -> list[tuple[float, dt.timedelta]]:
         """
         A tuple containing the number of yards in this bucket that will miss their truck, and
         the amount of time they will miss it by.
         """
         ...
-    @property
-    def late_lbs(self) -> tuple[float, dt.timedelta]:
-        """
-        A tuple containing the number of pounds in this bucket that will miss their truck, and
-        the amount of time they will miss it by.
-        """
-        ...
     
-class ReqView(SuperView['Req']):
+class ReqView(DataView[str]):
     """
     A class for views of Req objects.
     """
     item: FabricStyle
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...
     @property
     def greige(self) -> GreigeStyle: ...
     @property
@@ -94,15 +84,12 @@ class ReqView(SuperView['Req']):
     @property
     def lots(self) -> list[DyeLotView]: ...
     def __repr__(self) -> str: ...
-    def __eq__(self, other: 'ReqView') -> bool: ...
-    def __hash__(self) -> int: ...
     def bucket(self, pnum: Literal[1, 2, 3, 4]) -> Bucket: ...
     def late_yd_buckets(self) -> list[tuple[float, dt.timedelta]]: ...
-    def late_lb_buckets(self) -> list[tuple[float, dt.timedelta]]: ...
     def assign_lot(self, rolls: list[AllocRoll], pnum: int) -> DyeLot: ...
     def unassign_lot(self, lot: DyeLotView) -> None: ...
 
-class Req(HasID[str], Viewable[ReqView], SuperImmut):
+class Req(Data[str]):
     """
     A class for fabric item requirements. The requirements are broken down into 4 "buckets", where
     each bucket has a due date attached. The total requirements are only represented in the number
@@ -122,10 +109,6 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut):
               The yards in each priority bucket.
         """
         ...
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...
     @property
     def greige(self) -> GreigeStyle:
         """The greige style of this requirement's item."""
@@ -151,13 +134,6 @@ class Req(HasID[str], Viewable[ReqView], SuperImmut):
     def late_yd_buckets(self) -> list[tuple[float, dt.timedelta]]:
         """
         Returns a list of any requirements (in yards) that will not be fulfilled on time and
-        the amount of time they will miss their respective trucks by. If a requirement will not
-        be fulfilled at all, the time defaults to one week.
-        """
-        ...
-    def late_lb_buckets(self) -> list[tuple[float, dt.timedelta]]:
-        """
-        Returns a list of any requirements (in pounds) that will not be fulfilled on time and
         the amount of time they will miss their respective trucks by. If a requirement will not
         be fulfilled at all, the time defaults to one week.
         """

@@ -47,7 +47,7 @@ class Roll(Data[str], dattrs=('greige','lbs','size'), dpriv_attrs=('wt','temp_us
     
     @setter_like
     def use(self, lbs: float, aroll: AllocRoll | None = None, temp: bool = False) -> AllocRoll:
-        if lbs > self.lbs:
+        if lbs > self.lbs + 1:
             raise ValueError(f'{lbs:.2f} exceeds remaining pounds in roll ({self.lbs:.2f}).')
         
         if aroll is None:

@@ -21,10 +21,10 @@ class SplitRoll(NamedTuple):
 
 def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
     x = round(rview.lbs / tgt_rng.average())
-    if x > 0 and tgt_rng.contains(roll.lbs / x):
+    if x > 0 and tgt_rng.contains(rview.lbs / x):
         split_wt = rview.lbs / x
         full = [RollPiece(rview.id, rview, split_wt) for _ in range(x)]
-        return SplitRoll(full, RollPiece(rview.id, 0))
+        return SplitRoll(full, RollPiece(rview.id, rview, 0))
     
     split_wt = tgt_rng.average()
     nsplits = int(rview.lbs / split_wt)
@@ -34,6 +34,9 @@ def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
 def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
                    tgt_rng: FloatRange) -> Generator[PortLoad]:
     extra_ids: set[str] = { piece.id for piece in extras }
+    if roll.PARTIAL not in inv[greige]:
+        return
+    
     subgroup = inv[greige, roll.PARTIAL]
     pieces = extras.copy()
     
@@ -41,11 +44,16 @@ def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
         if rid not in extra_ids:
             pieces.append(RollPiece(rid, subgroup[rid], subgroup[rid].lbs))
     
+    used_ids: set[str] = set()
+
     for i in range(len(pieces)):
         roll1 = pieces[i]
-        for j in range(len(pieces)):
+        for j in range(i+1, len(pieces)):
             roll2 = pieces[j]
-            if i != j and tgt_rng.contains(roll1.lbs + roll2.lbs):
+            if tgt_rng.contains(roll1.lbs + roll2.lbs) and roll1.id not in used_ids and \
+                roll2.id not in used_ids:
+                used_ids.add(roll1.id)
+                used_ids.add(roll2.id)
                 yield PortLoad(roll1, roll2)
 
 def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
@@ -56,8 +64,13 @@ def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
     for rid in inv[greige, roll.NORMAL]:
         rview = inv[greige, roll.NORMAL, rid]
         
-        rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
-                         min(min(prev_wts)+20, jet_rng.maxval))
+        if not prev_wts:
+            rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+        else:
+            rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
+            
         if not rng.contains(rview.lbs / 2): continue
 
         prev_wts.append(rview.lbs / 2)
@@ -72,8 +85,13 @@ def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
     for rid in inv[greige, roll.HALF]:
         rview = inv[greige, roll.HALF, rid]
 
-        rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
-                         min(min(prev_wts)+20, jet_rng.maxval))
+        if not prev_wts:
+            rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+        else:
+            rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
+            
         if not rng.contains(rview.lbs): continue
 
         prev_wts.append(rview.lbs)
@@ -81,8 +99,12 @@ def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
 
 def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
                   jet_rng: FloatRange, extras: list[RollPiece]) -> Generator[PortLoad]:
-    rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
-                     min(min(prev_wts)+20, jet_rng.maxval))
+    if not prev_wts:
+        rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                         min(jet_rng.maxval, greige.port_range.maxval))
+    else:
+        rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                         min(min(prev_wts)+20, jet_rng.maxval))
     for size in (roll.LARGE, roll.SMALL):
         if size not in inv[greige]: continue
 
@@ -90,12 +112,18 @@ def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
             
             splits = get_splits(inv[greige, size, rid], rng)
 
-            yield from splits.full
+            for item in splits.full:
+                prev_wts.append(item.lbs)
+                yield PortLoad(item, None)
+
             if splits.extra.lbs > 20:
                 extras.append(splits.extra)
 
 def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange) -> Generator[PortLoad]:
-    prev_wts: list[float] = [greige.port_range.average()]
+    if greige not in inv:
+        return
+    
+    prev_wts: list[float] = []
     normal = get_normal_loads(greige, inv, prev_wts, jet_rng)
     for load in normal:
         yield load
@@ -106,8 +134,12 @@ def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange) -> 
     odd = get_odd_loads(greige, inv, prev_wts, jet_rng, extras)
     for load in odd:
         yield load
-    tgt_rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
-                         min(min(prev_wts)+20, jet_rng.maxval))
+    if not prev_wts:
+        tgt_rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+    else:
+        tgt_rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
     comb = get_comb_rolls(greige, inv, extras, tgt_rng)
     for load in comb:
         yield load

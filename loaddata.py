@@ -74,7 +74,12 @@ def load_adaptive_jobs(start: dt.datetime, end: dt.datetime) -> list[Jet]:
                                            df.loc[i, 'EndTime'])
         cur_jet.add_placeholder(cur_job)
     
-    return jet.get_jets()
+    ret = jet.get_jets()
+    for j in ret:
+        j.init_new_sched()
+        print(j.id, j.sched.jobs_since_strip)
+    
+    return ret
 
 if __name__ == '__main__':
     inv = load_inv()

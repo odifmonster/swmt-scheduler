@@ -31,6 +31,6 @@ class FabricStyle(HasID[str], SuperImmut,
     def can_run_on_jet(self, jet_id: str):
         if self.color.shade in (STRIP, EMPTY_SHD):
             return True
-        return jet_id in self.__jets and (jet_id != 'Jet-09' or self.color.shade == BLACK)
+        return jet_id in self.__jets
 
 EMPTY = FabricStyle('NONE', EMPTY_GRG, 'NONE', Color('NONE', 0, 'EMPTY'), 1, [])

@@ -3,7 +3,9 @@ from app.schedule.jet.jetsched import JetSched as JetSched
 from typing import Callable
 import datetime as dt
 from app.support import HasID, SuperImmut, FloatRange, DateRange
-from app.schedule import ReqView, Job
+from app.schedule import Req, Job, Demand
+
+type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float, float, float, float]]
 
 class Jet(HasID[str], SuperImmut):
     """
@@ -41,6 +43,8 @@ class Jet(HasID[str], SuperImmut):
     def jobs(self) -> list[Job]:
         """The jobs currently scheduled to this jet."""
         ...
+    @property
+    def new_jobs(self) -> list[Job]: ...
     def add_placeholder(self, job: Job) -> None: ...
     def init_new_sched(self) -> None: ...
     def get_start_idx(self, job: Job) -> int:
@@ -68,10 +72,10 @@ class Jet(HasID[str], SuperImmut):
         insertion.
         """
         ...
-    def get_sched_cost(self, newsched: JetSched, kicked: list[Job],
-                       cost_func: Callable[[JetSched, 'Jet', set[ReqView]], float]) -> float: ...
-    def get_all_options(self, job: Job,
-                        cost_func: Callable[[JetSched, 'Jet', set[ReqView]]]) -> list[tuple[int, float]]: ...
+    def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job], cur_req: Req,
+                       dmnd: Demand, cost_func: CostFunc) -> tuple[float, float, float, float, float]: ...
+    def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) \
+        -> list[tuple[int, tuple[float, float, float, float, float]]]: ...
 
 def init(start: dt.datetime, end: dt.datetime) -> None: ...
 

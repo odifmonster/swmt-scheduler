@@ -4,7 +4,7 @@ from typing import Literal
 import datetime as dt
 
 from app.groups import DataView, Data
-from app.support import HasID, SuperImmut, SuperView, Viewable, setter_like
+from app.support import SuperView, setter_like
 from app.style import GreigeStyle, Color, FabricStyle
 from app.inventory import AllocRoll
 from ..dyelot import DyeLot, DyeLotView
@@ -12,7 +12,7 @@ from ..dyelot import DyeLot, DyeLotView
 class Bucket(SuperView['Req'],
              attrs=['item','greige','color','lots'],
              vattrs=['_Bucket__yds','_Bucket__date','date','yds','lbs',
-                     'total_yds','total_lbs','late_yds','late_lbs']):
+                     'total_yds','total_lbs','late_yds','late_lbs','yds_table']):
     
     def __init__(self, link: 'Req', yds: float, date: dt.datetime):
         self.__yds = yds
@@ -50,26 +50,33 @@ class Bucket(SuperView['Req'],
         return self.total_yds / self.item.yld
     
     @property
-    def late_yds(self) -> tuple[float, dt.timedelta]:
-        overdue_yds = self.yds
+    def late_yds(self) -> list[tuple[float, dt.timedelta]]:
         lots: list[DyeLotView] = self.lots
-        total_yds = 0
-        end_time = self.date
+        lots = sorted(filter(lambda l: not l.start is None, lots), key=lambda l: l.end)
+        
+        yds_on_time = 0
+        total_prod = 0
+
+        raw_table: list[tuple[float, dt.timedelta]] = []
         for lot in lots:
-            if lot.end is None:
-                continue
-            
-            if lot.end + dt.timedelta(hours=16) <= self.date or total_yds < overdue_yds:
-                total_yds += lot.yds
-                end_time = lot.end + dt.timedelta(hours=16)
+            fin_date = lot.end + dt.timedelta(hours=16)
+            total_prod += lot.yds
+
+            if fin_date <= self.date:
+                yds_on_time += lot.yds
             else:
-                return (overdue_yds, end_time - self.date)
-        return (overdue_yds, dt.timedelta(days=7))
-    
-    @property
-    def late_lbs(self) -> tuple[float, dt.timedelta]:
-        yds, time = self.late_yds
-        return (yds / self.item.yld, time)
+                raw_table.append((self.__yds - total_prod, fin_date - self.date))
+        
+        raw_table.insert(0, (self.__yds - yds_on_time, dt.timedelta(days=0)))
+        
+        late_table: list[tuple[float, dt.timedelta]] = []
+        tdelta = dt.timedelta(days=7)
+        for i in range(len(raw_table), 0, -1):
+            yds, curdelta = raw_table[i-1]
+            late_table.insert(0, (yds, tdelta))
+            tdelta = curdelta
+        
+        return late_table
 
 class ReqView(DataView[str],
               funcs=['bucket','late_yd_buckets','late_lb_buckets','assign_lot','unassign_lot'],
@@ -114,22 +121,12 @@ class Req(Data[str], fg_flag=False, dattrs=('item','greige','color','lots'),
     def late_yd_buckets(self) -> list[tuple[float, dt.timedelta]]:
         table = []
         for i in range(1,4):
-            late_pair = self.bucket(i).late_yds
-            if late_pair[0] > 0:
-                table.append(late_pair)
-        return table
-    
-    def late_lb_buckets(self) -> list[tuple[float, dt.timedelta]]:
-        table = []
-        for i in range(1,4):
-            late_pair = self.bucket(i).late_lbs
-            if late_pair[0] > 0:
-                table.append(late_pair)
+            table += self.bucket(i).late_yds
         return table
     
     @setter_like
     def assign_lot(self, rolls: list[AllocRoll], pnum: int) -> DyeLot:
-        newlot = DyeLot(rolls, self.item, self.__view, pnum)
+        newlot = DyeLot(rolls, self.item, self.view(), pnum)
         self.__lots.append(newlot)
         return newlot
     
