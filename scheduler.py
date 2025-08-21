@@ -15,11 +15,9 @@ class NewJobInfo(NamedTuple):
     jet: Jet
     idx: int
     port_loads: list[PortLoad]
-    cost: tuple[float, float, float, float, float]
-    yds_diff: float
+    cost: float
 
-def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) \
-    -> tuple[float, float, float, float, float]:
+def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[float, float]:
     late_cost = 0
     inv_cost = 0
     for key in dmnd.fullkeys():
@@ -85,7 +83,7 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) \
         and sched.jobs[-1].shade != color.BLACK:
         non_black_9 += 5
     
-    return (late_cost, max(0,inv_cost), strip_cost, not_seq_cost, non_black_9)
+    return late_cost, max(0, inv_cost) + strip_cost + not_seq_cost + non_black_9
 
 def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Demand) -> NewJobInfo | None:
     newjobs: list[NewJobInfo] = []
@@ -99,10 +97,6 @@ def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Dem
             port_loads.append(load)
         
         if len(port_loads) < jet.n_ports:
-            print(f'not enough inventory for {req.greige} on {jet.id}.')
-            if req.greige in inv:
-                print(inv[req.greige])
-            print()
             continue
 
         temp_rolls: list[AllocRoll] = []
@@ -122,13 +116,8 @@ def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Dem
 
         lot = req.assign_lot(temp_rolls, pnum)
         job = Job.make_job(dt.datetime.fromtimestamp(0), (lot,))
-        yds_diff = abs(job.yds - req.bucket(pnum).yds)
-        n = 0
         for idx, cost in jet.get_all_options(job, req, dmnd, cost_func):
-            n += 1
-            newjobs.append(NewJobInfo(jet, idx, port_loads, cost, yds_diff))
-        if n == 0:
-            print(f'Could not fit P{pnum} for {req} onto {jet.id}.')
+            newjobs.append(NewJobInfo(jet, idx, port_loads, cost))
 
         for rview in used_rolls:
             r = inv.remove(rview)
@@ -140,11 +129,12 @@ def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Dem
     if not newjobs:
         return None
     
-    newjobs = sorted(newjobs, key=lambda j: (sum(j.cost), yds_diff))
-    # for job in newjobs:
-    #     print(job.jet.id, job.idx, req.item, 'cost=('+','.join([f'{x:.2f}' for x in job.cost])+')')
-    # print()
-    return newjobs[0]
+    newjobs = sorted(newjobs, key=lambda j: j.cost)
+    bestjob = newjobs[0]
+    
+    if bestjob.idx < 0:
+        return None
+    return bestjob
 
 def assign_job(job_info: NewJobInfo, req: Req, pnum: int, inv: Inventory) -> None:
     arolls: list[AllocRoll] = []
@@ -166,10 +156,9 @@ def assign_job(job_info: NewJobInfo, req: Req, pnum: int, inv: Inventory) -> Non
     lot = req.assign_lot(arolls, pnum)
     job = Job.make_job(dt.datetime.fromtimestamp(0), (lot,))
     
-    res = job_info.jet.try_insert_job(job, job_info.idx)
-    if res is None:
+    newsched, kicked, scheduled = job_info.jet.try_insert_job(job, job_info.idx)
+    if not scheduled:
         raise RuntimeError('Do not call \'assign_job\' on un-tested jobs.')
-    newsched, kicked = res
 
     for kjob in kicked:
         kjob.start = None
@@ -193,14 +182,6 @@ def make_schedule(demand: Demand, inv: Inventory, jets: list[Jet]) -> None:
                 assign_job(best_job, req, i, inv)
             
             demand.add(req)
-
-def make_job(req: Req, pnum: int, yds: float) -> Job:
-    lbs = yds / req.item.yld
-    aroll = AllocRoll('some_roll', req.greige, lbs)
-    dlot = req.assign_lot([aroll], pnum)
-    last_date = req.bucket(4).date + dt.timedelta(days=1)
-    newjob = Job.make_job(last_date, (dlot,))
-    return newjob
 
 def df_cols_to_string(df: pd.DataFrame, *args: Unpack[tuple[str, ...]]) -> pd.DataFrame:
     for col in args:

@@ -9,7 +9,7 @@ from ..req import Req, Demand
 from ..job import Job
 from .jetsched import JetSched
 
-type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float, float, float, float]]
+type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
 class Jet(HasID[str], SuperImmut,
           attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs','sched'),
@@ -63,7 +63,7 @@ class Jet(HasID[str], SuperImmut,
 
         return 0
     
-    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]] | None:
+    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
         curjobs = self.new_jobs
         newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval,
                             soil_level=self.__init_sched.soil_level,
@@ -76,13 +76,14 @@ class Jet(HasID[str], SuperImmut,
             newsched.add_job(curjobs[i])
         
         strip, fits = newsched.check_for_strip(job)
-        if not fits:
-            self.sched.set_times()
-            return None
+        scheduled = fits
         
-        if strip:
-            newsched.add_job(strip)
-        newsched.add_job(job)
+        if fits:
+            if strip:
+                newsched.add_job(strip)
+            newsched.add_job(job)
+        else:
+            kicked.append(job)
         
         for j in curjobs[idx:]:
             if j.shade in (STRIP, HEAVYSTRIP):
@@ -95,14 +96,13 @@ class Jet(HasID[str], SuperImmut,
                     newsched.add_job(strip)
                 newsched.add_job(j)
         
-        return newsched, kicked
+        return newsched, kicked, scheduled
 
     def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job],
-                       cur_req: Req, dmnd: Demand, cost_func: CostFunc) \
-                        -> tuple[float, float, float, float, float]:
+                       cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> float:
         newjob.start = None
         self.sched.set_times()
-        curcost = cost_func(self.sched, self, cur_req, dmnd)
+        _, cur_cost = cost_func(self.sched, self, cur_req, dmnd)
             
         newsched.set_times()
         for kjob in kicked:
@@ -111,25 +111,22 @@ class Jet(HasID[str], SuperImmut,
         newjob.start = None
         self.sched.set_times()
 
-        late_cost = newcost[0]
-        return tuple([late_cost] + [x - y for x, y in zip(newcost[1:], curcost[1:])])
+        late_cost, rem_cost = newcost
+        return late_cost + rem_cost - cur_cost
     
     def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
-                        list[tuple[int, tuple[float, float, float, float, float]]]:
+        list[tuple[int, float]]:
         idx = self.get_start_idx(job)
         costs: list[tuple[int, float]] = []
-        flag = job.lots[0].item.id == 'FF TR570B-39777-62'
         cur_req = job.lots[0].req
 
         for i in range(idx, len(self.new_jobs)+1):
-            if flag:
-                print(cur_req.late_yd_buckets())
-            res = self.try_insert_job(job, i)
-            if not res: continue
-            if flag:
-                print(cur_req.late_yd_buckets())
-            newsched, kicked = res
+            newsched, kicked, scheduled = self.try_insert_job(job, i)
             cost = self.get_sched_cost(job, newsched, kicked, cur_req, dmnd, cost_func)
-            costs.append((i, cost))
+            if scheduled:
+                idx = i
+            else:
+                idx = -1
+            costs.append((idx, cost))
         
         return costs

@@ -5,7 +5,7 @@ import datetime as dt
 from app.support import HasID, SuperImmut, FloatRange, DateRange
 from app.schedule import Req, Job, Demand
 
-type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float, float, float, float]]
+type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
 class Jet(HasID[str], SuperImmut):
     """
@@ -59,7 +59,7 @@ class Jet(HasID[str], SuperImmut):
         -1.
         """
         ...
-    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job]] | None:
+    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
         """
         Create a new schedule, inserting 'job' at the provided 'idx'.
 
