@@ -7,17 +7,19 @@
 # need to use double backslash characters
 
 fabric_items: # information about fabric items (which jets they can run on, which greige style they use, etc.)
-    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    folder="/Users/oliverwyner/Shawmut"
     excel_book="New XREF file.xlsx"
     sheet_name=Xref
     columns="GREIGE ITEM", STYLE, Yield, "COLOR NAME", "COLOR NUMBER", "PA FIN ITEM", ...
         "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "JET 10", "SHADE RATING"
 
 greige_sizes: # information about target lbs per greige style roll
+    folder="/Users/oliverwyner/Shawmut"
     excel_book=master.xlsx
     sheet_name="greige info"
 
 greige_translation:
+    folder="/Users/oliverwyner/Shawmut"
     excel_book=LamDemandPlanning.xlsx
     sheet_name="Greige Style Translation"
     column_names=inventory, plan # only use this if the workbook has no column names
@@ -25,20 +27,24 @@ greige_translation:
     start_row=2 # the first row of data to start reading
 
 jet_info:
+    folder="/Users/oliverwyner/Shawmut"
     excel_book=master.xlsx
     sheet_name=jets
 
 inventory:
+    folder="/Users/oliverwyner/Shawmut"
     excel_book="1427_PACOHINVDCSH - 2025-08-21T092718.633.xlsx"
     sheet_name="1427_PACOHINVDCSH"
     columns=Roll, Item, Quality, Pounds, ASSIGNED_ORDER
     start_row=4
 
 adaptive_orders:
+    folder="/Users/oliverwyner/Shawmut"
     excel_book=LamDemandPlanning.xlsx
     sheet_name=Adaptive
 
 pa_demand_plan:
+    folder="/Users/oliverwyner/Shawmut"
     excel_book="Demand Planning 20250820.xlsx"
     sheet_name="Demand Planning20230927"
     start_row=8

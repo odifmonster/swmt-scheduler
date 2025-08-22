@@ -13,7 +13,8 @@ from formatters import make_schedule_args, make_schedule_ret, get_best_job_args,
     get_dyelot_args, get_dyelot_ret, get_comb_rolls_args, get_comb_rolls_yld, get_normal_rolls_args, \
     get_normal_rolls_yld, get_half_loads_args, get_half_loads_yld, get_odd_loads_args, \
     get_odd_loads_yld, get_port_loads_args, get_port_loads_yld, get_jet_loads_args, get_jet_loads_ret, \
-    req_cost_args
+    req_cost_args, req_cost_ret, strip_cost_args, strip_cost_ret, not_seq_cost_args, not_seq_cost_ret \
+    
 from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_process_data
 
 LOGGER = logging.Logger()
@@ -245,6 +246,7 @@ class NewJobInfo(NamedTuple):
     port_loads: list[PortLoad]
     cost: float
 
+@logging.logged_func(LOGGER, arg_fmtr=req_cost_args, ret_fmtr=req_cost_ret)
 def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
     late_cost = 0
     inv_cost = 0
@@ -293,6 +295,7 @@ def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
     
     return late_cost, inv_cost
 
+@logging.logged_func(LOGGER, arg_fmtr=strip_cost_args, ret_fmtr=strip_cost_ret)
 def strip_cost(sched: JetSched, jet: Jet) -> float:
     strip_cost = 0
     cost_12_port_hrs = 150
@@ -302,14 +305,11 @@ def strip_cost(sched: JetSched, jet: Jet) -> float:
             strip_cost += cur_cost
     return strip_cost
 
-def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[float, float]:
-    late_cost, inv_cost = req_cost(cur_req, dmnd)
-    scost = strip_cost(sched, jet)
-    
+@logging.logged_func(LOGGER, arg_fmtr=not_seq_cost_args, ret_fmtr=not_seq_cost_ret)
+def not_seq_cost(sched: JetSched, jet: Jet):
     shade_vals = {
         color.SOLUTION: 0, color.LIGHT: 5, color.MEDIUM: 10, color.BLACK: 20
     }
-
     not_seq_cost = 0
     non_black_9 = 0
     for job1, job2 in zip(sched.jobs[:-1], sched.jobs[1:]):
@@ -329,8 +329,15 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
         for job in sched.jobs:
             if job.shade not in (color.STRIP, color.HEAVYSTRIP, color.BLACK):
                 non_black_9 += 5
-    
-    return late_cost*0.9 + max(0, inv_cost), scost + not_seq_cost*1.2 + non_black_9
+    return not_seq_cost, non_black_9
+
+
+
+def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[float, float]:
+    late_cost, inv_cost = req_cost(cur_req, dmnd)
+    scost = strip_cost(sched, jet)
+    not_seq_cos, non_black_9 = not_seq_cost(sched, jet)
+    return late_cost*0.9 + max(0, inv_cost), scost + not_seq_cos*1.2 + non_black_9
 
 @logging.logged_func(LOGGER, arg_fmtr=get_dyelot_args, ret_fmtr=get_dyelot_ret)
 def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \

@@ -137,3 +137,32 @@ def req_cost_args(cur_req: Req, dmnd: Demand) -> FormattedArgs:
     return {
         'desc1': 'Calculating cost of missed shipments and excess inventory'
     }
+
+
+
+def req_cost_ret(ret: tuple[float, float]) -> FormattedRet:
+    return {
+        'result' : f'Found late cost of {ret[0]}, inv_cost of {ret[1]}'
+    }   
+
+def strip_cost_args(sched: JetSched, jet: Jet) -> FormattedArgs:
+    return {
+        'desc1': f'Calculating strip cost for {jet.id}'
+    }
+
+def strip_cost_ret(strip_cost: float) -> FormattedRet:
+    return{
+        'result': f'Found strip cost of {strip_cost}'
+    }
+
+def not_seq_cost_args(sched: JetSched, jet: Jet) -> FormattedArgs:
+    return{
+        'desc1': f'Calcuating non_seq and non_black_9 cost for {jet.id}'
+    }
+
+def not_seq_cost_ret(ret: tuple[float, float]) -> FormattedRet:
+    return{
+        'result': f'Found non_seq cost of {ret[0]}, and non_black_9 cost of {ret[1]}'
+    }
+
+
