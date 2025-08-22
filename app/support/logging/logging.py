@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from typing import Protocol, Callable, TypeVar, ParamSpec, Concatenate, TypedDict
+from typing import Protocol, Callable, TypeVar, ParamSpec, Concatenate, TypedDict, \
+    Generator, NewType
 from abc import abstractmethod
 
 T = TypeVar('T')
@@ -17,6 +18,16 @@ class FormattedRet(TypedDict, total=False):
     result: str
     notes1: str
     notes2: str
+
+class LogGenMsg:
+
+    def __init__(self, result: str = 'N/A', notes1: str = 'N/A', notes2: str = 'N/A'):
+        self.result = result
+        self.notes1 = notes1
+        self.notes2 = notes2
+
+    def as_kwargs(self) -> FormattedRet:
+        return { 'result': self.result, 'notes1': self.notes1, 'notes2': self.notes2 }
 
 class Process:
 
@@ -93,5 +104,40 @@ def logged_func(lgr: Logger, arg_fmtr: Callable[P, FormattedArgs],
             p.set_result(**ret_fmtr(res))
             lgr.pop_caller()
             return res
+        return wrapper
+    return deco
+
+type LoggedGen[**P, T] = Callable[P, Generator[T | LogGenMsg]]
+
+def logged_generator(lgr: Logger, arg_fmtr: Callable[P, FormattedArgs],
+                     yld_fmtr: Callable[[T], FormattedRet]) \
+                        -> Callable[[LoggedGen[P, T]], Callable[P, Generator[T]]]:
+    def deco(gen: LoggedGen[P, T]) -> Callable[P, Generator[T]]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> Generator[T]:
+            caller = lgr.peek_caller()
+            genp = Process(caller, gen.__name__, **arg_fmtr(*args, **kwargs))
+            i = gen(*args, **kwargs)
+            lgr.add_process(genp)
+            lgr.push_caller(genp)
+
+            while True:
+                try:
+                    valp = Process(caller, f'next({genp.name})')
+                    lgr.add_process(valp)
+                    lgr.push_caller(valp)
+                    val = next(i)
+
+                    if isinstance(val, LogGenMsg):
+                        valp.set_result(**val.as_kwargs())
+                        lgr.pop_caller()
+                        continue
+                    
+                    valp.set_result(**yld_fmtr(val))
+                    lgr.pop_caller()
+                    yield val
+                except StopIteration:
+                    genp.set_result()
+                    lgr.pop_caller()
+                    return
         return wrapper
     return deco

@@ -1,4 +1,4 @@
-from typing import Protocol, Callable, TypeVar, ParamSpec, Concatenate, TypedDict
+from typing import Protocol, Callable, TypeVar, ParamSpec, Concatenate, TypedDict, Generator
 from abc import abstractmethod
 
 _T = TypeVar('T')
@@ -13,6 +13,13 @@ class FormattedRet(TypedDict, total=False):
     result: str
     notes1: str
     notes2: str
+
+class LogGenMsg:
+    result: str
+    notes1: str
+    notes2: str
+    def __init__(self, result: str = ..., notes1: str = ..., notes2: str = ...) -> None: ...
+    def as_kwargs(self) -> FormattedRet: ...
 
 class Process:
     id: int
@@ -43,6 +50,7 @@ class LoggedType(Protocol):
     def logger(self) -> Logger: ...
     
 type LoggedMeth = Callable[Concatenate[LoggedType, _P], _T]
+type LoggedGen[**_P, _T] = Callable[_P, Generator[_T | LogGenMsg]]
 type ArgsFmtr[**_P] = Callable[_P, FormattedArgs]
 type RetFmtr[_T] = Callable[[_T], FormattedRet]
 
@@ -51,3 +59,6 @@ def logged_method(arg_fmtr: ArgsFmtr[_P], ret_fmtr: RetFmtr[_T]) -> \
 
 def logged_func(lgr: Logger, arg_fmtr: ArgsFmtr[_P], ret_fmtr: RetFmtr[_T]) -> \
     Callable[[Callable[_P, _T]], Callable[_P, _T]]: ...
+
+def logged_generator(lgr: Logger, arg_fmtr: ArgsFmtr[_P], yld_fmtr: RetFmtr[_T]) -> \
+    Callable[[LoggedGen[_P, _T]], Callable[_P, Generator[_T]]]: ...

@@ -1,20 +1,184 @@
 #!/usr/bin/env python
 
-from typing import NamedTuple, Unpack, Literal
+from typing import NamedTuple, Unpack, Literal, Generator
 import datetime as dt, pandas as pd, os
 
-from app.support import logging
-from app.style import color
-from app.inventory import Inventory, AllocRoll, RollView
+from app.support import logging, FloatRange
+from app.style import color, GreigeStyle
+from app.inventory import roll, Inventory, AllocRoll, RollView
 from app.schedule import DyeLot, Job, Jet, JetSched, Req, Demand
 
 from loaddata import load_inv, load_demand, load_adaptive_jobs
 from formatters import make_schedule_args, make_schedule_ret, get_best_job_args, get_best_job_ret, \
-    get_dyelot_args, get_dyelot_ret
-from getrolls import PortLoad, get_port_loads
+    get_dyelot_args, get_dyelot_ret, get_comb_rolls_args, get_comb_rolls_yld, get_normal_rolls_args, \
+    get_normal_rolls_yld, get_half_loads_args, get_half_loads_yld, get_odd_loads_args, \
+    get_odd_loads_yld, get_port_loads_args, get_port_loads_yld
 from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_process_data
 
 LOGGER = logging.Logger()
+
+class RollPiece(NamedTuple):
+    id: str
+    rview: RollView
+    lbs: float
+
+class PortLoad(NamedTuple):
+    roll1: RollPiece
+    roll2: RollPiece | None
+
+class SplitRoll(NamedTuple):
+    full: list[RollPiece]
+    extra: RollPiece
+
+def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
+    x = round(rview.lbs / tgt_rng.average())
+    if x > 0 and tgt_rng.contains(rview.lbs / x):
+        split_wt = rview.lbs / x
+        full = [RollPiece(rview.id, rview, split_wt) for _ in range(x)]
+        return SplitRoll(full, RollPiece(rview.id, rview, 0))
+    
+    split_wt = tgt_rng.average()
+    nsplits = int(rview.lbs / split_wt)
+    full = [RollPiece(rview.id, rview, split_wt) for _ in range(nsplits)]
+    return SplitRoll(full, RollPiece(rview.id, rview, rview.lbs - nsplits*split_wt))
+
+@logging.logged_generator(LOGGER, arg_fmtr=get_comb_rolls_args, yld_fmtr=get_comb_rolls_yld)
+def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
+                   tgt_rng: FloatRange) -> Generator[PortLoad | logging.LogGenMsg]:
+    extra_ids: set[str] = { piece.id for piece in extras }
+    if roll.PARTIAL not in inv[greige]:
+        yield logging.LogGenMsg(result=f'No partial rolls of {greige.id} in inventory.')
+        return
+    
+    subgroup = inv[greige, roll.PARTIAL]
+    pieces = extras.copy()
+    
+    for rid in subgroup:
+        if rid not in extra_ids:
+            pieces.append(RollPiece(rid, subgroup[rid], subgroup[rid].lbs))
+    
+    used_ids: set[str] = set()
+
+    for i in range(len(pieces)):
+        roll1 = pieces[i]
+        for j in range(i+1, len(pieces)):
+            roll2 = pieces[j]
+            if tgt_rng.contains(roll1.lbs + roll2.lbs) and roll1.id not in used_ids and \
+                roll2.id not in used_ids:
+                used_ids.add(roll1.id)
+                used_ids.add(roll2.id)
+                yield PortLoad(roll1, roll2)
+            elif roll1.id not in used_ids and roll2.id not in used_ids:
+                yield logging.LogGenMsg(result=f'Combined {roll1.id} and {roll2.id} out of target range',
+                                notes1=f'Combined weight: {roll1.lbs+roll2.lbs:.2f} lbs',
+                                notes2=f'Target range: {tgt_rng.minval:.2f} to {tgt_rng.maxval:.2f} lbs')
+
+@logging.logged_generator(LOGGER, arg_fmtr=get_normal_rolls_args, yld_fmtr=get_normal_rolls_yld)
+def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
+                     jet_rng: FloatRange) -> Generator[PortLoad | logging.LogGenMsg]:
+    if roll.NORMAL not in inv[greige]:
+        yield logging.LogGenMsg(result=f'No normal rolls of {greige.id} in inventory.')
+        return
+    
+    for rid in inv[greige, roll.NORMAL]:
+        rview = inv[greige, roll.NORMAL, rid]
+        
+        if not prev_wts:
+            rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+        else:
+            rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
+            
+        if not rng.contains(rview.lbs / 2):
+            yield logging.LogGenMsg(result=f'{rview.id} weight out of target range',
+                            notes1=f'Half roll weight: {rview.lbs/2:.2f}',
+                            notes2=f'Target range: {rng.minval:.2f} to {rng.maxval:.2f} lbs')
+            continue
+
+        prev_wts.append(rview.lbs / 2)
+        yield PortLoad(RollPiece(rview.id, rview, rview.lbs / 2), None)
+        yield PortLoad(RollPiece(rview.id, rview, rview.lbs / 2), None)
+
+@logging.logged_generator(LOGGER, arg_fmtr=get_half_loads_args, yld_fmtr=get_half_loads_yld)
+def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
+                   jet_rng: FloatRange) -> Generator[PortLoad | logging.LogGenMsg]:
+    if roll.HALF not in inv[greige]:
+        yield logging.LogGenMsg(result=f'No half rolls of {greige.id} in inventory.')
+        return
+    
+    for rid in inv[greige, roll.HALF]:
+        rview = inv[greige, roll.HALF, rid]
+
+        if not prev_wts:
+            rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+        else:
+            rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
+            
+        if not rng.contains(rview.lbs):
+            yield logging.LogGenMsg(result=f'{rview.id} weight out of target range',
+                            notes1=f'Roll weight: {rview.lbs/2:.2f}',
+                            notes2=f'Target range: {rng.minval:.2f} to {rng.maxval:.2f} lbs')
+            continue
+
+        prev_wts.append(rview.lbs)
+        yield PortLoad(RollPiece(rview.id, rview, rview.lbs), None)
+
+@logging.logged_generator(LOGGER, arg_fmtr=get_odd_loads_args, yld_fmtr=get_odd_loads_yld)
+def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
+                  jet_rng: FloatRange, extras: list[RollPiece]) -> Generator[PortLoad | logging.LogGenMsg]:
+    if not prev_wts:
+        rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                         min(jet_rng.maxval, greige.port_range.maxval))
+    else:
+        rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                         min(min(prev_wts)+20, jet_rng.maxval))
+        
+    for size in (roll.LARGE, roll.SMALL):
+        if size not in inv[greige]:
+            yield logging.LogGenMsg(result=f'No {size.lower()} rolls of {greige.id} in inventory.')
+            continue
+
+        for rid in inv[greige, size]:
+            
+            splits = get_splits(inv[greige, size, rid], rng)
+
+            for item in splits.full:
+                prev_wts.append(item.lbs)
+                yield PortLoad(item, None)
+
+            if splits.extra.lbs > 20:
+                extras.append(splits.extra)
+
+@logging.logged_generator(LOGGER, arg_fmtr=get_port_loads_args, yld_fmtr=get_port_loads_yld)
+def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange) \
+    -> Generator[PortLoad | logging.LogGenMsg]:
+    if greige not in inv:
+        yield logging.LogGenMsg(result=f'No {greige.id} in inventory.')
+        return
+    
+    prev_wts: list[float] = []
+    normal = get_normal_loads(greige, inv, prev_wts, jet_rng)
+    for load in normal:
+        yield load
+    half = get_half_loads(greige, inv, prev_wts, jet_rng)
+    for load in half:
+        yield load
+    extras: list[RollPiece] = []
+    odd = get_odd_loads(greige, inv, prev_wts, jet_rng, extras)
+    for load in odd:
+        yield load
+    if not prev_wts:
+        tgt_rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
+                             min(jet_rng.maxval, greige.port_range.maxval))
+    else:
+        tgt_rng = FloatRange(max(max(prev_wts)-20, jet_rng.minval),
+                             min(min(prev_wts)+20, jet_rng.maxval))
+    comb = get_comb_rolls(greige, inv, extras, tgt_rng)
+    for load in comb:
+        yield load
 
 class NewJobInfo(NamedTuple):
     jet: Jet
