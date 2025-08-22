@@ -3,7 +3,7 @@
 from typing import Callable
 import datetime as dt
 
-from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support import logging, HasID, SuperImmut, FloatRange, DateRange
 from app.style.color import STRIP, HEAVYSTRIP
 from ..req import Req, Demand
 from ..job import Job
@@ -11,11 +11,47 @@ from .jetsched import JetSched
 
 type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
-class Jet(HasID[str], SuperImmut,
-          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs','sched'),
-          priv_attrs=('prefix','id','init_sched'),
-          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng','date_rng')):
+def get_opts_args(job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> logging.FormattedArgs:
+    return {
+        'desc1': f'Checking all schedule insertion points for {cur_req.id}',
+        'desc2': f'Temporary job id: {job.id}'
+    }
+
+def get_opts_ret(opts: list[int, float]) -> logging.FormattedRet:
+    return {}
+
+def try_insert_args(job: Job, idx: int) -> logging.FormattedArgs:
+    return {
+        'desc1': f'Attempting to insert {job.id} in schedule after {idx} job(s)'
+    }
+
+def try_insert_ret(res: tuple[JetSched, list[Job], bool]) -> logging.FormattedRet:
+    fmtd: logging.FormattedRet = {}
+    _, kicked, success = res
+    if success:
+        fmtd['result'] = 'Successfully scheduled new job at this position'
+    else:
+        fmtd['result'] = 'Not enough space for new job at this position'
     
+    fmtd['notes1'] = 'Kicked jobs: ' + ','.join([k.id for k in kicked])
+    return fmtd
+
+def get_cost_args(newjob: Job, newsched: JetSched, kicked: list[Job],
+                  cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> logging.FormattedArgs:
+    return { 'desc1': 'Calculating cost of current test schedule' }
+
+def get_cost_ret(res: float) -> logging.FormattedRet:
+    return { 'result': f'{res:.2f}' }
+
+class Jet(logging.LoggedType, HasID[str], SuperImmut,
+          attrs=('_logger','logger','_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs',
+                 'sched'),
+          priv_attrs=('prefix','id','init_sched'),
+          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','_logger','n_ports','load_rng',
+                  'date_rng')):
+    
+    _logger = logging.Logger()
+
     def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
                  max_date: dt.datetime):
         priv = {
@@ -23,7 +59,15 @@ class Jet(HasID[str], SuperImmut,
         }
         SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
                             date_rng=DateRange(min_date, max_date), sched=None)
-        
+    
+    @classmethod
+    def set_logger(cls, lgr: logging.Logger) -> None:
+        cls._logger = lgr
+
+    @property
+    def logger(self) -> logging.Logger:
+        return type(self)._logger
+
     @property
     def _prefix(self) -> str:
         return self.__prefix
@@ -63,6 +107,7 @@ class Jet(HasID[str], SuperImmut,
 
         return 0
     
+    @logging.logged_method(arg_fmtr=try_insert_args, ret_fmtr=try_insert_ret)
     def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
         curjobs = self.new_jobs
         newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval,
@@ -98,12 +143,9 @@ class Jet(HasID[str], SuperImmut,
         
         return newsched, kicked, scheduled
 
+    @logging.logged_method(arg_fmtr=get_cost_args, ret_fmtr=get_cost_ret)
     def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job],
                        cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> float:
-        newjob.start = None
-        self.sched.set_times()
-        _, cur_cost = cost_func(self.sched, self, cur_req, dmnd)
-            
         newsched.set_times()
         for kjob in kicked:
             kjob.start = None
@@ -112,8 +154,9 @@ class Jet(HasID[str], SuperImmut,
         self.sched.set_times()
 
         late_cost, rem_cost = newcost
-        return late_cost + rem_cost - cur_cost
+        return late_cost + rem_cost / len(newsched.jobs)
     
+    @logging.logged_method(arg_fmtr=get_opts_args, ret_fmtr=get_opts_ret)
     def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
         list[tuple[int, float]]:
         idx = self.get_start_idx(job)

@@ -45,11 +45,14 @@ class Logger:
     def add_process(self, proc: Process) -> None: ...
 
 class LoggedType(Protocol):
+    @classmethod
+    @abstractmethod
+    def set_logger(cls, lgr: Logger) -> None: ...
     @property
     @abstractmethod
     def logger(self) -> Logger: ...
     
-type LoggedMeth = Callable[Concatenate[LoggedType, _P], _T]
+type LoggedMeth[**_P, _T] = Callable[Concatenate[LoggedType, _P], _T]
 type LoggedGen[**_P, _T] = Callable[_P, Generator[_T | LogGenMsg]]
 type ArgsFmtr[**_P] = Callable[_P, FormattedArgs]
 type RetFmtr[_T] = Callable[[_T], FormattedRet]

@@ -12,10 +12,13 @@ from loaddata import load_inv, load_demand, load_adaptive_jobs
 from formatters import make_schedule_args, make_schedule_ret, get_best_job_args, get_best_job_ret, \
     get_dyelot_args, get_dyelot_ret, get_comb_rolls_args, get_comb_rolls_yld, get_normal_rolls_args, \
     get_normal_rolls_yld, get_half_loads_args, get_half_loads_yld, get_odd_loads_args, \
-    get_odd_loads_yld, get_port_loads_args, get_port_loads_yld
+    get_odd_loads_yld, get_port_loads_args, get_port_loads_yld, get_jet_loads_args, get_jet_loads_ret, \
+    req_cost_args
 from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_process_data
 
 LOGGER = logging.Logger()
+
+Jet.set_logger(LOGGER)
 
 class RollPiece(NamedTuple):
     id: str
@@ -75,12 +78,14 @@ def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
 
 @logging.logged_generator(LOGGER, arg_fmtr=get_normal_rolls_args, yld_fmtr=get_normal_rolls_yld)
 def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                     jet_rng: FloatRange) -> Generator[PortLoad | logging.LogGenMsg]:
+                     jet_rng: FloatRange, used: str | None = None) \
+                        -> Generator[PortLoad | logging.LogGenMsg]:
     if roll.NORMAL not in inv[greige]:
         yield logging.LogGenMsg(result=f'No normal rolls of {greige.id} in inventory.')
         return
     
     for rid in inv[greige, roll.NORMAL]:
+        if used and rid == used: continue
         rview = inv[greige, roll.NORMAL, rid]
         
         if not prev_wts:
@@ -102,12 +107,14 @@ def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
 
 @logging.logged_generator(LOGGER, arg_fmtr=get_half_loads_args, yld_fmtr=get_half_loads_yld)
 def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                   jet_rng: FloatRange) -> Generator[PortLoad | logging.LogGenMsg]:
+                   jet_rng: FloatRange, used: str | None = None) \
+                    -> Generator[PortLoad | logging.LogGenMsg]:
     if roll.HALF not in inv[greige]:
         yield logging.LogGenMsg(result=f'No half rolls of {greige.id} in inventory.')
         return
     
     for rid in inv[greige, roll.HALF]:
+        if used and rid == used: continue
         rview = inv[greige, roll.HALF, rid]
 
         if not prev_wts:
@@ -152,18 +159,42 @@ def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
             if splits.extra.lbs > 20:
                 extras.append(splits.extra)
 
+def get_starts(greige: GreigeStyle, inv: Inventory) -> Generator[list[PortLoad]]:
+    if greige not in inv:
+        return
+    
+    for size in (roll.NORMAL, roll.HALF):
+        if size not in inv[greige]:
+            continue
+
+        for rid in inv[greige, size]:
+            rview = inv[greige, size, rid]
+            start: list[PortLoad] = []
+            if size == roll.NORMAL:
+                start.append(PortLoad(RollPiece(rid, rview, rview.lbs / 2), None))
+                start.append(PortLoad(RollPiece(rid, rview, rview.lbs / 2), None))
+            else:
+                start.append(PortLoad(RollPiece(rid, rview, rview.lbs / 2), None))
+            
+            yield start
+
 @logging.logged_generator(LOGGER, arg_fmtr=get_port_loads_args, yld_fmtr=get_port_loads_yld)
-def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange) \
+def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange, used: PortLoad | None = None) \
     -> Generator[PortLoad | logging.LogGenMsg]:
     if greige not in inv:
         yield logging.LogGenMsg(result=f'No {greige.id} in inventory.')
         return
     
     prev_wts: list[float] = []
-    normal = get_normal_loads(greige, inv, prev_wts, jet_rng)
+    used_id = None
+    if used:
+        prev_wts.append(used.roll1.lbs)
+        used_id = used.roll1.id
+
+    normal = get_normal_loads(greige, inv, prev_wts, jet_rng, used=used_id)
     for load in normal:
         yield load
-    half = get_half_loads(greige, inv, prev_wts, jet_rng)
+    half = get_half_loads(greige, inv, prev_wts, jet_rng, used=used_id)
     for load in half:
         yield load
     extras: list[RollPiece] = []
@@ -180,13 +211,42 @@ def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange) \
     for load in comb:
         yield load
 
+@logging.logged_func(LOGGER, arg_fmtr=get_jet_loads_args, ret_fmtr=get_jet_loads_ret)
+def get_jet_loads(greige: GreigeStyle, inv: Inventory, jet: Jet) -> list[PortLoad]:
+    starts = get_starts(greige, inv)
+
+    for start in starts:
+        loads: list[PortLoad] = []
+
+        for start_load in start:
+            loads.append(start_load)
+            if len(loads) == jet.n_ports:
+                return loads
+        
+        used = start[0]
+        rem_loads = get_port_loads(greige, inv, jet.load_rng, used=used)
+        for load in rem_loads:
+            loads.append(load)
+            if len(loads) == jet.n_ports:
+                return loads
+    
+    loads: list[PortLoad] = []
+    all_loads = get_port_loads(greige, inv, jet.load_rng)
+    for load in all_loads:
+        loads.append(load)
+        if len(loads) == jet.n_ports:
+            break
+    
+    return loads
+
 class NewJobInfo(NamedTuple):
     jet: Jet
     idx: int
     port_loads: list[PortLoad]
     cost: float
 
-def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[float, float]:
+@logging.logged_func(LOGGER, arg_fmtr=req_cost_args, ret_fmtr=...)
+def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
     late_cost = 0
     inv_cost = 0
     for key in dmnd.fullkeys():
@@ -219,13 +279,24 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
             late_cost += (2500 + yds*0.05)
         elif days_late >= 6:
             late_cost += (5000 + yds*0.05)
+        
+        if cur_req.bucket(4).yds < 0:
+            inv_cost += (abs(cur_req.bucket(4).yds) * 0.02 * 2)
     
+    return late_cost, inv_cost
+
+def strip_cost(sched: JetSched, jet: Jet) -> float:
     strip_cost = 0
     cost_12_port_hrs = 150
     for job in sched.jobs:
         if job.shade in (color.STRIP, color.HEAVYSTRIP):
-            cur_cost = cost_12_port_hrs * (job.cycle_time.total_seconds() / (3600 * 12))
+            cur_cost = cost_12_port_hrs * (job.cycle_time.total_seconds() / (3600 * 12)) * jet.n_ports
             strip_cost += cur_cost
+    return strip_cost
+
+def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[float, float]:
+    late_cost, inv_cost = req_cost(cur_req, dmnd)
+    scost = strip_cost(sched, jet)
     
     shade_vals = {
         color.SOLUTION: 0, color.LIGHT: 3, color.MEDIUM: 6, color.BLACK: 9
@@ -252,7 +323,7 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
         and sched.jobs[-1].shade != color.BLACK:
         non_black_9 += 5
     
-    return late_cost*0.9, max(0, inv_cost) + strip_cost + not_seq_cost*1.2 + non_black_9
+    return late_cost*0.9 + max(0, inv_cost), scost + not_seq_cost*1.2 + non_black_9
 
 @logging.logged_func(LOGGER, arg_fmtr=get_dyelot_args, ret_fmtr=get_dyelot_ret)
 def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \
@@ -260,12 +331,7 @@ def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \
     if not req.item.can_run_on_jet(jet.id):
         return [], set(), None, 'CANNOT RUN'
     
-    port_loads: list[PortLoad] = []
-    loads = get_port_loads(req.greige, inv, jet.load_rng)
-    for i, load in enumerate(loads):
-        if i == jet.n_ports: break
-        port_loads.append(load)
-    
+    port_loads = get_jet_loads(req.greige, inv, jet)
     if len(port_loads) < jet.n_ports:
         return port_loads, set(), None, 'NO GREIGE'
     

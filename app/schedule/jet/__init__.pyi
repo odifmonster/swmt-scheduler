@@ -2,12 +2,12 @@ from app.schedule.jet.jetsched import JetSched as JetSched
 
 from typing import Callable
 import datetime as dt
-from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support import logging, HasID, SuperImmut, FloatRange, DateRange
 from app.schedule import Req, Job, Demand
 
 type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
-class Jet(HasID[str], SuperImmut):
+class Jet(logging.LoggedType, HasID[str], SuperImmut):
     """
     A class for Jet objects. All attributes are frozen, but the sched object is (purposefully)
     mutable.

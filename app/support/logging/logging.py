@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from typing import Protocol, Callable, TypeVar, ParamSpec, Concatenate, TypedDict, \
-    Generator, NewType
+    Generator
 from abc import abstractmethod
 
 T = TypeVar('T')
@@ -21,7 +21,7 @@ class FormattedRet(TypedDict, total=False):
 
 class LogGenMsg:
 
-    def __init__(self, result: str = 'N/A', notes1: str = 'N/A', notes2: str = 'N/A'):
+    def __init__(self, result: str = 'N/A', notes1: str = '', notes2: str = ''):
         self.result = result
         self.notes1 = notes1
         self.notes2 = notes2
@@ -31,8 +31,8 @@ class LogGenMsg:
 
 class Process:
 
-    def __init__(self, caller: int, name: str, desc1: str = 'N/A', desc2: str = 'N/A',
-                 desc3: str = 'N/A'):
+    def __init__(self, caller: int, name: str, desc1: str = '', desc2: str = '',
+                 desc3: str = ''):
         globals()['_CTR'] += 1
         self.id: int = globals()['_CTR']
         self.caller = caller
@@ -41,10 +41,10 @@ class Process:
         self.desc2 = desc2
         self.desc3 = desc3
         self.result = 'N/A'
-        self.notes1 = 'N/A'
-        self.notes2 = 'N/A'
+        self.notes1 = ''
+        self.notes2 = ''
 
-    def set_result(self, result: str = 'N/A', notes1: str = 'N/A', notes2: str = 'N/A'):
+    def set_result(self, result: str = 'N/A', notes1: str = '', notes2: str = ''):
         self.result = result
         self.notes1 = notes1
         self.notes2 = notes2
@@ -61,13 +61,18 @@ class Logger:
     def push_caller(self, process: Process) -> None:
         self.callers.append(process.id)
     
-    def pop_caller(self) -> Process:
+    def pop_caller(self) -> int:
         return self.callers.pop()
     
     def add_process(self, proc: Process) -> None:
         self.processes.append(proc)
 
 class LoggedType(Protocol):
+
+    @classmethod
+    @abstractmethod
+    def set_logger(cls, lgr: Logger) -> None:
+        raise NotImplementedError()
     
     @property
     @abstractmethod
@@ -115,17 +120,15 @@ def logged_generator(lgr: Logger, arg_fmtr: Callable[P, FormattedArgs],
     def deco(gen: LoggedGen[P, T]) -> Callable[P, Generator[T]]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Generator[T]:
             caller = lgr.peek_caller()
-            genp = Process(caller, gen.__name__, **arg_fmtr(*args, **kwargs))
+            fmtd_args = arg_fmtr(*args, **kwargs)
             i = gen(*args, **kwargs)
-            lgr.add_process(genp)
-            lgr.push_caller(genp)
 
             while True:
                 try:
-                    valp = Process(caller, f'next({genp.name})')
-                    lgr.add_process(valp)
+                    valp = Process(caller, f'next({gen.__name__})', **fmtd_args)
                     lgr.push_caller(valp)
                     val = next(i)
+                    lgr.add_process(valp)
 
                     if isinstance(val, LogGenMsg):
                         valp.set_result(**val.as_kwargs())
@@ -136,7 +139,6 @@ def logged_generator(lgr: Logger, arg_fmtr: Callable[P, FormattedArgs],
                     lgr.pop_caller()
                     yield val
                 except StopIteration:
-                    genp.set_result()
                     lgr.pop_caller()
                     return
         return wrapper
