@@ -125,7 +125,7 @@ def get_missing_data(dmnd: Demand) -> MissingData:
                 data['due_date'].append(rbucket.date)
                 data['missing_yds'].append(rbucket.yds)
                 data['missing_lbs'].append(rbucket.lbs)
-                if rbucket.total_yds <= 0:
+                if rbucket.total_yds < 200:
                     data['scheduled'].append('TRUE')
                 else:
                     data['scheduled'].append('FALSE')

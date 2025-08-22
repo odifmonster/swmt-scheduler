@@ -154,7 +154,7 @@ class Jet(logging.LoggedType, HasID[str], SuperImmut,
         self.sched.set_times()
 
         late_cost, rem_cost = newcost
-        return late_cost + rem_cost / len(newsched.jobs)
+        return late_cost + 5 * rem_cost / len(newsched.jobs)
     
     @logging.logged_method(arg_fmtr=get_opts_args, ret_fmtr=get_opts_ret)
     def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
@@ -164,6 +164,8 @@ class Jet(logging.LoggedType, HasID[str], SuperImmut,
         cur_req = job.lots[0].req
 
         for i in range(idx, len(self.new_jobs)+1):
+            if cur_req.id == 'REQ FF MOLTO-NA-41256-64':
+                print(f'Getting cost of inserting on {self.id} after {i} job(s)')
             newsched, kicked, scheduled = self.try_insert_job(job, i)
             cost = self.get_sched_cost(job, newsched, kicked, cur_req, dmnd, cost_func)
             if scheduled:

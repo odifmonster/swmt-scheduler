@@ -51,32 +51,35 @@ class Bucket(SuperView['Req'],
     
     @property
     def late_yds(self) -> list[tuple[float, dt.timedelta]]:
+        if self.yds <= 0:
+            return []
+        
         lots: list[DyeLotView] = self.lots
         lots = sorted(filter(lambda l: not l.start is None, lots), key=lambda l: l.end)
-        
-        yds_on_time = 0
-        total_prod = 0
+        if not lots:
+            return [(self.yds, dt.timedelta(days=14))]
 
-        raw_table: list[tuple[float, dt.timedelta]] = []
-        for lot in lots:
-            fin_date = lot.end + dt.timedelta(hours=16)
-            total_prod += lot.yds
+        last_late = self.__yds
+        idx = 0
+        for i in range(len(lots), 0, -1):
+            total_prod = sum(map(lambda l: l.yds, lots[:i]))
+            if self.__yds - total_prod > 0:
+                last_late = self.__yds - total_prod
+                idx = i
+                break
+        
+        table: list[tuple[float, dt.timedelta]] = []
+        if idx == len(lots):
+            table.append((last_late, dt.timedelta(days=14)))
+        else:
+            table.append((last_late, lots[idx].end + dt.timedelta(hours=16) - self.date))
 
-            if fin_date <= self.date:
-                yds_on_time += lot.yds
-            else:
-                raw_table.append((self.__yds - total_prod, fin_date - self.date))
+        for i in range(idx, 0, -1):
+            if lots[i-1].end + dt.timedelta(hours=16) <= self.date:
+                break
+            table.append((lots[i-1].yds, lots[i-1].end + dt.timedelta(hours=16) - self.date))
         
-        raw_table.insert(0, (self.__yds - yds_on_time, dt.timedelta(days=0)))
-        
-        late_table: list[tuple[float, dt.timedelta]] = []
-        tdelta = dt.timedelta(days=7)
-        for i in range(len(raw_table), 0, -1):
-            yds, curdelta = raw_table[i-1]
-            late_table.insert(0, (yds, tdelta))
-            tdelta = curdelta
-        
-        return late_table
+        return table
 
 class ReqView(DataView[str],
               funcs=['bucket','late_yd_buckets','late_lb_buckets','assign_lot','unassign_lot'],

@@ -245,10 +245,14 @@ class NewJobInfo(NamedTuple):
     port_loads: list[PortLoad]
     cost: float
 
-@logging.logged_func(LOGGER, arg_fmtr=req_cost_args, ret_fmtr=...)
 def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
     late_cost = 0
     inv_cost = 0
+
+    if cur_req.id == 'REQ FF MOLTO-NA-41256-64':
+        print('  ', end='')
+        print('\n  '.join([repr(x) for x in cur_req.late_yd_buckets()]))
+
     for key in dmnd.fullkeys():
         rview = dmnd[key]
         for yds, tdelta in rview.late_yd_buckets():
@@ -261,8 +265,10 @@ def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
                 late_cost += (1500 + yds*0.05)
             elif days_late < 6:
                 late_cost += (2500 + yds*0.05)
-            elif days_late >= 6:
+            elif days_late < 10:
                 late_cost += (5000 + yds*0.05)
+            elif days_late >= 10:
+                late_cost += (10000 + yds*0.05)
                 
         if rview.bucket(4).yds < 0:
             inv_cost += (abs(rview.bucket(4).yds) * 0.02 * 2)
@@ -277,8 +283,10 @@ def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float]:
             late_cost += (1500 + yds*0.05)
         elif days_late < 6:
             late_cost += (2500 + yds*0.05)
-        elif days_late >= 6:
+        elif days_late < 10:
             late_cost += (5000 + yds*0.05)
+        elif days_late >= 10:
+            late_cost += (10000 + yds*0.05)
         
         if cur_req.bucket(4).yds < 0:
             inv_cost += (abs(cur_req.bucket(4).yds) * 0.02 * 2)
@@ -299,7 +307,7 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
     scost = strip_cost(sched, jet)
     
     shade_vals = {
-        color.SOLUTION: 0, color.LIGHT: 3, color.MEDIUM: 6, color.BLACK: 9
+        color.SOLUTION: 0, color.LIGHT: 5, color.MEDIUM: 10, color.BLACK: 20
     }
 
     not_seq_cost = 0
@@ -308,8 +316,6 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
         if job1.shade in (color.STRIP, color.HEAVYSTRIP) or \
             job2.shade in (color.STRIP, color.HEAVYSTRIP):
             continue
-        if jet.id == 'Jet-09' and job1.shade != color.BLACK:
-            non_black_9 += 5
 
         val1 = shade_vals[job1.shade]
         val2 = shade_vals[job2.shade]
@@ -318,10 +324,11 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
             diff /= 2
         
         not_seq_cost += abs(diff)
-    if jet.id == 'Jet-09' and len(sched.jobs) > 0 and \
-        sched.jobs[-1].shade not in (color.STRIP, color.HEAVYSTRIP) \
-        and sched.jobs[-1].shade != color.BLACK:
-        non_black_9 += 5
+    
+    if jet.id == 'Jet-09':
+        for job in sched.jobs:
+            if job.shade not in (color.STRIP, color.HEAVYSTRIP, color.BLACK):
+                non_black_9 += 5
     
     return late_cost*0.9 + max(0, inv_cost), scost + not_seq_cost*1.2 + non_black_9
 
