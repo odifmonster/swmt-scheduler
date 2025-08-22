@@ -1,15 +1,20 @@
 #!/usr/bin/env python
 
-from typing import NamedTuple, Unpack
+from typing import NamedTuple, Unpack, Literal
 import datetime as dt, pandas as pd, os
 
+from app.support import logging
 from app.style import color
 from app.inventory import Inventory, AllocRoll, RollView
-from app.schedule import Job, Jet, JetSched, Req, Demand
+from app.schedule import DyeLot, Job, Jet, JetSched, Req, Demand
 
 from loaddata import load_inv, load_demand, load_adaptive_jobs
+from formatters import make_schedule_args, make_schedule_ret, get_best_job_args, get_best_job_ret, \
+    get_dyelot_args, get_dyelot_ret
 from getrolls import PortLoad, get_port_loads
-from gettables import get_jobs_data, get_rolls_data, get_missing_data
+from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_process_data
+
+LOGGER = logging.Logger()
 
 class NewJobInfo(NamedTuple):
     jet: Jet
@@ -27,13 +32,13 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
 
             days_late = tdelta.total_seconds() / (3600*24)
             if 0 < days_late < 4:
-                late_cost += (1000 + yds*0.1)
+                late_cost += (1000 + yds*0.05)
             elif days_late < 5:
-                late_cost += (1500 + yds*0.1)
+                late_cost += (1500 + yds*0.05)
             elif days_late < 6:
-                late_cost += (2500 + yds*0.1)
+                late_cost += (2500 + yds*0.05)
             elif days_late >= 6:
-                late_cost += (5000 + yds*0.1)
+                late_cost += (5000 + yds*0.05)
                 
         if rview.bucket(4).yds < 0:
             inv_cost += (abs(rview.bucket(4).yds) * 0.02 * 2)
@@ -43,13 +48,13 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
 
         days_late = tdelta.total_seconds() / (3600*24)
         if 0 < days_late < 4:
-            late_cost += (1000 + yds*0.1)
+            late_cost += (1000 + yds*0.05)
         elif days_late < 5:
-            late_cost += (1500 + yds*0.1)
+            late_cost += (1500 + yds*0.05)
         elif days_late < 6:
-            late_cost += (2500 + yds*0.1)
+            late_cost += (2500 + yds*0.05)
         elif days_late >= 6:
-            late_cost += (5000 + yds*0.1)
+            late_cost += (5000 + yds*0.05)
     
     strip_cost = 0
     cost_12_port_hrs = 150
@@ -77,44 +82,53 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
         if diff > 0:
             diff /= 2
         
-        not_seq_cost += abs(diff) * 0.1
+        not_seq_cost += abs(diff)
     if jet.id == 'Jet-09' and len(sched.jobs) > 0 and \
         sched.jobs[-1].shade not in (color.STRIP, color.HEAVYSTRIP) \
         and sched.jobs[-1].shade != color.BLACK:
         non_black_9 += 5
     
-    return late_cost, max(0, inv_cost) + strip_cost + not_seq_cost + non_black_9
+    return late_cost*0.9, max(0, inv_cost) + strip_cost + not_seq_cost*1.2 + non_black_9
 
+@logging.logged_func(LOGGER, arg_fmtr=get_dyelot_args, ret_fmtr=get_dyelot_ret)
+def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \
+    -> tuple[list[PortLoad], set[RollView], DyeLot | None, Literal['N/A', 'CANNOT RUN', 'NO GREIGE']]:
+    if not req.item.can_run_on_jet(jet.id):
+        return [], set(), None, 'CANNOT RUN'
+    
+    port_loads: list[PortLoad] = []
+    loads = get_port_loads(req.greige, inv, jet.load_rng)
+    for i, load in enumerate(loads):
+        if i == jet.n_ports: break
+        port_loads.append(load)
+    
+    if len(port_loads) < jet.n_ports:
+        return port_loads, set(), None, 'NO GREIGE'
+    
+    temp_rolls: list[AllocRoll] = []
+    used_rolls: set[RollView] = set()
+
+    for load in port_loads:
+        to_use = inv.remove(load.roll1.rview)
+        used_rolls.add(to_use.view())
+        aroll = to_use.use(load.roll1.lbs, temp=True)
+        inv.add(to_use)
+        if load.roll2:
+            to_use = inv.remove(load.roll2.rview)
+            aroll = to_use.use(load.roll2.lbs, aroll=aroll, temp=True)
+            used_rolls.add(to_use.view())
+            inv.add(to_use)
+        temp_rolls.append(aroll)
+    
+    return port_loads, used_rolls, req.assign_lot(temp_rolls, pnum), 'N/A'
+
+@logging.logged_func(LOGGER, arg_fmtr=get_best_job_args, ret_fmtr=get_best_job_ret)
 def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Demand) -> NewJobInfo | None:
     newjobs: list[NewJobInfo] = []
     for jet in jets:
-        if not req.item.can_run_on_jet(jet.id): continue
+        port_loads, used_rolls, lot, _ = get_dyelot(req, pnum, jet, inv)
+        if not lot: continue
 
-        port_loads: list[PortLoad] = []
-        loads = get_port_loads(req.greige, inv, jet.load_rng)
-        for i, load in enumerate(loads):
-            if i == jet.n_ports: break
-            port_loads.append(load)
-        
-        if len(port_loads) < jet.n_ports:
-            continue
-
-        temp_rolls: list[AllocRoll] = []
-        used_rolls: set[RollView] = set()
-
-        for load in port_loads:
-            use_roll = inv.remove(load.roll1.rview)
-            used_rolls.add(use_roll.view())
-            aroll = use_roll.use(load.roll1.lbs, temp=True)
-            inv.add(use_roll)
-            if not load.roll2 is None:
-                use_roll = inv.remove(load.roll2.rview)
-                aroll = use_roll.use(load.roll2.lbs, temp=True)
-                used_rolls.add(use_roll.view())
-                inv.add(use_roll)
-            temp_rolls.append(aroll)
-
-        lot = req.assign_lot(temp_rolls, pnum)
         job = Job.make_job(dt.datetime.fromtimestamp(0), (lot,))
         for idx, cost in jet.get_all_options(job, req, dmnd, cost_func):
             newjobs.append(NewJobInfo(jet, idx, port_loads, cost))
@@ -168,9 +182,11 @@ def assign_job(job_info: NewJobInfo, req: Req, pnum: int, inv: Inventory) -> Non
         njob.start = job_info.jet.sched.last_job_end
         job_info.jet.sched.add_job(njob)
 
+@logging.logged_func(LOGGER, arg_fmtr=make_schedule_args, ret_fmtr=make_schedule_ret)
 def make_schedule(demand: Demand, inv: Inventory, jets: list[Jet]) -> None:
     for i in range(1,5):
-        for key in demand.fullkeys():
+        keys = sorted(demand.fullkeys(), key=lambda k: k[1].shade)
+        for key in keys:
             reqview = demand[key]
             req = demand.remove(reqview)
             bucket = req.bucket(i)
@@ -208,6 +224,12 @@ def write_to_output(jets: list[Jet], dmnd: Demand) -> None:
     missing_df = pd.DataFrame(data=missing_table)
     missing_df = df_cols_to_string(missing_df, 'item', 'scheduled')
     missing_df.to_excel(writer, sheet_name='late_orders', index=False, float_format='%.2f')
+
+    proc_ids, process_table = get_process_data(LOGGER)
+    process_df = pd.DataFrame(data=process_table, index=proc_ids)
+    process_df = df_cols_to_string(process_df, 'name', 'desc1', 'desc2', 'desc3', 'result',
+                                   'notes1', 'notes2')
+    process_df.to_excel(writer, sheet_name='logs')
 
     writer.close()
 

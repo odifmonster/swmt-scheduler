@@ -8,13 +8,13 @@ from ...job import Job
 
 class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_since_strip',
                                   'soil_level'),
-               priv_attrs=('jobs','init_jss','jss','init_soil','added_soil'),
+               priv_attrs=('jobs','init_jss','jss','init_soil','soil'),
                frozen=('_JetSched__init_soil','_JetSched__init_jss','date_rng')):
     
     def __init__(self, min_date: dt.datetime, max_date: dt.datetime, soil_level: int = 0,
                  njobs: int = 0):
         super().__init__(priv={'jobs': [], 'init_jss': njobs, 'jss': njobs, 'init_soil': soil_level,
-                               'added_soil': 0},
+                               'soil': soil_level},
                          date_rng=DateRange(min_date, max_date))
 
     @property
@@ -38,7 +38,7 @@ class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_sin
     
     @property
     def soil_level(self):
-        return self.__init_soil + self.__added_soil
+        return self.__soil
     
     @property
     def jobs(self) -> list[Job]:
@@ -65,18 +65,18 @@ class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_sin
         if job.shade in (STRIP, HEAVYSTRIP):
             self.__jss = 0
             if job.shade == STRIP:
-                self.__added_soil -= 27
+                self.__soil -= 27
             else:
-                self.__added_soil -= 63
-            self.__added_soil = max(0, self.__added_soil)
+                self.__soil -= 63
+            self.__soil = max(0, self.__soil)
         else:
             self.__jss += 1
             if job.shade in (SOLUTION, LIGHT):
-                self.__added_soil += 1
+                self.__soil += 1
             elif job.shade in (MEDIUM, EMPTY):
-                self.__added_soil += 3
+                self.__soil += 3
             else:
-                self.__added_soil += 7
+                self.__soil += 7
         job.start = self.last_job_end
         self.__jobs.append(job)
 
@@ -90,3 +90,4 @@ class JetSched(SuperImmut, attrs=('date_rng','last_job_end','rem_time','jobs_sin
     def clear_jobs(self):
         self.__jobs = []
         self.__jss = self.__init_jss
+        self.__soil = self.__init_soil
