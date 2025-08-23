@@ -29,7 +29,7 @@ def try_insert_ret(res: tuple[JetSched, list[Job], bool]) -> logging.FormattedRe
     fmtd: logging.FormattedRet = {}
     _, kicked, success = res
     if success:
-        fmtd['result'] = 'Successfully scheduled new job at this position'
+        fmtd['result'] = 'Able to schedule new job at this position'
     else:
         fmtd['result'] = 'Not enough space for new job at this position'
     
@@ -38,7 +38,7 @@ def try_insert_ret(res: tuple[JetSched, list[Job], bool]) -> logging.FormattedRe
 
 def get_cost_args(newjob: Job, newsched: JetSched, kicked: list[Job],
                   cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> logging.FormattedArgs:
-    return { 'desc1': 'Calculating cost of current test schedule' }
+    return { 'desc1': 'Calculating cost of current temporary schedule' }
 
 def get_cost_ret(res: float) -> logging.FormattedRet:
     return { 'result': f'{res:.2f}' }
