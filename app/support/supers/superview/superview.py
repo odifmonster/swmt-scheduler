@@ -38,5 +38,5 @@ class SuperView[T]:
     
     def __setattr__(self, name: str, value):
         if name in type(self)._attrs:
-            raise AttributeError(f'\'{name}\' is a a viewed attribute on another object.')
+            raise AttributeError(f'\'{name}\' is a viewed attribute on another object')
         super(SuperView, self).__setattr__(name, value)
