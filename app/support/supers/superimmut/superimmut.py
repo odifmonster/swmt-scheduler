@@ -29,7 +29,7 @@ class SuperImmut:
         cls._attrs = tuple(all_attrs)
         cls._frozen = tuple(mangled_frz)
     
-    def __init__(self, priv: dict[str], **kwargs):
+    def __init__(self, priv: dict[str] = {}, **kwargs):
         for a, val in priv.items():
             priv_name = f'_{type(self).__name__}__{a}'
             if priv_name not in type(self)._attrs:
