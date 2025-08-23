@@ -3,6 +3,7 @@
 from typing import TypedDict
 import datetime as dt
 
+from app.support.logging import Logger
 from app.style.color import EMPTY, STRIP, HEAVYSTRIP
 from app.schedule import Jet, Demand
 
@@ -36,6 +37,13 @@ class MissingData(TypedDict):
     missing_yds: list[float]
     missing_lbs: list[float]
     scheduled: list[str]
+
+class LogsData(TypedDict):
+    caller: list[int]
+    name: list[str]
+    desc1: list[str]
+    desc2: list[str]
+    desc3: list[str]
 
 def get_jobs_data(jets: list[Jet]) -> tuple[list[str], JobsData]:
     data: JobsData = JobsData(jet=[], start=[], end=[], item=[], greige=[],
@@ -120,3 +128,17 @@ def get_missing_data(dmnd: Demand) -> MissingData:
                     data['scheduled'].append('FALSE')
     
     return data
+
+def get_logs_data(lgr: Logger) -> tuple[list[int], LogsData]:
+    data: LogsData = LogsData(caller=[], name=[], desc1=[], desc2=[], desc3=[])
+    ids: list[int] = []
+
+    for p in lgr.processes:
+        ids.append(p.id)
+        data['caller'].append(p.caller)
+        data['name'].append(p.name)
+        data['desc1'].append(p.desc1)
+        data['desc2'].append(p.desc2)
+        data['desc3'].append(p.desc3)
+    
+    return ids, data

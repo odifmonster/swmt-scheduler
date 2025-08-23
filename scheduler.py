@@ -1,29 +1,20 @@
 #!/usr/bin/env python
 
-from typing import NamedTuple, Unpack, Literal, Generator
+from typing import Unpack, Literal, Generator
 import datetime as dt, pandas as pd, os
 
-from app.support import FloatRange
+from app.support import FloatRange, logging
 from app.style import color, GreigeStyle
 from app.inventory import roll, Inventory, AllocRoll, RollView
 from app.schedule import DyeLot, Job, Jet, JetSched, Req, Demand, ReqView
 
+from schedtypes import SplitRoll, RollPiece, PortLoad, NewJobInfo
 from loaddata import load_inv, load_demand, load_adaptive_jobs
-    
-from gettables import get_jobs_data, get_rolls_data, get_missing_data
+from formatters import make_sched_args, make_sched_ret, best_job_args, best_job_ret, dyelot_args, \
+    dyelot_ret
+from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_logs_data
 
-class RollPiece(NamedTuple):
-    id: str
-    rview: RollView
-    lbs: float
-
-class PortLoad(NamedTuple):
-    roll1: RollPiece
-    roll2: RollPiece | None
-
-class SplitRoll(NamedTuple):
-    full: list[RollPiece]
-    extra: RollPiece
+LOGGER = logging.Logger()
 
 def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
     x = round(rview.lbs / tgt_rng.average())
@@ -210,12 +201,6 @@ def get_jet_loads(greige: GreigeStyle, inv: Inventory, jet: Jet) -> list[PortLoa
     
     return loads
 
-class NewJobInfo(NamedTuple):
-    jet: Jet
-    idx: int
-    port_loads: list[PortLoad]
-    cost: float
-
 def get_late_cost(req: Req | ReqView) -> float:
     cost = 0
     for i in range(1,4):
@@ -312,6 +297,7 @@ def cost_func(sched: JetSched, jet: Jet, cur_req: Req, dmnd: Demand) -> tuple[fl
     not_seq_cos, non_black_9 = not_seq_cost(sched, jet)
     return cur_late+other_late+cur_inv+other_inv, scost+not_seq_cos*1.2+non_black_9
 
+@logging.logged_func(LOGGER, desc_args=dyelot_args, desc_ret=dyelot_ret)
 def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \
     -> tuple[list[PortLoad], set[RollView], DyeLot | None, Literal['N/A', 'CANNOT RUN', 'NO GREIGE']]:
     if not req.item.can_run_on_jet(jet.id):
@@ -338,6 +324,7 @@ def get_dyelot(req: Req, pnum: int, jet: Jet, inv: Inventory) \
     
     return port_loads, used_rolls, req.assign_lot(temp_rolls, pnum), 'N/A'
 
+@logging.logged_func(LOGGER, desc_args=best_job_args, desc_ret=best_job_ret)
 def get_best_job(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Demand) -> NewJobInfo | None:
     newjobs: list[NewJobInfo] = []
     for jet in jets:
@@ -397,6 +384,7 @@ def assign_job(job_info: NewJobInfo, req: Req, pnum: int, inv: Inventory) -> Non
         njob.start = job_info.jet.sched.last_job_end
         job_info.jet.sched.add_job(njob)
 
+@logging.logged_func(LOGGER, desc_args=make_sched_args, desc_ret=make_sched_ret)
 def make_schedule(demand: Demand, inv: Inventory, jets: list[Jet]) -> None:
     for i in range(1,5):
         keys = sorted(demand.fullkeys(), key=lambda k: k[1].shade)
@@ -438,6 +426,11 @@ def write_to_output(jets: list[Jet], dmnd: Demand) -> None:
     missing_df = pd.DataFrame(data=missing_table)
     missing_df = df_cols_to_string(missing_df, 'item', 'scheduled')
     missing_df.to_excel(writer, sheet_name='late_orders', index=False, float_format='%.2f')
+
+    proc_ids, logs_table = get_logs_data(LOGGER)
+    logs_df = pd.DataFrame(data=logs_table, index=proc_ids)
+    logs_df = df_cols_to_string(logs_df, 'name', 'desc1', 'desc2', 'desc3')
+    logs_df.to_excel(writer, sheet_name='logs', index_label='process_id')
 
     writer.close()
 

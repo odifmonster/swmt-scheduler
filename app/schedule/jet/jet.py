@@ -15,7 +15,7 @@ class Jet(HasID[str], SuperImmut,
           attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs',
                  'sched'),
           priv_attrs=('prefix','id','init_sched'),
-          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','_logger','n_ports','load_rng',
+          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng',
                   'date_rng')):
 
     def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
