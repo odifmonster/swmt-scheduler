@@ -3,7 +3,7 @@
 from typing import Callable
 import datetime as dt
 
-from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support import HasID, SuperImmut, FloatRange, DateRange, logging
 from app.style.color import STRIP, HEAVYSTRIP
 from ..req import Req, Demand
 from ..job import Job
@@ -11,12 +11,58 @@ from .jetsched import JetSched
 
 type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
-class Jet(HasID[str], SuperImmut,
-          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','new_jobs',
-                 'sched'),
+def all_opts_args(job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> logging.ProcessDesc:
+    return {
+        'desc1': f'Getting available insertion points and costs for test job {job.lots[0]}',
+        'desc2': f'Targeted item: {cur_req.item.id}'
+    }
+
+def all_opts_ret(ret: list[tuple[int, float]]) -> logging.ProcessDesc:
+    return {
+        'desc1': 'Finished calculating costs for all insertion points'
+    }
+
+def try_insert_args(job: Job, idx: int) -> logging.ProcessDesc:
+    return {
+        'desc1': f'Trying to insert {job.lots[0]} after {idx} job(s)'
+    }
+
+def try_insert_ret(ret: tuple[JetSched, list[Job], bool]) -> logging.ProcessDesc:
+    desc: logging.ProcessDesc = {}
+    newsched, kicked, success = ret
+
+    if not success:
+        desc['desc1'] = 'Could not schedule test job at given insertion point'
+    else:
+        desc['desc1'] = 'Able to schedule test job at given insertion point'
+
+        if kicked:
+            desc['desc2'] = 'Kicked jobs: ' + ', '.join([k.id for k in kicked])
+    
+    return desc
+
+def sched_cost_args(newjob: Job, newsched: JetSched, kicked: list[Job], cur_req: Req,
+                    dmnd: Demand, cost_func: CostFunc) -> logging.ProcessDesc:
+    desc: logging.ProcessDesc = {}
+    if newjob in kicked:
+        desc['desc1'] = f'Calculating penalties for not scheduling test job {newjob.lots[0]}'
+    else:
+        desc['desc1'] = f'Calculating penalties for scheduling test job {newjob.lots[0]} at current position'
+    return desc
+
+def sched_cost_ret(ret: float) -> logging.ProcessDesc:
+    return {
+        'desc1': f'Penalty: {ret:.2f}'
+    }
+
+class Jet(logging.HasLogger, HasID[str], SuperImmut,
+          attrs=('_logger','logger','_prefix','id','n_ports','load_rng','date_rng','jobs',
+                 'new_jobs','sched'),
           priv_attrs=('prefix','id','init_sched'),
           frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng',
                   'date_rng')):
+    
+    _logger = logging.Logger()
 
     def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
                  max_date: dt.datetime):
@@ -25,6 +71,14 @@ class Jet(HasID[str], SuperImmut,
         }
         SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
                             date_rng=DateRange(min_date, max_date), sched=None)
+
+    @classmethod
+    def set_logger(cls, lgr: logging.Logger):
+        cls._logger = lgr
+
+    @property
+    def logger(self):
+        return type(self)._logger
 
     @property
     def _prefix(self) -> str:
@@ -65,6 +119,7 @@ class Jet(HasID[str], SuperImmut,
 
         return 0
     
+    @logging.logged_meth(desc_args=try_insert_args, desc_ret=try_insert_ret)
     def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
         curjobs = self.new_jobs
         newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval,
@@ -100,6 +155,7 @@ class Jet(HasID[str], SuperImmut,
         
         return newsched, kicked, scheduled
 
+    @logging.logged_meth(desc_args=sched_cost_args, desc_ret=sched_cost_ret)
     def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job],
                        cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> float:
         newsched.set_times()
@@ -112,6 +168,7 @@ class Jet(HasID[str], SuperImmut,
         late_cost, rem_cost = newcost
         return late_cost + 5 * rem_cost / len(newsched.jobs)
     
+    @logging.logged_meth(desc_args=all_opts_args, desc_ret=all_opts_ret)
     def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
         list[tuple[int, float]]:
         idx = self.get_start_idx(job)
@@ -119,8 +176,6 @@ class Jet(HasID[str], SuperImmut,
         cur_req = job.lots[0].req
 
         for i in range(idx, len(self.new_jobs)+1):
-            if cur_req.id == 'REQ FF MOLTO-NA-41256-64':
-                print(f'Getting cost of inserting on {self.id} after {i} job(s)')
             newsched, kicked, scheduled = self.try_insert_job(job, i)
             cost = self.get_sched_cost(job, newsched, kicked, cur_req, dmnd, cost_func)
             if scheduled:

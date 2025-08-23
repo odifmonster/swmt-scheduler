@@ -20,6 +20,11 @@ class Process:
         self.desc2 = desc2
         self.desc3 = desc3
 
+    def set_desc(self, desc1: str = '', desc2: str = '', desc3: str = ''):
+        self.desc1 = desc1
+        self.desc2 = desc2
+        self.desc3 = desc3
+
 class Logger:
     
     def __init__(self):
@@ -75,7 +80,7 @@ def logged_func(lgr: Logger, desc_args: DescArgsFunc[P], desc_ret: DescRetFunc[T
 
             res = func(*args, **kwargs)
             lgr.pop_caller()
-            retp = Process(callp.caller, f'return({func.__name__})', **desc_ret(res))
+            retp = Process(callp.id, f'return({func.__name__})', **desc_ret(res))
             lgr.add_process(retp)
 
             return res
@@ -92,9 +97,9 @@ def logged_meth(desc_args: DescArgsFunc[P], desc_ret: DescRetFunc[T]) \
             slf.logger.add_process(callp)
             slf.logger.push_caller(callp)
 
-            res = func(*args, **kwargs)
+            res = func(slf, *args, **kwargs)
             slf.logger.pop_caller()
-            retp = Process(callp.caller, f'return({func.__name__})', **desc_ret(res))
+            retp = Process(callp.id, f'return({func.__name__})', **desc_ret(res))
             slf.logger.add_process(retp)
 
             return res
@@ -109,34 +114,29 @@ def logged_generator(lgr: Logger, desc_args: DescArgsFunc[P], desc_yld: DescRetF
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Generator[T]:
             genp = Process(lgr.peek_caller(), func.__name__, **desc_args(*args, **kwargs))
             lgr.add_process(genp)
-
             gen = func(*args, **kwargs)
             while True:
-                valp = Process(genp.caller, '')
-                lgr.add_process(valp)
-                lgr.push_caller(valp)
+                nextp = Process(genp.caller, f'next({func.__name__})')
+                lgr.push_caller(nextp)
 
                 try:
                     val = next(gen)
+                    lgr.add_process(nextp)
+                    valp = Process(nextp.id, '')
+                    lgr.add_process(valp)
 
                     if isinstance(val, FailedYield):
                         valp.name = 'yield_failure'
-                        valp.desc1 = val.desc1
-                        valp.desc2 = val.desc2
-                        valp.desc3 = val.desc3
+                        valp.set_desc(val.desc1, val.desc2, val.desc3)
                         lgr.pop_caller()
                         continue
 
-                    valp.name = f'next({func.__name__})'
-                    yld = desc_yld(val)
-                    valp.desc1 = yld['desc1']
-                    valp.desc2 = yld['desc2']
-                    valp.desc3 = yld['desc3']
-                    yield val
-                    
+                    valp.name = f'yield({func.__name__})'
+                    valp.set_desc(**desc_yld(val))
                     lgr.pop_caller()
+                    yield val
                 except StopIteration:
-                    valp.name = 'terminate_iter'
+                    nextp.name = f'terminate({func.__name__})'
                     lgr.pop_caller()
                     return
         return wrapper

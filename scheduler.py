@@ -11,10 +11,14 @@ from app.schedule import DyeLot, Job, Jet, JetSched, Req, Demand, ReqView
 from schedtypes import SplitRoll, RollPiece, PortLoad, NewJobInfo
 from loaddata import load_inv, load_demand, load_adaptive_jobs
 from formatters import make_sched_args, make_sched_ret, best_job_args, best_job_ret, dyelot_args, \
-    dyelot_ret
+    dyelot_ret, jet_loads_args, jet_loads_ret, grg_starts_args, grg_starts_yld, port_loads_args, \
+    port_loads_yld, normal_rolls_args, normal_rolls_yld, half_rolls_args, half_rolls_yld, \
+    odd_rolls_args, odd_rolls_yld, comb_rolls_args, comb_rolls_yld, req_cost_args, req_cost_ret, \
+    strip_cost_args, strip_cost_ret, not_seq_args, not_seq_ret
 from gettables import get_jobs_data, get_rolls_data, get_missing_data, get_logs_data
 
 LOGGER = logging.Logger()
+Jet.set_logger(LOGGER)
 
 def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
     x = round(rview.lbs / tgt_rng.average())
@@ -28,10 +32,12 @@ def get_splits(rview: RollView, tgt_rng: FloatRange) -> SplitRoll:
     full = [RollPiece(rview.id, rview, split_wt) for _ in range(nsplits)]
     return SplitRoll(full, RollPiece(rview.id, rview, rview.lbs - nsplits*split_wt))
 
+@logging.logged_generator(LOGGER, comb_rolls_args, comb_rolls_yld)
 def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
-                   tgt_rng: FloatRange) -> Generator[PortLoad]:
+                   tgt_rng: FloatRange) -> Generator[PortLoad | logging.FailedYield]:
     extra_ids: set[str] = { piece.id for piece in extras }
     if roll.PARTIAL not in inv[greige]:
+        yield logging.FailedYield(desc1=f'No partial rolls of {greige.id} in inventory.')
         return
     
     subgroup = inv[greige, roll.PARTIAL]
@@ -52,11 +58,19 @@ def get_comb_rolls(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
                 used_ids.add(roll1.id)
                 used_ids.add(roll2.id)
                 yield PortLoad(roll1, roll2)
+            elif roll1.id not in used_ids and roll2.id not in used_ids:
+                yield logging.FailedYield(
+                    desc1=f'Combination of {roll1.id} and {roll2.id} outside of target range',
+                    desc2=f'Total weight: {roll1.lbs+roll2.lbs:.2f} lbs',
+                    desc3=f'Target: {tgt_rng.minval:.2f} to {tgt_rng.maxval:.2f} lbs'
+                )
 
+@logging.logged_generator(LOGGER, normal_rolls_args, normal_rolls_yld)
 def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
                      jet_rng: FloatRange, used: str | None = None) \
-                        -> Generator[PortLoad]:
+                        -> Generator[PortLoad | logging.FailedYield]:
     if roll.NORMAL not in inv[greige]:
+        yield logging.FailedYield(desc1=f'No normal-sized rolls of {greige.id} in inventory.')
         return
     
     for rid in inv[greige, roll.NORMAL]:
@@ -71,16 +85,21 @@ def get_normal_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
                              min(min(prev_wts)+20, jet_rng.maxval))
             
         if not rng.contains(rview.lbs / 2):
+            yield logging.FailedYield(desc1=f'{rview.id} weight outside target range',
+                                      desc2=f'Weight: {rview.lbs / 2:.2f} lbs',
+                                      desc3=f'Target: {rng.minval:.2f} to {rng.maxval:.2f} lbs')
             continue
 
         prev_wts.append(rview.lbs / 2)
         yield PortLoad(RollPiece(rview.id, rview, rview.lbs / 2), None)
         yield PortLoad(RollPiece(rview.id, rview, rview.lbs / 2), None)
 
+@logging.logged_generator(LOGGER, half_rolls_args, half_rolls_yld)
 def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
                    jet_rng: FloatRange, used: str | None = None) \
-                    -> Generator[PortLoad]:
+                    -> Generator[PortLoad | logging.FailedYield]:
     if roll.HALF not in inv[greige]:
+        yield logging.FailedYield(desc1=f'No half-sized rolls of {greige.id} in inventory.')
         return
     
     for rid in inv[greige, roll.HALF]:
@@ -95,13 +114,18 @@ def get_half_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
                              min(min(prev_wts)+20, jet_rng.maxval))
             
         if not rng.contains(rview.lbs):
+            yield logging.FailedYield(desc1=f'{rview.id} weight outside target range',
+                                      desc2=f'Weight: {rview.lbs:.2f} lbs',
+                                      desc3=f'Target: {rng.minval:.2f} to {rng.maxval:.2f} lbs')
             continue
 
         prev_wts.append(rview.lbs)
         yield PortLoad(RollPiece(rview.id, rview, rview.lbs), None)
 
+@logging.logged_generator(LOGGER, odd_rolls_args, odd_rolls_yld)
 def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                  jet_rng: FloatRange, extras: list[RollPiece]) -> Generator[PortLoad]:
+                  jet_rng: FloatRange, extras: list[RollPiece]) \
+                    -> Generator[PortLoad | logging.FailedYield]:
     if not prev_wts:
         rng = FloatRange(max(jet_rng.minval, greige.port_range.minval),
                          min(jet_rng.maxval, greige.port_range.maxval))
@@ -111,6 +135,7 @@ def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
         
     for size in (roll.LARGE, roll.SMALL):
         if size not in inv[greige]:
+            yield logging.FailedYield(desc1=f'No {size.lower()} rolls of {greige.id} in inventory')
             continue
 
         for rid in inv[greige, size]:
@@ -124,8 +149,11 @@ def get_odd_loads(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
             if splits.extra.lbs > 20:
                 extras.append(splits.extra)
 
-def get_starts(greige: GreigeStyle, inv: Inventory) -> Generator[list[PortLoad]]:
+@logging.logged_generator(LOGGER, grg_starts_args, grg_starts_yld)
+def get_starts(greige: GreigeStyle, inv: Inventory, jet: Jet) \
+    -> Generator[list[PortLoad] | logging.FailedYield]:
     if greige not in inv:
+        yield logging.FailedYield(desc1=f'No normal or half rolls of {greige.id} in inventory.')
         return
     
     for size in (roll.NORMAL, roll.HALF):
@@ -134,18 +162,27 @@ def get_starts(greige: GreigeStyle, inv: Inventory) -> Generator[list[PortLoad]]
 
         for rid in inv[greige, size]:
             rview = inv[greige, size, rid]
+            r_wt = rview.lbs if size == roll.HALF else rview.lbs / 2
+            if not jet.load_rng.contains(r_wt):
+                yield logging.FailedYield(desc1=f'{rview.id} outside of target range',
+                                          desc2=f'Weight: {r_wt:.2f} lbs',
+                                          desc3=f'Target: {jet.load_rng.minval:.2f} to {jet.load_rng.maxval:.2f} lbs')
+                continue
+
             start: list[PortLoad] = []
             if size == roll.NORMAL:
-                start.append(PortLoad(RollPiece(rid, rview, rview.lbs / 2), None))
-                start.append(PortLoad(RollPiece(rid, rview, rview.lbs / 2), None))
+                start.append(PortLoad(RollPiece(rid, rview, r_wt), None))
+                start.append(PortLoad(RollPiece(rid, rview, r_wt), None))
             else:
-                start.append(PortLoad(RollPiece(rid, rview, rview.lbs), None))
+                start.append(PortLoad(RollPiece(rid, rview, r_wt), None))
             
             yield start
 
+@logging.logged_generator(LOGGER, port_loads_args, port_loads_yld)
 def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange, used: PortLoad | None = None) \
-    -> Generator[PortLoad]:
+    -> Generator[PortLoad | logging.FailedYield]:
     if greige not in inv:
+        yield logging.FailedYield(desc1=f'No {greige.id} in inventory')
         return
     
     prev_wts: list[float] = []
@@ -174,8 +211,9 @@ def get_port_loads(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange, use
     for load in comb:
         yield load
 
+@logging.logged_func(LOGGER, desc_args=jet_loads_args, desc_ret=jet_loads_ret)
 def get_jet_loads(greige: GreigeStyle, inv: Inventory, jet: Jet) -> list[PortLoad]:
-    starts = get_starts(greige, inv)
+    starts = get_starts(greige, inv, jet)
 
     for start in starts:
         loads: list[PortLoad] = []
@@ -238,6 +276,7 @@ def get_late_cost(req: Req | ReqView) -> float:
     
     return cost
 
+@logging.logged_func(LOGGER, req_cost_args, req_cost_ret)
 def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float, float, float]:
     other_late = 0
     other_inv = 0
@@ -257,6 +296,7 @@ def req_cost(cur_req: Req, dmnd: Demand) -> tuple[float, float, float, float]:
     
     return cur_late, cur_inv, other_late, other_inv
 
+@logging.logged_func(LOGGER, strip_cost_args, strip_cost_ret)
 def strip_cost(sched: JetSched, jet: Jet) -> float:
     strip_cost = 0
     cost_12_port_hrs = 150
@@ -266,6 +306,7 @@ def strip_cost(sched: JetSched, jet: Jet) -> float:
             strip_cost += cur_cost
     return strip_cost
 
+@logging.logged_func(LOGGER, not_seq_args, not_seq_ret)
 def not_seq_cost(sched: JetSched, jet: Jet):
     shade_vals = {
         color.SOLUTION: 0, color.LIGHT: 5, color.MEDIUM: 10, color.BLACK: 20

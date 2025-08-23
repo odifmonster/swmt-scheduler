@@ -13,6 +13,7 @@ class Process:
     desc3: str
     def __init__(self, caller: int, name: str, desc1: str = '', desc2: str = '',
                  desc3: str = '') -> None: ...
+    def set_desc(self, desc1: str = '', desc2: str = '', desc3: str = '') -> None: ...
 
 class Logger:
     processes: list[Process]

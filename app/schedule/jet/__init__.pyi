@@ -7,7 +7,7 @@ from app.schedule import Req, Job, Demand
 
 type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
 
-class Jet(logging.LoggedType, HasID[str], SuperImmut):
+class Jet(logging.HasLogger, HasID[str], SuperImmut):
     """
     A class for Jet objects. All attributes are frozen, but the sched object is (purposefully)
     mutable.
