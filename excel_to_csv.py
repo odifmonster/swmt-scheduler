@@ -32,7 +32,7 @@ def get_out_path(key: InfoKey) -> os.PathLike:
         case 'greige_sizes':
             return os.path.join(APPDIR, 'style', 'greige', 'styles.csv')
         case 'greige_translation':
-            return os.path.join(APPDIR, 'style', 'translation', 'translate.csv')
+            return os.path.join(APPDIR, 'style', 'translate', 'translate.csv')
         case 'jet_info':
             return os.path.join(APPDIR, 'schedule', 'jet', 'jets.csv')
 
@@ -57,7 +57,7 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
         case 'greige_sizes':
             grg = df.loc[i, 'greige']
             tgt_lbs = df.loc[i, 'tgt_lbs']
-            return f'{grg},{tgt_lbs:.2f}\n'
+            return f'{grg},{tgt_lbs-20:.2f},{tgt_lbs+20:.2f}\n'
         case 'greige_translation':
             return f'{df.loc[i, 'inventory']},{df.loc[i, 'plan']}\n'
         case 'jet_info':

@@ -2,6 +2,5 @@
 __pycache__/
 *.ipynb
 temp*
-tests.py
-testtypes.py
+test*.py
 datasrc/*
