@@ -1,6 +1,6 @@
-from typing import Callable
+from typing import Callable, Concatenate
 
-def setter_like[**P, T](func: Callable[P, T]) -> Callable[P, T]:
+def setter_like[U, **P, T](func: Callable[Concatenate[U, P], T]) -> Callable[Concatenate[U, P], T]:
     """
     A decorator for indicating a function is "setter-like". If a View object tries to call a
     setter-like method, it will raise a RuntimeError.

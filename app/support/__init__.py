@@ -2,5 +2,6 @@
 
 from .supers import *
 from .protocols import *
+from . import grouped
 
-__all__ = ['SuperImmut', 'SuperView', 'setter_like', 'HasID']
+__all__ = ['SuperImmut', 'SuperView', 'setter_like', 'HasID', 'grouped']
