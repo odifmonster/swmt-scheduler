@@ -48,23 +48,25 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
             lbs:
               The number of pounds to allocate.
             snapshot: (default None)
-              The Snapshot object (if any) to link the allocation to. If this is provided, the
-              allocation is treated as a temporary usage applied within one inventory "snapshot".
-              If this snapshot is not active, the roll will behave as though any linked allocations
-              did not occur.
+              The Snapshot object (if any) to link the allocation to.
+              If this is provided, the allocation is treated as a temporary
+              usage applied within one inventory "snapshot". If this snapshot
+              is not active, the roll will behave as though any linked
+              allocations did not occur.
         
         Returns the RollAlloc object representing the used portion.
         """
         ...
     def deallocate(self, piece: RollAlloc, snapshot: Snapshot | None = None) -> None:
         """
-        Deallocate a piece of this roll. Must be an object returned by this Roll's 'allocate'
-        method. Provide a snapshot if the allocation was temporary.
+        Deallocate a piece of this roll. Must be an object returned by this Roll's
+        'allocate' method. Provide a snapshot if the allocation was temporary.
         """
         ...
     def release_snaps(self, *args: Unpack[tuple[Snapshot, ...]]) -> None:
         """
-        Clears all the Snapshots and their associated allocations for garbage collection.
+        Clears all the Snapshots and their associated allocations for garbage
+        collection.
         """
         ...
     def view(self) -> RollView: ...
@@ -73,6 +75,7 @@ class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
                funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     item: GreigeStyle
+    snapshot: Snapshot | None # The currently active inventory "snapshot"
     def __init__(self, link: Roll) -> None: ...
     @property
     def lbs(self) -> float:
@@ -89,18 +92,19 @@ class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
             lbs:
               The number of pounds to allocate.
             snapshot: (default None)
-              The Snapshot object (if any) to link the allocation to. If this is provided, the
-              allocation is treated as a temporary usage applied within one inventory "snapshot".
-              If this snapshot is not active, the roll will behave as though any linked allocations
-              did not occur.
+              The Snapshot object (if any) to link the allocation to.
+              If this is provided, the allocation is treated as a temporary
+              usage applied within one inventory "snapshot". If this snapshot
+              is not active, the roll will behave as though any linked
+              allocations did not occur.
         
         Returns the RollAlloc object representing the used portion.
         """
         ...
     def deallocate(self, piece: RollAlloc) -> None:
         """
-        Deallocate a piece of this roll. Must be an object returned by this Roll's 'allocate'
-        method. Provide a snapshot if the allocation was temporary.
+        Deallocate a piece of this roll. Must be an object returned by this Roll's
+        'allocate' method. Provide a snapshot if the allocation was temporary.
         """
         ...
     def release_snaps(self, *args: Unpack[tuple[Snapshot, ...]]) -> None:

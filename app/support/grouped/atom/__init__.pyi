@@ -5,8 +5,8 @@ from app.support.grouped import Data, DataView
 class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('props','data'),
                         frozen=('*props',)):
     """
-    A class for Atom objects. Acts as a container for one individual Data object, but allows
-    it to be treated like a Grouped object.
+    A class for Atom objects. Acts as a container for one individual
+    Data object, but allows it to be treated like a Grouped object.
     """
     def __init__(self, data: Data[T], *args: Unpack[tuple[str, ...]]) -> None:
         """
@@ -15,9 +15,11 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
             data:
               The data this atom will hold.
             *args:
-              The names of the attributes whose values determine how this data is grouped. If
-              the same data is removed and then added after changing one of these attributes, it
-              will be stored in a different atom. Raises a ValueError if 'id' is not included.
+              The names of the attributes whose values determine how
+              this data is grouped. If the same data is removed and
+              then added after changing one of these attributes, it
+              will be stored in a different atom. Raises a ValueError
+              if 'id' is not included.
         """
         ...
     def __len__(self) -> int:
@@ -31,16 +33,17 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
         ...
     def __getitem__(self, key: tuple[()]) -> DataView[T]:
         """
-        Returns a view of the subgroup with the properties listed in the key. The key's elements must
-        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
+        Returns a view of the subgroup with the properties listed in
+        the key. The key's elements must be in the same order as the
+        group's axes. Passing an empty tuple is equivalent to calling
         the 'view' method.
         """
         ...
     @property
     def depth(self) -> int:
         """
-        The number of "axes" in this object (i.e., the number of attributes being used to group the
-        contents of this object).
+        The number of "axes" in this object (i.e., the number of
+        attributes being used to group the contents of this object).
         """
         ...
     @property
@@ -49,8 +52,9 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
         ...
     def iterkeys(self) -> Generator[tuple[()]]:
         """
-        Returns a generator of the "full" keys of this object. Every tuple generated will return an
-        individual item when passed to __getitem__.
+        Returns a generator of the "full" keys of this object. Every
+        tuple generated will return an individual item when passed to
+        __getitem__.
         """
         ...
     def itervalues(self) -> Generator[DataView[T]]:

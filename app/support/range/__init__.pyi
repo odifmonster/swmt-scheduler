@@ -32,14 +32,16 @@ DateRange = ContRange[dt.datetime]
 
 def min_float_rng(*args: Unpack[tuple[FloatRange, ...]]) -> FloatRange:
     """
-    Gets a "minimum" of all the provided ranges. The result is the largest range such that passing
-    it to the 'contains' method of every argument returns True.
+    Gets a "minimum" of all the provided ranges. The result is the largest
+    range such that passing it to the 'contains' method of every argument
+    returns True.
     """
     ...
 
 def max_float_rng(*args: Unpack[tuple[FloatRange, ...]]) -> FloatRange:
     """
-    Gets a "maximum" of all the provided ranges. The result is the smallest range such that passing
-    every argument to its 'contains' method returns True.
+    Gets a "maximum" of all the provided ranges. The result is the smallest
+    range such that passing every argument to its 'contains' method returns
+    True.
     """
     ...

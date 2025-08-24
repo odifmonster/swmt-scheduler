@@ -26,7 +26,7 @@ class SuperView[T]:
         super(SuperView, self).__setattr__('_link', link)
     
     def __getattribute__(self, name: str):
-        if name in ('_attrs', '_funcs', '_dunders', '_link'):
+        if name in ('_attrs', '_funcs', '_dunders'):
             return super(SuperView, self).__getattribute__(name)
         
         lnk = super(SuperView, self).__getattribute__('_link')

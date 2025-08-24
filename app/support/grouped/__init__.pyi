@@ -7,13 +7,14 @@ from app.support import SuperImmut, SuperView
 
 class Grouped[T: Hashable, U: Hashable](SuperImmut):
     """
-    A class for Grouped objects. This class is mapping-like, but organizes its contents automatically
-    along multiple "axes", which are defined by the values of certain attributes of the contents.
+    A class for Grouped objects. This class is mapping-like, but
+    organizes its contents automatically along multiple "axes", which
+    are defined by the values of certain attributes of the contents.
     """
     def __init_subclass__(cls) -> None:
         """
-        Initialize a new Grouped subtype. Takes no arguments, defines behavior relating to private and
-        immutable attributes.
+        Initialize a new Grouped subtype. Takes no arguments, defines
+        behavior relating to private and immutable attributes.
         """
         ...
     def __init__(self, view: 'GroupedView[T, U]', *args: Unpack[tuple[str, ...]], **kwargs) -> None:
@@ -21,11 +22,13 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         Initialize a new Grouped object.
 
             *args:
-              The "unbound" attributes of the data this object will hold. These are the attributes that
-              will be used to organize the group's contents.
+              The "unbound" attributes of the data this object will hold.
+              These are the attributes that will be used to organize the group's
+              contents.
             **kwargs:
-              The "bound" attributes of the data this object will hold. All data added must have
-              attributes with values as defined by the keyword arguments and values.
+              The "bound" attributes of the data this object will hold. All data
+              added must have attributes with values as defined by the keyword
+              arguments and values.
         """
         ...
     def __len__(self) -> int:
@@ -39,16 +42,16 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         ...
     def __getitem__(self, key: U | tuple) -> 'GroupedView[T] | DataView[T]':
         """
-        Returns a view of the subgroup with the properties listed in the key. The key's elements must
-        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
-        the 'view' method.
+        Returns a view of the subgroup with the properties listed in the key. The
+        key's elements must be in the same order as the group's axes. Passing an
+        empty tuple is equivalent to calling the 'view' method.
         """
         ...
     @property
     def depth(self) -> int:
         """
-        The number of "axes" in this object (i.e., the number of attributes being used to group the
-        contents of this object).
+        The number of "axes" in this object (i.e., the number of attributes being
+        used to group the contents of this object).
         """
         ...
     @property
@@ -57,14 +60,14 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         ...
     def make_group(self, data: Data[T], **kwargs) -> 'Grouped[T] | Atom[T]':
         """
-        This function must be overridden in subclasses. It should return the subgroup that corresponds
-        to the provided data.
+        This function must be overridden in subclasses. It should return the new
+        subgroup that corresponds to the provided data.
         """
         ...
     def iterkeys(self) -> Generator[tuple[U, *tuple]]:
         """
-        Returns a generator of the "full" keys of this object. Every tuple generated will return an
-        individual item when passed to __getitem__.
+        Returns a generator of the "full" keys of this object. Every tuple
+        generated will return an individual item when passed to __getitem__.
         """
         ...
     def itervalues(self) -> Generator[DataView[T]]:
@@ -78,6 +81,9 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         ...
     def remove(self, dview: DataView[T]) -> Data[T]:
         """Remove data from this object using its view."""
+        ...
+    def view(self) -> 'GroupedView[T, U]':
+        """Returns a live, read-only view of this object."""
         ...
 
 class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
@@ -96,16 +102,16 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
         ...
     def __getitem__(self, key: U | tuple) -> 'GroupedView[T] | DataView[T]':
         """
-        Returns a view of the subgroup with the properties listed in the key. The key's elements must
-        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
-        the 'view' method.
+        Returns a view of the subgroup with the properties listed in the key. The
+        key's elements must be in the same order as the group's axes. Passing an
+        empty tuple is equivalent to calling the 'view' method.
         """
         ...
     @property
     def depth(self) -> int:
         """
-        The number of "axes" in this object (i.e., the number of attributes being used to group the
-        contents of this object).
+        The number of "axes" in this object (i.e., the number of attributes being
+        used to group the contents of this object).
         """
         ...
     @property
@@ -114,14 +120,14 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
         ...
     def make_group(self, data: Data[T], **kwargs) -> 'Grouped[T] | Atom[T]':
         """
-        This function must be overridden in subclasses. It should return the subgroup that corresponds
-        to the provided data.
+        This function must be overridden in subclasses. It should return the new
+        subgroup that corresponds to the provided data.
         """
         ...
     def iterkeys(self) -> Generator[tuple[U, *tuple]]:
         """
-        Returns a generator of the "full" keys of this object. Every tuple generated will return an
-        individual item when passed to __getitem__.
+        Returns a generator of the "full" keys of this object. Every tuple
+        generated will return an individual item when passed to __getitem__.
         """
         ...
     def itervalues(self) -> Generator[DataView[T]]:

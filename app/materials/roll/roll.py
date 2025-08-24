@@ -31,7 +31,7 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
 
     @property
     def lbs(self):
-        if self.snapshot is None:
+        if self.snapshot is None or self.snapshot not in self.__temp_allocs:
             return self.__cur_wt
         return self.__cur_wt - sum(map(lambda p: p.lbs, self.__temp_allocs[self.snapshot]))
     

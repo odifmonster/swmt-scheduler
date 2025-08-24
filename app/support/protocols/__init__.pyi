@@ -3,7 +3,8 @@ from abc import abstractmethod
 
 class HasID[T: Hashable](Protocol):
     """
-    A protocol for objects that use their own unique, hashable ids for hashing and equality.
+    A protocol for objects that use their own unique, hashable
+    ids for hashing and equality.
     """
     def __eq__(self, other: 'HasID[T]') -> bool: ...
     def __hash__(self) -> int: ...
@@ -12,8 +13,8 @@ class HasID[T: Hashable](Protocol):
     @abstractmethod
     def _prefix(self) -> str:
         """
-        For internal use only. Prevents two objects of different types from being treated as
-        equal.
+        For internal use only. Prevents two objects of different types from
+        being treated as equal.
         """
         ...
     @property

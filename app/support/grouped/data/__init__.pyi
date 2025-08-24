@@ -4,9 +4,9 @@ from app.support.supers import SuperImmut, SuperView
 
 class Data[T: Hashable](HasID[T], SuperImmut):
     """
-    A class for Data objects. Any type that can be added to a Grouped object must subclass
-    from this type. Provides an implementation of HasID and requires its instances to provide
-    views of themselves.
+    A class for Data objects. Any type that can be added to a Grouped
+    object must subclass from this type. Provides an implementation of
+    HasID and requires its instances to provide views of themselves.
     """
     def __init_subclass__(cls, mod_in_group: bool, attrs: tuple[str, ...] = tuple(),
                           priv_attrs: tuple[str, ...] = tuple(),
@@ -15,18 +15,22 @@ class Data[T: Hashable](HasID[T], SuperImmut):
         Initialize a new Data subclass.
 
             mod_in_group:
-              A flag for indicating whether this type should be modifiable while inside a group.
-              If False, you cannot set attribute values or call setter-like methods on this object
-              while it is inside of a Grouped object.
+              A flag for indicating whether this type should be modifiable while
+              inside a group. If False, you cannot set attribute values or call
+              setter-like methods on this object while it is inside of a Grouped
+              object.
             attrs:
-              The non-mangled attributes of the class. '_prefix' and 'id' are added automatically.
+              The non-mangled attributes of the class. '_prefix' and 'id' are added
+              automatically.
             priv_attrs:
-              The attributes whose names should be mangled to act as 'private' variables.
+              The attributes whose names should be mangled to act as 'private'
+              variables.
             frozen:
-              The attributes to freeze. Private attributes can be marked with a preceding '*', and the
-              following string will be mangled. A ValueError is raised if 'frozen' contains names not
-              declared in 'attrs' or 'priv_attrs'. The private locations for '_prefix' and 'id' are
-              added automatically, and inaccessible to subclasses.
+              The attributes to freeze. Private attributes can be marked with a preceding
+              '*', and the following string will be mangled. A ValueError is raised if
+              'frozen' contains names not declared in 'attrs' or 'priv_attrs'. The private
+              locations for '_prefix' and 'id' are added automatically, and inaccessible to
+              subclasses.
         """
         ...
     def __init__(self, id: T, prefix: str, view: 'DataView[T]', priv: dict[str] = {}, **kwargs) -> None:
@@ -42,8 +46,8 @@ class Data[T: Hashable](HasID[T], SuperImmut):
             priv: (default {})
               A mapping from un-mangled private variable names to their values.
             **kwargs:
-              Every keyword should be an attribute provided to the subclass initializer. The values are
-              the corresponding values of those attributes.
+              Every keyword should be an attribute provided to the subclass initializer.
+              The values are the corresponding values of those attributes.
         """
         ...
     def view(self) -> 'DataView[T]':
@@ -60,12 +64,13 @@ class DataView[T: Hashable](SuperView[HasID[T]]):
         Initialize a new DataView subclass.
 
             attrs:
-              The viewed attributes of the linked object. '_prefix' and 'id' are added automatically.
+              The viewed attributes of the linked object. '_prefix' and 'id' are
+              added automatically.
             funcs:
               The functions of the viewed object.
             dunders:
-              The "dunder" or "magic" functions to use from the viewed type. 'eq' and 'hash' are added
-              automatically
+              The "dunder" or "magic" functions to use from the viewed type. 'eq' and
+              'hash' are added automatically.
         """
         ...
     def __eq__(self, other: 'DataView[HasID[T]]') -> bool: ...
@@ -74,8 +79,8 @@ class DataView[T: Hashable](SuperView[HasID[T]]):
     @property
     def _prefix(self) -> str:
         """
-        For internal use only. Prevents two objects of different types from being treated as
-        equal.
+        For internal use only. Prevents two objects of different types from being
+        treated as equal.
         """
         ...
     @property
@@ -92,7 +97,8 @@ def match_props(data: Data, props: dict[str]) -> bool:
         props:
           The attributes and values to match against.
     
-    Returns True iff for every attribute name in 'props', data.attribute = props[attribute]
+    Returns True iff for every attribute name in 'props',
+    data.attribute = props[attribute]
     """
     ...
 
