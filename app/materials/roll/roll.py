@@ -17,19 +17,23 @@ class RollAlloc(SuperImmut, attrs=('roll_id','lbs'), frozen=('roll_id','lbs')):
     def __init__(self, roll_id, lbs):
         SuperImmut.__init__(self, roll_id=roll_id, lbs=lbs)
 
-class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs'),
-           priv_attrs=('init_wt','cur_wt','allocs'), frozen=('*init_wt','item')):
+class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot'),
+           priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
+           frozen=('*init_wt','item')):
     
     def __init__(self, id, item, lbs):
         Data.__init__(self, id, 'Roll', RollView(self),
-                      priv={'init_wt': lbs, 'cur_wt': lbs, 'allocs': set()}, item=item)
+                      priv={'init_wt': lbs, 'cur_wt': lbs, 'allocs': set(), 'temp_allocs': {}},
+                      item=item, snapshot=None)
 
     def __repr__(self):
         return f'Roll(id={repr(self.id)}, item={repr(self.item)}, wt={round(self.lbs, ndigits=2)})'
 
     @property
     def lbs(self):
-        return self.__cur_wt
+        if self.snapshot is None:
+            return self.__cur_wt
+        return self.__cur_wt - sum(map(lambda p: p.lbs, self.__temp_allocs[self.snapshot]))
     
     @property
     def size(self):
@@ -45,18 +49,31 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs'),
         return LARGE
     
     @setter_like
-    def allocate(self, lbs: float):
-        globals()['_CTR'] += 1
+    def allocate(self, lbs, snapshot = None):
         ret = RollAlloc(self.id, lbs)
-        self.__allocs.add(ret)
-        self.__cur_wt -= lbs
+        if snapshot is None:
+            self.__allocs.add(ret)
+            self.__cur_wt -= lbs
+        else:
+            if snapshot not in self.__temp_allocs:
+                self.__temp_allocs[snapshot] = set()
+            self.__temp_allocs[snapshot].add(ret)
         return ret
     
     @setter_like
-    def deallocate(self, piece: RollAlloc):
-        self.__allocs.remove(piece)
-        self.__cur_wt += piece.lbs
+    def deallocate(self, piece, snapshot = None):
+        if snapshot is None:
+            self.__allocs.remove(piece)
+            self.__cur_wt += piece.lbs
+        else:
+            self.__temp_allocs[snapshot].remove(piece)
 
-class RollView(DataView[str], attrs=('item','size','lbs'), funcs=('allocate','deallocate'),
+    @setter_like
+    def release_snaps(self, *args):
+        for snapshot in args:
+            del self.__temp_allocs[snapshot]
+
+class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
+               funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     pass

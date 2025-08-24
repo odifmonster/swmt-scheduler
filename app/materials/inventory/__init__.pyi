@@ -1,0 +1,1 @@
+from app.materials.inventory.snapshot import Snapshot as Snapshot
