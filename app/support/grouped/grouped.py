@@ -55,6 +55,35 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
             msg = 'Object does not contain items with '
             msg += ', '.join([f'{self.__unbound[i]}={repr(key[i])}' for i in range(len(key))])
             raise KeyError(msg)
+    
+    def __repr__(self):
+        contents: list[str] = []
+
+        if self.depth == 1:
+            for val in self.__groups.values():
+                vrep = repr(val)
+                if not vrep: continue
+                contents.append('  ' + vrep)
+        else:
+            max_k = max(map(lambda k: len(repr(k)), self.__groups.keys()))
+            kprefix = ' '*(max_k+4)
+
+            for key, val in self.__groups.items():
+                if len(val) == 0: continue
+                krep = repr(key)
+                vrep = repr(val)
+
+                vrep_start, *vrep_lines = vrep.split('\n')
+
+                gap = ' '*(max_k-len(krep)+1)
+                item_start = '  '+krep+':'+gap+vrep_start
+                item_lines = list(map(lambda l: kprefix+l, vrep_lines))
+
+                contents.append('\n'.join([item_start] + item_lines))
+        
+        if not contents:
+            return ''
+        return 'grouped({\n' + '\n'.join(contents) + '\n})'
 
     @property
     def depth(self):
@@ -127,4 +156,4 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
     def __init_subclass__(cls):
         super().__init_subclass__(attrs=('depth','n_items'),
                                   funcs=('make_group','iterkeys','itervalues','get','add','remove'),
-                                  dunders=('len','iter','contains','getitem'))
+                                  dunders=('len','iter','contains','getitem','repr'))

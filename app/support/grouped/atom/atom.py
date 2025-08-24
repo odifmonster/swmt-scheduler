@@ -45,6 +45,11 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
         
         return self.__data.view()
     
+    def __repr__(self):
+        if len(self) == 0:
+            return ''
+        return repr(self.__data)
+    
     @property
     def depth(self):
         return 0
