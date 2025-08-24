@@ -2,18 +2,18 @@
 
 from typing import Hashable, Unpack
 
-from ..supers import SuperImmut
+from ..supers import SuperImmut, SuperView, setter_like
 from .atom import Atom
 from .data import Data, DataView, match_props, repr_props
 
 class Grouped[T: Hashable, U: Hashable](SuperImmut):
     
     def __init_subclass__(cls):
-        privs = tuple(map(lambda a: f'_Grouped__{a}', ['ids_map','props','unbound','groups']))
-        frozen = tuple(map(lambda a: f'_Grouped__{a}', ['unbound','props']))
+        privs = tuple(map(lambda a: f'_Grouped__{a}', ['ids_map','props','unbound','groups','view']))
+        frozen = tuple(map(lambda a: f'_Grouped__{a}', ['unbound','props','view']))
         super().__init_subclass__(attrs=('n_items','depth')+privs, frozen=frozen)
     
-    def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs):
+    def __init__(self, view: 'GroupedView[T, U]', *args: Unpack[tuple[str, ...]], **kwargs):
         if not set(args).isdisjoint(kwargs.keys()):
             inter = set(args).intersection(kwargs.keys())
             inter = list(inter)
@@ -24,7 +24,7 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
             raise ValueError(msg)
         
         SuperImmut.__init__(self, _Grouped__ids_map={}, _Grouped__props=kwargs,
-                            _Grouped__unbound=args, _Grouped__groups={})
+                            _Grouped__unbound=args, _Grouped__groups={}, _Grouped__view=view)
     
     def __len__(self):
         groups: dict[U, 'Grouped[T] | Atom[T]'] = self.__groups
@@ -39,6 +39,22 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
     def __contains__(self, key):
         groups: dict[U, 'Grouped[T] | Atom[T]'] = self.__groups
         return key in groups and len(groups[key]) > 0
+    
+    def __getitem__(self, key):
+        if not type(key) is tuple:
+            key = (key,)
+        if len(key) == 0:
+            return self.view()
+        if key[0] not in self.__groups or len(self.__groups[key[0]]) == 0:
+            raise KeyError(f'Object does not contain items with {self.__unbound[0]}={repr(key[0])}')
+        try:
+            return self.__groups[key[0]][key[1:]]
+        except KeyError as err:
+            if '-dim key incompatible' in str(err):
+                raise KeyError(f'{len(key)}-dim key incompatible with {self.depth}-dim Grouped object')
+            msg = 'Object does not contain items with '
+            msg += ', '.join([f'{self.__unbound[i]}={repr(key[i])}' for i in range(len(key))])
+            raise KeyError(msg)
 
     @property
     def depth(self):
@@ -60,6 +76,7 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
             raise ValueError(f'Object does not contain data with id={repr(id)}')
         return groups[id_map[id]].get(id)
     
+    @setter_like
     def add(self, data: Data[T]):
         if not match_props(data, self.__props):
             msg = 'All data in this group must have the following properties:\n'
@@ -74,6 +91,7 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         groups[subkey].add(data)
         self.__ids_map[data.id] = subkey
 
+    @setter_like
     def remove(self, dview: DataView[T]):
         groups: dict[U, 'Grouped[T] | Atom[T]'] = self.__groups
         subkey: U = getattr(dview, self.__unbound[0])
@@ -83,3 +101,13 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         ret = groups[subkey].remove(dview)
         del self.__ids_map[dview.id]
         return ret
+    
+    def view(self) -> 'GroupedView[T, U]':
+        return self.__view
+
+class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
+    
+    def __init_subclass__(cls):
+        super().__init_subclass__(attrs=('depth','n_items'),
+                                  funcs=('make_group','get','add','remove'),
+                                  dunders=('len','iter','contains','getitem'))

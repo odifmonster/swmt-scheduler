@@ -3,7 +3,7 @@ from app.support.grouped.data import Data as Data, DataView as DataView, match_p
 from app.support.grouped.atom import Atom as Atom
 
 from typing import Hashable, Unpack, Generator
-from app.support import SuperImmut
+from app.support import SuperImmut, SuperView
 
 class Grouped[T: Hashable, U: Hashable](SuperImmut):
     """
@@ -16,7 +16,7 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         immutable attributes.
         """
         ...
-    def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs) -> None:
+    def __init__(self, view: 'GroupedView[T, U]', *args: Unpack[tuple[str, ...]], **kwargs) -> None:
         """
         Initialize a new Grouped object.
 
@@ -36,6 +36,61 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         ...
     def __contains__(self, key: U) -> bool:
         """Returns True iff 'key' points to a non-empty sub-group."""
+        ...
+    def __getitem__(self, key: U | tuple) -> 'GroupedView[T] | DataView[T]':
+        """
+        Returns a view of the subgroup with the properties listed in the key. The key's elements must
+        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
+        the 'view' method.
+        """
+        ...
+    @property
+    def depth(self) -> int:
+        """
+        The number of "axes" in this object (i.e., the number of attributes being used to group the
+        contents of this object).
+        """
+        ...
+    @property
+    def n_items(self) -> int:
+        """The total number of items in this object."""
+        ...
+    def make_group(self, data: Data[T], **kwargs) -> 'Grouped[T] | Atom[T]':
+        """
+        This function must be overridden in subclasses. It should return the subgroup that corresponds
+        to the provided data.
+        """
+        ...
+    def get(self, id: T) -> DataView[T]:
+        """Get the view of a Data object by its id."""
+        ...
+    def add(self, data: Data[T]) -> None:
+        """Add the provided data to this object."""
+        ...
+    def remove(self, dview: DataView[T]) -> Data[T]:
+        """Remove data from this object using its view."""
+        ...
+
+class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
+    """
+    A class for views of Grouped objects.
+    """
+    def __init_subclass__(cls) -> None: ...
+    def __len__(self) -> int:
+        """The number of subgroups this object contains."""
+        ...
+    def __iter__(self) -> Generator[U]:
+        """Iterates over the keys that correspond to non-empty subgroups."""
+        ...
+    def __contains__(self, key: U) -> bool:
+        """Returns True iff 'key' points to a non-empty sub-group."""
+        ...
+    def __getitem__(self, key: U | tuple) -> 'GroupedView[T] | DataView[T]':
+        """
+        Returns a view of the subgroup with the properties listed in the key. The key's elements must
+        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
+        the 'view' method.
+        """
         ...
     @property
     def depth(self) -> int:

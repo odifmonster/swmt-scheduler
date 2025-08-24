@@ -29,6 +29,13 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
     def __contains__(self, key: tuple[()]) -> bool:
         """Returns True iff 'key' points to a non-empty sub-group."""
         ...
+    def __getitem__(self, key: tuple[()]) -> DataView[T]:
+        """
+        Returns a view of the subgroup with the properties listed in the key. The key's elements must
+        be in the same order as the group's axes. Passing an empty tuple is equivalent to calling
+        the 'view' method.
+        """
+        ...
     @property
     def depth(self) -> int:
         """

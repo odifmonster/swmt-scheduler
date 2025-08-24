@@ -35,6 +35,16 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
             return True
         return False
     
+    def __getitem__(self, key):
+        if not type(key) is tuple:
+            raise TypeError('Keys of atoms must be tuples')
+        if len(key) > 0:
+            raise KeyError(f'{len(key)}-dim key incompatible with 0-dim Grouped object')
+        if len(self) == 0:
+            raise KeyError(f'Object does not contain key {repr(key)}')
+        
+        return self.__data.view()
+    
     @property
     def depth(self):
         return 0
