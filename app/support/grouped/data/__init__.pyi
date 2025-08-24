@@ -82,3 +82,20 @@ class DataView[T: Hashable](SuperView[HasID[T]]):
     def id(self) -> T:
         """The unique, hashable id of this object."""
         ...
+
+def match_props(data: Data, props: dict[str]) -> bool:
+    """
+    Check whether some data matches the items of a properties dict.
+
+        data:
+          The data to check.
+        props:
+          The attributes and values to match against.
+    
+    Returns True iff for every attribute name in 'props', data.attribute = props[attribute]
+    """
+    ...
+
+def repr_props(props: dict[str], indent: str = '  ') -> str:
+    """Returns a string representation of a properties dict."""
+    ...

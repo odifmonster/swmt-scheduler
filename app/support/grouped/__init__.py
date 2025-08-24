@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
-from .data import Data, DataView
+from .data import *
+from .atom import Atom
+from .grouped import Grouped
 
-__all__ = ['Data', 'DataView']
+__all__ = ['Data', 'DataView', 'match_props', 'repr_props', 'Atom', 'Grouped']

@@ -1,1 +1,65 @@
-from app.support.grouped.data import Data as Data, DataView as DataView
+from app.support.grouped.data import Data as Data, DataView as DataView, match_props as match_props, \
+    repr_props as repr_props
+from app.support.grouped.atom import Atom as Atom
+
+from typing import Hashable, Unpack, Generator
+from app.support import SuperImmut
+
+class Grouped[T: Hashable, U: Hashable](SuperImmut):
+    """
+    A class for Grouped objects. This class is mapping-like, but organizes its contents automatically
+    along multiple "axes", which are defined by the values of certain attributes of the contents.
+    """
+    def __init_subclass__(cls) -> None:
+        """
+        Initialize a new Grouped subtype. Takes no arguments, defines behavior relating to private and
+        immutable attributes.
+        """
+        ...
+    def __init__(self, *args: Unpack[tuple[str, ...]], **kwargs) -> None:
+        """
+        Initialize a new Grouped object.
+
+            *args:
+              The "unbound" attributes of the data this object will hold. These are the attributes that
+              will be used to organize the group's contents.
+            **kwargs:
+              The "bound" attributes of the data this object will hold. All data added must have
+              attributes with values as defined by the keyword arguments and values.
+        """
+        ...
+    def __len__(self) -> int:
+        """The number of subgroups this object contains."""
+        ...
+    def __iter__(self) -> Generator[U]:
+        """Iterates over the keys that correspond to non-empty subgroups."""
+        ...
+    def __contains__(self, key: U) -> bool:
+        """Returns True iff 'key' points to a non-empty sub-group."""
+        ...
+    @property
+    def depth(self) -> int:
+        """
+        The number of "axes" in this object (i.e., the number of attributes being used to group the
+        contents of this object).
+        """
+        ...
+    @property
+    def n_items(self) -> int:
+        """The total number of items in this object."""
+        ...
+    def make_group(self, data: Data[T], **kwargs) -> 'Grouped[T] | Atom[T]':
+        """
+        This function must be overridden in subclasses. It should return the subgroup that corresponds
+        to the provided data.
+        """
+        ...
+    def get(self, id: T) -> DataView[T]:
+        """Get the view of a Data object by its id."""
+        ...
+    def add(self, data: Data[T]) -> None:
+        """Add the provided data to this object."""
+        ...
+    def remove(self, dview: DataView[T]) -> Data[T]:
+        """Remove data from this object using its view."""
+        ...
