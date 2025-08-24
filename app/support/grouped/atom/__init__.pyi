@@ -47,6 +47,15 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
     def n_items(self) -> int:
         """The total number of items in this object."""
         ...
+    def iterkeys(self) -> Generator[tuple[()]]:
+        """
+        Returns a generator of the "full" keys of this object. Every tuple generated will return an
+        individual item when passed to __getitem__.
+        """
+        ...
+    def itervalues(self) -> Generator[DataView[T]]:
+        """Returns a generator of the individual items contained in this Grouped object."""
+        ...
     def get(self, id: T) -> DataView[T]:
         """Get the view of a Data object by its id."""
         ...

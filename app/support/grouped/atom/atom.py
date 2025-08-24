@@ -53,6 +53,16 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
     def n_items(self):
         return len(self)
     
+    def iterkeys(self):
+        if len(self) == 1:
+            yield tuple()
+        return
+    
+    def itervalues(self):
+        if len(self) == 1:
+            yield self.__data.view()
+        return
+    
     def get(self, id: T):
         if len(self) == 0 or self.__data.id != id:
             raise ValueError(f'Object does not contain data with id={repr(id)}')

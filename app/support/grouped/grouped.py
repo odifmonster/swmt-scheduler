@@ -68,6 +68,23 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
     def make_group(self, data: Data[T], **kwargs) -> 'Grouped[T] | Atom[T]':
         raise NotImplementedError()
     
+    def iterkeys(self):
+        if self.depth == 1:
+            for key in self:
+                yield (key,)
+        else:
+            for key in self:
+                for remkey in self[key].iterkeys():
+                    yield (key, *remkey)
+    
+    def itervalues(self):
+        if self.depth == 1:
+            for key in self:
+                yield self[key]
+        else:
+            for key in self:
+                yield from self[key].itervalues()
+    
     def get(self, id: T) -> DataView[T]:
         groups: dict[U, 'Grouped[T] | Atom[T]'] = self.__groups
         id_map: dict[T, U] = self.__ids_map
@@ -109,5 +126,5 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
     
     def __init_subclass__(cls):
         super().__init_subclass__(attrs=('depth','n_items'),
-                                  funcs=('make_group','get','add','remove'),
+                                  funcs=('make_group','iterkeys','itervalues','get','add','remove'),
                                   dunders=('len','iter','contains','getitem'))

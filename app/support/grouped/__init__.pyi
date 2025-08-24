@@ -61,6 +61,15 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         to the provided data.
         """
         ...
+    def iterkeys(self) -> Generator[tuple[U, *tuple]]:
+        """
+        Returns a generator of the "full" keys of this object. Every tuple generated will return an
+        individual item when passed to __getitem__.
+        """
+        ...
+    def itervalues(self) -> Generator[DataView[T]]:
+        """Returns a generator of the individual items contained in this Grouped object."""
+        ...
     def get(self, id: T) -> DataView[T]:
         """Get the view of a Data object by its id."""
         ...
@@ -108,6 +117,15 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
         This function must be overridden in subclasses. It should return the subgroup that corresponds
         to the provided data.
         """
+        ...
+    def iterkeys(self) -> Generator[tuple[U, *tuple]]:
+        """
+        Returns a generator of the "full" keys of this object. Every tuple generated will return an
+        individual item when passed to __getitem__.
+        """
+        ...
+    def itervalues(self) -> Generator[DataView[T]]:
+        """Returns a generator of the individual items contained in this Grouped object."""
         ...
     def get(self, id: T) -> DataView[T]:
         """Get the view of a Data object by its id."""
