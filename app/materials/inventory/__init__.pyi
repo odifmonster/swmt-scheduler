@@ -7,10 +7,6 @@ from app.style import GreigeStyle
 from app.materials.roll import SizeClass, Roll, RollView, RollAlloc
 
 class PortLoad(NamedTuple):
-    """
-    A basic class containing information about a single port load.
-    Might contain pieces from more than one roll.
-    """
     roll1: RollAlloc
     roll2: RollAlloc | None
     lbs: float
