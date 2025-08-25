@@ -2,7 +2,7 @@
 
 from typing import NamedTuple
 
-from app.support import FloatRange
+from app.support import FloatRange, min_float_rng
 from app.support.grouped import Atom, Grouped, GroupedView
 from app.style import GreigeStyle
 from ..roll import Roll, RollView, RollAlloc, SizeClass, LARGE, NORMAL, SMALL, HALF, PARTIAL
@@ -56,9 +56,10 @@ class Inventory(Grouped[str, GreigeStyle]):
     def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
                        jet_rng: FloatRange):
         if not prev_wts:
-            wt_rng = jet_rng
+            wt_rng = rview.item.port_rng
         else:
             wt_rng = FloatRange(max(prev_wts)-20, min(prev_wts)+20)
+        wt_rng = min_float_rng(wt_rng, jet_rng)
 
         if rview.size == NORMAL and not wt_rng.contains(rview.lbs / 2) or \
             rview.size == HALF and not wt_rng.contains(rview.lbs):
@@ -93,9 +94,10 @@ class Inventory(Grouped[str, GreigeStyle]):
                 if rview1.lbs < 50 or rview2.lbs < 50: continue
 
                 if not prev_wts:
-                    wt_rng = jet_rng
+                    wt_rng = greige.port_rng
                 else:
                     wt_rng = FloatRange(max(prev_wts)-20, min(prev_wts)+20)
+                wt_rng = min_float_rng(wt_rng, jet_rng)
                 if wt_rng.is_below(rview1.lbs) or wt_rng.is_below(rview2.lbs): continue
 
                 roll1: Roll = self.remove(view1)

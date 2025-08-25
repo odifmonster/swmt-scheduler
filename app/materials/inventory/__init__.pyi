@@ -7,6 +7,10 @@ from app.style import GreigeStyle
 from app.materials.roll import SizeClass, Roll, RollView, RollAlloc
 
 class PortLoad(NamedTuple):
+    """
+    A basic class containing information about a single port load.
+    Might contain pieces from more than one roll.
+    """
     roll1: RollAlloc
     roll2: RollAlloc | None
     lbs: float
@@ -102,13 +106,81 @@ class Inventory(Grouped[str, GreigeStyle]):
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView) -> Roll: ...
-    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]: ...
+    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]:
+        """
+        Generates the valid "starting" greige rolls in inventory for
+        the given style.
+
+            greige:
+              The greige style to use.
+        
+        Returns a generator that will yield RollView objects that can
+        be used to load ports without removing excess pounds.
+        """
+        ...
     def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+                       jet_rng: FloatRange) -> Generator[PortLoad]:
+        """
+        Generates port loads from a roll by allocating pieces of it and
+        returning PortLoad objects holding those pieces.
+
+            rview:
+              The view of the roll object to load ports with.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            prev_wts:
+              The list of previous weights used to load ports. This is
+              used to determine the range of allowed weights in future
+              ports.
+            jet_rng:
+              The range of allowed weights in each jet port.
+        
+        Returns a generator that will yield PortLoad objects resulting
+        from allocating pieces of the given roll.
+        """
+        ...
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+                       jet_rng: FloatRange) -> Generator[PortLoad]:
+        """
+        Generates port loads from combining partial rolls in inventory.
+
+            greige:
+              The greige style to use.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            prev_wts:
+              The list of previous weights used to load ports. This is
+              used to determine the range of allowed weights in future
+              ports.
+            jet_rng:
+              The range of allowed weights in each jet port.
+
+        Returns a generator that will yield PortLoad objects resulting
+        from allocating and combining partial rolls of the given greige
+        style.
+        """
+        ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None) -> Generator[PortLoad]: ...
+                       start: RollView | None = None) -> Generator[PortLoad]:
+        """
+        Generates all port loads in inventory using an optional start
+        roll.
+
+            greige:
+              The greige style to use.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            jet_rng:
+              The range of allowed weights in each jet port.
+            start: (default None)
+              The view of the roll to start allocating from. If provided,
+              this will be the first roll allocated (and thus determine
+              the range of weights of the remaining PortLoads).
+        
+        Returns a generator that will yield PortLoad objects by allocating
+        as many rolls as possible in the given greige style.
+        """
+        ...
     def view(self) -> InvView: ...
 
 class InvView(GroupedView[str, GreigeStyle],
@@ -129,10 +201,78 @@ class InvView(GroupedView[str, GreigeStyle],
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView) -> Roll: ...
-    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]: ...
+    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]:
+        """
+        Generates the valid "starting" greige rolls in inventory for
+        the given style.
+
+            greige:
+              The greige style to use.
+        
+        Returns a generator that will yield RollView objects that can
+        be used to load ports without removing excess pounds.
+        """
+        ...
     def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+                       jet_rng: FloatRange) -> Generator[PortLoad]:
+        """
+        Generates port loads from a roll by allocating pieces of it and
+        returning PortLoad objects holding those pieces.
+
+            rview:
+              The view of the roll object to load ports with.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            prev_wts:
+              The list of previous weights used to load ports. This is
+              used to determine the range of allowed weights in future
+              ports.
+            jet_rng:
+              The range of allowed weights in each jet port.
+        
+        Returns a generator that will yield PortLoad objects resulting
+        from allocating pieces of the given roll.
+        """
+        ...
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+                       jet_rng: FloatRange) -> Generator[PortLoad]:
+        """
+        Generates port loads from combining partial rolls in inventory.
+
+            greige:
+              The greige style to use.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            prev_wts:
+              The list of previous weights used to load ports. This is
+              used to determine the range of allowed weights in future
+              ports.
+            jet_rng:
+              The range of allowed weights in each jet port.
+
+        Returns a generator that will yield PortLoad objects resulting
+        from allocating and combining partial rolls of the given greige
+        style.
+        """
+        ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None) -> Generator[PortLoad]: ...
+                       start: RollView | None = None) -> Generator[PortLoad]:
+        """
+        Generates all port loads in inventory using an optional start
+        roll.
+
+            greige:
+              The greige style to use.
+            snapshot:
+              The inventory snapshot the allocation is occurring in.
+            jet_rng:
+              The range of allowed weights in each jet port.
+            start: (default None)
+              The view of the roll to start allocating from. If provided,
+              this will be the first roll allocated (and thus determine
+              the range of weights of the remaining PortLoads).
+        
+        Returns a generator that will yield PortLoad objects by allocating
+        as many rolls as possible in the given greige style.
+        """
+        ...
