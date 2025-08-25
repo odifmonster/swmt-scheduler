@@ -1,9 +1,15 @@
 from app.materials.inventory.snapshot import Snapshot as Snapshot
 
-from typing import TypedDict, Unpack, Generator, overload
+from typing import NamedTuple, TypedDict, Unpack, Generator, overload
+from app.support import FloatRange
 from app.support.grouped import Atom, Grouped, GroupedView
 from app.style import GreigeStyle
-from app.materials.roll import SizeClass, Roll, RollView
+from app.materials.roll import SizeClass, Roll, RollView, RollAlloc
+
+class PortLoad(NamedTuple):
+    roll1: RollAlloc
+    roll2: RollAlloc | None
+    lbs: float
 
 class StyleProps(TypedDict):
     item: GreigeStyle
@@ -78,7 +84,8 @@ class StyleView(GroupedView[str, SizeClass]):
 
 class Inventory(Grouped[str, GreigeStyle]):
     """
-    A class for Inventory objects. Organizes Roll objects by their item and size.
+    A class for Inventory objects. Organizes Roll objects by their
+    item and size. Includes methods for allocating rolls to ports.
     """
     def __init__(self) -> None: ...
     @overload
@@ -95,9 +102,17 @@ class Inventory(Grouped[str, GreigeStyle]):
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView) -> Roll: ...
+    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]: ...
+    def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
+                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+    def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
+                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+    def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
+                       start: RollView | None = None) -> Generator[PortLoad]: ...
     def view(self) -> InvView: ...
 
-class InvView(GroupedView[str, GreigeStyle]):
+class InvView(GroupedView[str, GreigeStyle],
+              funcs=('get_starts','get_roll_loads','get_comb_loads','get_port_loads')):
     """A class for views of Inventory objects."""
     def __init__(self, link: Inventory) -> None: ...
     @overload
@@ -114,3 +129,10 @@ class InvView(GroupedView[str, GreigeStyle]):
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView) -> Roll: ...
+    def get_starts(self, greige: GreigeStyle) -> Generator[RollView]: ...
+    def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
+                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+    def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
+                       jet_rng: FloatRange) -> Generator[PortLoad]: ...
+    def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
+                       start: RollView | None = None) -> Generator[PortLoad]: ...

@@ -14,8 +14,12 @@ HALF = SizeClass('HALF')
 PARTIAL = SizeClass('PARTIAL')
 
 class RollAlloc(SuperImmut, attrs=('roll_id','lbs'), frozen=('roll_id','lbs')):
+
     def __init__(self, roll_id, lbs):
         SuperImmut.__init__(self, roll_id=roll_id, lbs=lbs)
+
+    def __repr__(self):
+        return f'RollAlloc(roll={repr(self.roll_id)}, lbs={self.lbs:.2f})'
 
 class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot'),
            priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
@@ -52,11 +56,16 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
     def allocate(self, lbs, snapshot = None):
         ret = RollAlloc(self.id, lbs)
         if snapshot is None:
+            if self.__cur_wt + 1 < lbs:
+                raise ValueError(f'{lbs:.2f} lbs exceeds remaining weight in roll ({self.lbs:.2f})')
             self.__allocs.add(ret)
             self.__cur_wt -= lbs
         else:
             if snapshot not in self.__temp_allocs:
                 self.__temp_allocs[snapshot] = set()
+            temp_lbs = self.__cur_wt - sum(map(lambda p: p.lbs, self.__temp_allocs[snapshot]))
+            if temp_lbs + 1 < lbs:
+                raise ValueError(f'{lbs:.2f} lbs exceeds remaining weight in roll ({temp_lbs:.2f})')
             self.__temp_allocs[snapshot].add(ret)
         return ret
     
@@ -69,9 +78,13 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
             self.__temp_allocs[snapshot].remove(piece)
 
     @setter_like
-    def release_snaps(self, *args):
-        for snapshot in args:
-            del self.__temp_allocs[snapshot]
+    def apply_snap(self, snapshot = None):
+        if snapshot and snapshot in self.__temp_allocs:
+            for item in self.__temp_allocs[snapshot]:
+                self.__allocs.add(item)
+                self.__cur_wt -= item.lbs
+        
+        self.__temp_allocs.clear()
 
 class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
                funcs=('allocate','deallocate','release_snaps'),

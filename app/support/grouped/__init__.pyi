@@ -90,7 +90,24 @@ class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
     """
     A class for views of Grouped objects.
     """
-    def __init_subclass__(cls) -> None: ...
+    def __init_subclass__(cls, attrs: tuple[str, ...] = tuple(), funcs: tuple[str, ...] = tuple(),
+                          dunders: tuple[str, ...] = tuple()) -> None:
+        """
+        Initialize a new subclass of GroupedView.
+
+            attrs:
+              The viewed attributes of the linked Grouped object. 'n_items'
+              and 'depth' are added automatically.
+            funcs:
+              The functions of the viewed object. 'make_group', 'iterkeys',
+              'itervalues', 'get', 'add', and 'remove' are added
+              automatically.
+            dunders:
+              The "dunder" or "magic" functions to use from the viewed type.
+              'len', 'iter', 'contains', 'getitem', and 'repr' are added
+              automatically.
+        """
+        ...
     def __len__(self) -> int:
         """The number of subgroups this object contains."""
         ...

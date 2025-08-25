@@ -153,7 +153,7 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
 
 class GroupedView[T: Hashable, U: Hashable](SuperView[Grouped[T, U]]):
     
-    def __init_subclass__(cls):
-        super().__init_subclass__(attrs=('depth','n_items'),
-                                  funcs=('make_group','iterkeys','itervalues','get','add','remove'),
-                                  dunders=('len','iter','contains','getitem','repr'))
+    def __init_subclass__(cls, attrs = tuple(), funcs = tuple(), dunders = tuple()):
+        super().__init_subclass__(attrs=('depth','n_items')+attrs,
+                                  funcs=('make_group','iterkeys','itervalues','get','add','remove')+funcs,
+                                  dunders=('len','iter','contains','getitem','repr')+dunders)

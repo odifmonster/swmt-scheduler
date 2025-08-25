@@ -1,7 +1,6 @@
 from app.materials.roll.roll import SizeClass as SizeClass, LARGE as LARGE, NORMAL as NORMAL, \
     SMALL as SMALL, HALF as HALF, PARTIAL as PARTIAL
 
-from typing import Unpack
 from app.support.grouped import Data, DataView
 from app.support import SuperImmut
 from app.style import GreigeStyle
@@ -63,10 +62,10 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
         'allocate' method. Provide a snapshot if the allocation was temporary.
         """
         ...
-    def release_snaps(self, *args: Unpack[tuple[Snapshot, ...]]) -> None:
+    def apply_snap(self, snapshot: Snapshot | None = None) -> None:
         """
-        Clears all the Snapshots and their associated allocations for garbage
-        collection.
+        Applies the given snapshot (if any) permanently). Removes all stored
+        snapshots for garbage collection.
         """
         ...
     def view(self) -> RollView: ...
@@ -85,7 +84,7 @@ class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
     def size(self) -> SizeClass:
         """The size of this roll relative to the standard for this item."""
         ...
-    def allocate(self, lbs: float) -> RollAlloc:
+    def allocate(self, lbs: float, snapshot: Snapshot | None = None) -> RollAlloc:
         """
         Allocate a piece of this roll.
 
@@ -101,14 +100,15 @@ class RollView(DataView[str], attrs=('item','size','lbs','snapshot'),
         Returns the RollAlloc object representing the used portion.
         """
         ...
-    def deallocate(self, piece: RollAlloc) -> None:
+    def deallocate(self, piece: RollAlloc, snapshot: Snapshot | None = None) -> None:
         """
         Deallocate a piece of this roll. Must be an object returned by this Roll's
         'allocate' method. Provide a snapshot if the allocation was temporary.
         """
         ...
-    def release_snaps(self, *args: Unpack[tuple[Snapshot, ...]]) -> None:
+    def apply_snap(self, snapshot: Snapshot | None = None) -> None:
         """
-        Clears all the Snapshots and their associated allocations for garbage collection.
+        Applies the given snapshot (if any) permanently). Removes all stored
+        snapshots for garbage collection.
         """
         ...
