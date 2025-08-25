@@ -17,8 +17,7 @@ def _first_monday_after(date: dt.datetime):
 class JetSched(HasID[int], SuperImmut,
                attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
                       'last_job_end','jobs'),
-               priv_attrs=('id','init_soil','soil','init_jobs','jss','date_rng',
-                           'jobs'),
+               priv_attrs=('id','init_sched','soil','jss','date_rng','jobs'),
                frozen=('*id','*init_soil','*init_jobs','*date_rng')):
     
     def __init__(self, date_rng: DateRange, prev_sched = None):
@@ -26,12 +25,11 @@ class JetSched(HasID[int], SuperImmut,
         if prev_sched:
             init_soil = prev_sched.soil_level
             init_jobs = prev_sched.jobs_since_strip
-            date_rng = DateRange(max(date_rng.minval, prev_sched.last_job_end), date_rng.maxval)
 
         globals()['_CTR'] += 1
-        SuperImmut.__init__(self, priv={'id': globals()['_CTR'], 'init_soil': init_soil,
-                                        'init_jobs': init_jobs, 'soil': init_soil,
-                                        'jss': init_jobs, 'date_rng': date_rng, 'jobs': []})
+        SuperImmut.__init__(self, priv={'id': globals()['_CTR'], 'init_sched': prev_sched,
+                                        'soil': init_soil, 'jss': init_jobs,
+                                        'date_rng': date_rng, 'jobs': []})
     
     @property
     def _prefix(self):
@@ -103,7 +101,7 @@ class JetSched(HasID[int], SuperImmut,
         return total_cycle <= self.rem_time
     
     def add_job(self, job: Job):
-        if job.start - dt.timedelta(minutes=2) < self.last_job_end:
+        if job.start + dt.timedelta(minutes=1) < self.last_job_end:
             new_start = job.start.strftime('%m/%d %H:%M')
             cur_end = self.last_job_end.strftime('%m/%d %H:%M')
             raise ValueError(f'Cannot add job with start time {new_start} to schedule with last job ending at {cur_end}')
