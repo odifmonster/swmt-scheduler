@@ -9,6 +9,9 @@ from .greige import GreigeStyle
 _GREIGE_STYLES = {}
 
 def init():
+    if len(globals()['_GREIGE_STYLES']) > 0:
+        return
+    
     srcpath = os.path.join(os.path.dirname(__file__), 'styles.csv')
     with open(srcpath) as infile:
         for line in infile:

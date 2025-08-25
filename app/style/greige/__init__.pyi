@@ -2,6 +2,9 @@ from app.support import HasID, SuperImmut, FloatRange
 
 class GreigeStyle(HasID[str], SuperImmut, attrs=('_prefix','id','roll_rng','port_rng'),
                   priv_attrs=('prefix','id'), frozen=('*prefix','*id','roll_rng','port_rng')):
+    """
+    A class for GreigeStyle objects. All attributes are immutable.
+    """
     roll_rng: FloatRange # The standard weight range for rolls in this style
     port_rng: FloatRange # The standard port load for this style
     def __init__(self, id: str, port_min: float, port_max: float) -> None:

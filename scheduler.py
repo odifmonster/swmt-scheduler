@@ -129,37 +129,37 @@ def write_output(dmnd, jets, lgr) -> None:
 
 def main():
     inv = load_inv()
-    # dmnd = load_demand()
-    # jets = load_jets()
+    dmnd = load_demand()
+    jets = load_jets()
 
-    # make_schedule(dmnd, inv, jets)
-    # write_output(dmnd, jets, LOGGER)
+    make_schedule(dmnd, inv, jets)
+    write_output(dmnd, jets, LOGGER)
 
-    jet1 = Jet(8, FloatRange(300, 400))
-    grg = style.greige.get_style('AU5429D')
-    print(inv[grg])
+    # jet1 = Jet(8, FloatRange(300, 400))
+    # grg = style.greige.get_style('AU5429D')
+    # print(inv[grg])
 
-    snap1, loads1 = get_jet_loads(inv, grg, jet1)
-    for load in loads1:
-        print(load)
+    # snap1, loads1 = get_jet_loads(inv, grg, jet1)
+    # for load in loads1:
+    #     print(load)
     
-    for rview in inv.itervalues():
-        roll = inv.remove(rview)
-        roll.apply_snap(snapshot=snap1)
-        inv.add(roll)
+    # for rview in inv.itervalues():
+    #     roll = inv.remove(rview)
+    #     roll.apply_snap(snapshot=snap1)
+    #     inv.add(roll)
     
-    print(inv[grg])
+    # print(inv[grg])
     
-    snap2, loads2 = get_jet_loads(inv, grg, jet1)
-    for load in loads2:
-        print(load)
+    # snap2, loads2 = get_jet_loads(inv, grg, jet1)
+    # for load in loads2:
+    #     print(load)
 
-    for rview in inv.itervalues():
-        roll = inv.remove(rview)
-        roll.apply_snap(snapshot=snap2)
-        inv.add(roll)
+    # for rview in inv.itervalues():
+    #     roll = inv.remove(rview)
+    #     roll.apply_snap(snapshot=snap2)
+    #     inv.add(roll)
 
-    print(inv[grg])
+    # print(inv[grg])
 
 if __name__ == '__main__':
     main()

@@ -5,6 +5,9 @@ import os
 _STYLE_MAP = {}
 
 def init() -> None:
+    if len(globals()['_STYLE_MAP']) > 0:
+        return
+    
     srcpath = os.path.join(os.path.dirname(__file__), 'translate.csv')
     with open(srcpath) as infile:
         for line in infile:

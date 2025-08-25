@@ -19,6 +19,7 @@ def run_trans_converts(df: pd.DataFrame) -> pd.DataFrame:
 def run_fabric_converts(df: pd.DataFrame) -> pd.DataFrame:
     df['GREIGE ITEM'] = df['GREIGE ITEM'].str.upper()
     sub_df = df[~df['COLOR NUMBER'].isna() & ~df['Yield'].isna() & ~df['SHADE RATING'].isna() & ~df['PA FIN ITEM'].isna()]
+    sub_df = sub_df[~sub_df['GREIGE ITEM'].str.contains('CAT')]
     return sub_df
 
 def run_greige_converts(df: pd.DataFrame) -> pd.DataFrame:
