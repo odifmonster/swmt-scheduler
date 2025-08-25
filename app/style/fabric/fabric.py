@@ -3,7 +3,8 @@
 from app.support import HasID, SuperImmut
 from .color import Color, LIGHT, MEDIUM
 
-class FabricStyle(HasID[str], SuperImmut, attrs=('_prefix','id','greige','color','yld'),
+class FabricStyle(HasID[str], SuperImmut,
+                  attrs=('_prefix','id','cycle_time','greige','color','yld'),
                   priv_attrs=('id','jets'), frozen=('*id','*jets','greige','color','yld')):
     
     def __init__(self, item, greige, clr_name, clr_num, clr_shade, yld, jets):
@@ -17,6 +18,10 @@ class FabricStyle(HasID[str], SuperImmut, attrs=('_prefix','id','greige','color'
     @property
     def id(self):
         return self.__id
+    
+    @property
+    def cycle_time(self):
+        return self.color.cycle_time
     
     def can_run_on_jet(self, jet_id):
         return jet_id in self.__jets

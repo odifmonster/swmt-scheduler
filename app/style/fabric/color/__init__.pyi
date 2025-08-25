@@ -3,6 +3,7 @@ from app.style.fabric.color.color import ShadeGrade as ShadeGrade, HEAVYSTRIP as
     MEDIUM as MEDIUM, BLACK as BLACK
 
 from typing import Literal
+import datetime as dt
 from app.support import HasID, SuperImmut
 
 type _RawShadeName = Literal['HEAVYSTRIP', 'STRIP', 'EMPTY', 'SOLTUION', 'LIGHT',
@@ -10,8 +11,9 @@ type _RawShadeName = Literal['HEAVYSTRIP', 'STRIP', 'EMPTY', 'SOLTUION', 'LIGHT'
 type _RawShadeInt = Literal[1, 2, 3, 4, 5, 6, 7]
 type _RawShadeVal = _RawShadeName | _RawShadeInt
 
-class Color(HasID[str], SuperImmut, attrs=('_prefix','id','name','number','shade','soil'),
-            frozen=('name','number','shade','soil')):
+class Color(HasID[str], SuperImmut,
+            attrs=('_prefix','id','name','number','shade','soil','cycle_time'),
+            frozen=('name','number','shade','soil','cycle_time')):
     """
     A class for Color objects. All attributes are immutable.
     """
@@ -19,6 +21,7 @@ class Color(HasID[str], SuperImmut, attrs=('_prefix','id','name','number','shade
     number: int
     shade: ShadeGrade
     soil: int # the "soil level" this color will add to a jet
+    cycle_time: dt.timedelta
     def __init__(self, name: str, number: int, shade_val: _RawShadeVal) -> None:
         """
         Initialize a new Color object.
@@ -32,7 +35,3 @@ class Color(HasID[str], SuperImmut, attrs=('_prefix','id','name','number','shade
               5-7 represent EMPTY, STRIP, and HEAVYSTRIP.
         """
         ...
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...

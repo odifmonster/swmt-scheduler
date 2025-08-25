@@ -1,11 +1,13 @@
 from app.style.fabric import color as color
 from app.style.fabric.color import Color as Color
 
+import datetime as dt
 from app.support import HasID, SuperImmut
 from app.style import GreigeStyle
 from app.style.fabric.color import _RawShadeVal
 
-class FabricStyle(HasID[str], SuperImmut, attrs=('_prefix','id','greige','color','yld'),
+class FabricStyle(HasID[str], SuperImmut,
+                  attrs=('_prefix','id','cycle_time','greige','color','yld'),
                   priv_attrs=('id','jets'), frozen=('*id','*jets','greige','color','yld')):
     """A class for FabricStyle objects. All attributes are immutable."""
     greige: GreigeStyle
@@ -35,9 +37,9 @@ class FabricStyle(HasID[str], SuperImmut, attrs=('_prefix','id','greige','color'
         """
         ...
     @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...
+    def cycle_time(self) -> dt.timedelta:
+        """The cycle time for this item."""
+        ...
     def can_run_on_jet(self, jet_id: str) -> bool:
         """
         Returns True iff this item can run on the jet with the given

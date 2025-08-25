@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from typing import NewType
+import datetime as dt
 
 from app.support import HasID, SuperImmut
 
@@ -38,8 +39,9 @@ def _get_shade_grade(rawval):
                 raise ValueError(f'Unknown shade: {repr(rawval)}')
     raise TypeError(f'Invalid shade type: \'{type(rawval).__name__}\'')
 
-class Color(HasID[str], SuperImmut, attrs=('_prefix','id','name','number','shade','soil'),
-            frozen=('name','number','shade','soil')):
+class Color(HasID[str], SuperImmut,
+            attrs=('_prefix','id','name','number','shade','soil','cycle_time'),
+            frozen=('name','number','shade','soil','cycle_time')):
     
     def __init__(self, name, number, shade_val):
         shade = _get_shade_grade(shade_val)
@@ -54,7 +56,19 @@ class Color(HasID[str], SuperImmut, attrs=('_prefix','id','name','number','shade
             soil = 3
         else:
             soil = 7
-        SuperImmut.__init__(self, name=name, number=number, shade=shade, soil=soil)
+        cycle_time = dt.timedelta(hours=1)
+        if shade == HEAVYSTRIP:
+            cycle_time = dt.timedelta(hours=14)
+        elif shade == STRIP:
+            cycle_time = dt.timedelta(hours=7)
+        elif shade == BLACK:
+            cycle_time = dt.timedelta(hours=10)
+        elif shade == SOLUTION:
+            cycle_time = dt.timedelta(hours=6)
+        else:
+            cycle_time = dt.timedelta(hours=8)
+        SuperImmut.__init__(self, name=name, number=number, shade=shade, soil=soil,
+                            cycle_time=cycle_time)
     
     @property
     def _prefix(self):

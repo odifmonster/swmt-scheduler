@@ -1,1 +1,2 @@
-from app import support as support, style as style, materials as materials
+from app import support as support, style as style, materials as materials, \
+    schedule as schedule
