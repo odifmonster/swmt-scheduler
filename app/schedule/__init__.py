@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
 from .dyelot import DyeLot
-from .job import Job
+from .jet import Job, JetSched
 
-__all__ = ['DyeLot', 'Job']
+__all__ = ['DyeLot', 'Job', 'JetSched']

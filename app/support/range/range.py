@@ -12,6 +12,9 @@ class ContRange[T](NamedTuple):
             return val.minval >= self.minval and val.maxval <= self.maxval
         return val >= self.minval and val <= self.maxval
     
+    def overlaps(self, val: 'ContRange[T]'):
+        return self.contains(val.minval) or self.contains(val.maxval)
+    
     def is_above(self, val: T):
         return val < self.minval
     

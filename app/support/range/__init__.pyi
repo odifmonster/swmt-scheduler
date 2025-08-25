@@ -16,6 +16,11 @@ class ContRange[T: _SupportsComp](NamedTuple):
         Returns True iff 'val' is fully contained within the defined range.
         """
         ...
+    def overlaps(self, val: 'ContRange[T]') -> bool:
+        """
+        Returns True iff 'val' overlaps this ContRange object.
+        """
+        ...
     def is_above(self, val: T) -> bool:
         """Returns True iff this range is fully above 'val'."""
         ...

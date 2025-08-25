@@ -1,10 +1,11 @@
-from ..dyelot import DyeLot
-from datetime import datetime
+#!/usr/bin/env python
 
+from ...dyelot import DyeLot
+from datetime import datetime
 
 counter = 0
 
-class Job :
+class Job:
     def __init__(self, dyelots: list[DyeLot], start: datetime):
         self.id = ""
 

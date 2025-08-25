@@ -6,8 +6,6 @@ from app import style
 from app.support import FloatRange
 from app.style import GreigeStyle
 from app.materials import Inventory, RollAlloc, PortLoad, Snapshot
-from app.schedule import DyeLot, Job
-from datetime import datetime
 
 from loaddata import load_inv, load_demand, load_jets
 
@@ -135,47 +133,8 @@ def main():
     dmnd = load_demand()
     jets = load_jets()
 
-    # make_schedule(dmnd, inv, jets)
-    # write_output(dmnd, jets, LOGGER)
-
-    jet1 = Jet(8, FloatRange(300, 400))
-    grg = style.greige.get_style('AU5429D')
-    # print(inv[grg])
-
-    snap1, loads1 = get_jet_loads(inv, grg, jet1)
-    lot1 = DyeLot.new_lot(style.fabric.get_style('FF ARCTIC-39811-61'), loads1)
-
-    lots = [lot1]
-
-    start1 = datetime(year= 2025, month= 8, day= 1)
-    start2 = datetime(year= 2025, month= 8, day= 5)
-    job1 = Job(lots, start1)
-    job2 = Job(lots, start2)
-    job1.activate()
-    print(lot1.end)
-    job1.deactivate()
-    job2.activate()
-    print(lot1.end)
-    # for load in loads1:
-    #     print(load)
-    
-    # for rview in inv.itervalues():
-    #     roll = inv.remove(rview)
-    #     roll.apply_snap(snapshot=snap1)
-    #     inv.add(roll)
-    
-    # print(inv[grg])
-    
-    # snap2, loads2 = get_jet_loads(inv, grg, jet1)
-    # for load in loads2:
-    #     print(load)
-
-    # for rview in inv.itervalues():
-    #     roll = inv.remove(rview)
-    #     roll.apply_snap(snapshot=snap2)
-    #     inv.add(roll)
-
-    # print(inv[grg])
+    make_schedule(dmnd, inv, jets)
+    write_output(dmnd, jets, LOGGER)
 
 if __name__ == '__main__':
     main()

@@ -7,7 +7,7 @@
 # need to use double backslash characters
 
 fabric_items: # information about fabric items (which jets they can run on, which greige style they use, etc.)
-    folder="/Users/oliverwyner/Shawmut"
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book="New XREF file.xlsx"
     sheet_name=Xref
     columns="GREIGE ITEM", STYLE, Yield, "COLOR NAME", "COLOR NUMBER", "PA FIN ITEM", ...
