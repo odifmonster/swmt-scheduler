@@ -115,6 +115,10 @@ class DateView(GroupedView[str, GreigeStyle]):
     def remove(self, dview: OrderView) -> Order: ...
 
 class Demand(Grouped[str, dt.datetime]):
+    """
+    A class for Demand objects. Organizes Order objects by
+    their due date, greige style, and color.
+    """
     def __init__(self) -> None: ...
     @overload
     def __getitem__(self, key: tuple[()]) -> DemandView: ...
@@ -135,6 +139,9 @@ class Demand(Grouped[str, dt.datetime]):
     def view(self) -> DemandView: ...
 
 class DemandView(GroupedView[str, dt.datetime]):
+    """
+    A class for views of Demand objects.
+    """
     def __init__(self, link: Demand) -> None: ...
     @overload
     def __getitem__(self, key: tuple[()]) -> DemandView: ...
