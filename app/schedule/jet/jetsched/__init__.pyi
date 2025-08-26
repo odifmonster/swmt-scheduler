@@ -1,6 +1,7 @@
 import datetime as dt
 from app.support import HasID, SuperImmut, DateRange
 from app.style import FabricStyle, GreigeStyle
+from app.materials import PortLoad
 from app.schedule import DyeLot
 from app.schedule.jet import Job
 
@@ -66,10 +67,10 @@ class JetSched(HasID[int], SuperImmut,
     def deactivate(self) -> None:
         """Deactivate all the jobs in this schedule."""
         ...
-    def free_greige(self) -> dict[GreigeStyle, float]:
+    def free_greige(self) -> dict[GreigeStyle, list[PortLoad]]:
         """
-        Get any additional greige that is available from the lots 
-        in this schedule (if deactivated). Returns a dictionary
-        mapping greige styles to pounds.
+        Get any additional greige that is available from the lots in this
+        schedule (if deactivated). Returns a dictionary mapping greige
+        styles to released port loads.
         """
         ...

@@ -133,12 +133,12 @@ class JetSched(HasID[int], SuperImmut,
             job.deactivate()
 
     def free_greige(self):
-        avail: dict[GreigeStyle, float] = {}
+        avail: dict[GreigeStyle, list] = {}
         for job in self.jobs:
             for lot in job.lots:
                 if not lot.start is None: continue
                 
                 if lot.greige not in avail:
-                    avail[lot.greige] = 0
-                avail[lot.greige] += lot.lbs
+                    avail[lot.greige] = []
+                avail[lot.greige] += list(lot.ports)
         return avail

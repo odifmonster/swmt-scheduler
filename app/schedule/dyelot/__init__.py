@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from .dyelot import DyeLot
+from .dyelot import DyeLot, DyeLotView
 
-__all__ = ['DyeLot']
+__all__ = ['DyeLot', 'DyeLotView']
