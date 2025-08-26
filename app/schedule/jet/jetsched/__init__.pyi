@@ -8,9 +8,8 @@ from app.schedule.jet import Job
 class JetSched(HasID[int], SuperImmut,
                attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
                       'last_job_end','jobs'),
-               priv_attrs=('id','init_soil','soil','init_jobs','jss','date_rng',
-                           'jobs'),
-               frozen=('*id','*init_soil','*init_jobs','*date_rng')):
+               priv_attrs=('id','init_sched','soil','jss','date_rng','jobs'),
+               frozen=('*id','*init_sched','*date_rng')):
     """
     A class for JetSched objects. Represents one version of a schedule
     on a jet. Schedules can only be added to.

@@ -25,12 +25,12 @@ class Order(Data[str], mod_in_group=True,
             priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
             frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','pnum','due_date')):
     
-    def __init__(self, req: _Req, pnum, cur_yds, cum_yds, p1date: dt.datetime):
+    def __init__(self, req: _Req, item, pnum, cur_yds, cum_yds, p1date: dt.datetime):
         deltas = {
             1: dt.timedelta(days=0), 2: dt.timedelta(days=4), 3: dt.timedelta(days=7),
             4: dt.timedelta(days=11)
         }
-        Data.__init__(self, f'P{pnum}@{req.item.id}', 'Order', OrderView(self),
+        Data.__init__(self, f'P{pnum}@{item.id}', 'Order', OrderView(self),
                       priv={'req': req, 'p1date': p1date, 'init_cur_yds': cur_yds,
                             'init_cum_yds': cum_yds},
                       pnum=pnum, due_date=p1date+deltas[pnum])
@@ -78,7 +78,7 @@ class Order(Data[str], mod_in_group=True,
             return []
         
         r: _Req = self.__req
-        min_avail_date = self.p1date + dt.timedelta(days=12)
+        min_avail_date = self.__p1date + dt.timedelta(days=12)
         max_late_time = min_avail_date - self.due_date
         lots: list[DyeLotView] = sorted(filter(lambda l: not l.end is None, r.lots),
                                         key=lambda l: l.end)

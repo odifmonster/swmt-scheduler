@@ -18,7 +18,7 @@ class JetSched(HasID[int], SuperImmut,
                attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
                       'last_job_end','jobs'),
                priv_attrs=('id','init_sched','soil','jss','date_rng','jobs'),
-               frozen=('*id','*init_soil','*init_jobs','*date_rng')):
+               frozen=('*id','*init_sched','*date_rng')):
     
     def __init__(self, date_rng: DateRange, prev_sched = None):
         init_soil, init_jobs = 0, 0

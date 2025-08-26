@@ -15,7 +15,7 @@ class Req(HasID[str], SuperImmut,
         for pnum, yds in buckets:
             total_yds += yds
             if yds > 0:
-                orders.append(Order(self, pnum, yds, total_yds, p1date))
+                orders.append(Order(self, item, pnum, yds, total_yds, p1date))
 
         SuperImmut.__init__(self, priv={'id': item.id, 'lots': []}, item=item, orders=tuple(orders))
     
