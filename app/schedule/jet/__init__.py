@@ -2,5 +2,6 @@
 
 from .job import Job
 from .jetsched import JetSched
+from .jet import Jet
 
-__all__ = ['Job', 'JetSched']
+__all__ = ['Job', 'JetSched', 'Jet']

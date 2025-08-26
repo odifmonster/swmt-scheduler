@@ -83,6 +83,9 @@ class JetSched(HasID[int], SuperImmut,
     def jobs(self) -> tuple[Job, ...]:
         return tuple(self.__jobs)
     
+    def copy(self):
+        return JetSched(self.__date_rng, prev_sched=self.__init_sched)
+    
     def get_needed_strip(self, item: fabric.FabricStyle):
         strip_id = item.get_strip(self.soil_level)
         strip = None if strip_id is None else fabric.get_style(strip_id)

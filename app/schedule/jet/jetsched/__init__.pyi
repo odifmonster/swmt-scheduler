@@ -48,6 +48,9 @@ class JetSched(HasID[int], SuperImmut,
     def jobs(self) -> tuple[Job, ...]:
         """The jobs in this schedule."""
         ...
+    def copy(self) -> JetSched:
+        """Return a new JetSched object with the same initial values as this one."""
+        ...
     def get_needed_strip(self, item: FabricStyle) -> FabricStyle | None:
         """Get the strip required (if any) before running the given item."""
         ...

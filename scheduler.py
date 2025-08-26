@@ -4,27 +4,17 @@ from typing import NamedTuple, Generator
 import sys, math, datetime as dt
 
 from app import style
-from app.support import FloatRange
 from app.style import GreigeStyle
 from app.materials import Inventory, RollAlloc, PortLoad, Snapshot
-from app.schedule import DyeLot, Order, OrderView, Demand
+from app.schedule import DyeLot, Order, OrderView, Req, Demand, Jet, JetSched
 
+from helpers import add_back_piece, apply_snapshot
 from loaddata import load_inv, load_demand, load_jets
 
 style.greige.init()
 style.fabric.init()
 
 LOGGER = []
-
-class Jet(NamedTuple):
-    id: str
-    n_ports: int
-    load_rng: FloatRange
-
-def add_back_piece(inv: Inventory, piece: RollAlloc, snapshot: Snapshot) -> None:
-    roll = inv.remove(inv.get(piece.roll_id))
-    roll.deallocate(piece, snapshot=snapshot)
-    inv.add(roll)
 
 def try_load_jet(inv: Inventory, loads: Generator[PortLoad], jet: Jet, snapshot: Snapshot) \
     -> list[PortLoad]:
@@ -122,6 +112,42 @@ def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
         dmnd.add(o2)
 
     return lots
+
+def sched_cost(jet: Jet, sched: JetSched) -> float:
+    """The cost of not sequencing and of running on non-preferred jets."""
+    return 0
+
+def order_cost(order: Order | OrderView) -> float:
+    """The cost of late penalties on this order."""
+    return 0
+
+def late_cost(order: Order, dmnd: Demand) -> tuple[float, float]:
+    """The cost of all late penalties given the current demand."""
+    return 0, 0
+
+def req_cost(req: Req) -> float:
+    """The cost of any excess inventory produced on this item requirement."""
+    return 0
+
+def excess_inv_cost(order: Order, reqs: list[Req]) -> tuple[float, float]:
+    """The carrying cost of any excess inventory."""
+    return 0, 0
+
+def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], reqs: list[Req]) -> float:
+    """The cost of using up the given greige."""
+    return 0
+
+def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
+         snap: Snapshot, inv: Inventory) -> float:
+    apply_snapshot(inv, snap)
+    prevsched = jet.set_sched(sched)
+
+    cur_late, rem_late = late_cost(order, dmnd)
+    cur_inv, rem_inv = excess_inv_cost(order, reqs)
+    used_inv = used_inv_cost(inv, prevsched.free_greige(), reqs)
+    scost = sched_cost(jet, sched)
+
+    return sum((cur_late, rem_late, cur_inv, rem_inv, used_inv)) + scost / jet.n_ports
 
 def get_best_job(lots: list[tuple[DyeLot, ...]], order: Order, dmnd: Demand,
                  inv: Inventory, jets: list[Jet]) -> int | None:
