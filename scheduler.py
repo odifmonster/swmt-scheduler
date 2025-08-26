@@ -56,8 +56,8 @@ def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet) \
     return None, ret
 
 def get_paired_lots(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) \
-    -> list[tuple[DyeLot, DyeLot]]:
-    lots: list[tuple[DyeLot, DyeLot]] = []
+    -> dict[Jet, tuple[DyeLot, DyeLot]]:
+    lots_map: dict[Jet, tuple[DyeLot, DyeLot]] = {}
     avg_load = o1.greige.port_rng.average()
     min_o1_ports = math.ceil(o1.lbs / avg_load)
     min_total_ports = math.ceil((o1.lbs+o2.lbs) / avg_load)
@@ -71,21 +71,21 @@ def get_paired_lots(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) \
         ports1 = round((min_o1_ports / min_total_ports) * jet.n_ports)
         lot1 = o1.assign(loads[:ports1])
         lot2 = o2.assign(loads[ports1:])
-        lots.append((lot1, lot2))
+        lots_map[jet] = ((lot1, lot2))
     
-    return lots
+    return lots_map
 
-def get_single_lots(order: Order, inv: Inventory, jets: list[Jet]) -> list[tuple[DyeLot]]:
-    lots: list[tuple[DyeLot]] = []
+def get_single_lots(order: Order, inv: Inventory, jets: list[Jet]) -> dict[Jet, tuple[DyeLot]]:
+    lots_map: dict[Jet, tuple[DyeLot]] = {}
     
     for jet in jets:
         if not order.item.can_run_on_jet(jet.id): continue
         snap, loads = get_jet_loads(inv, order.greige, jet)
         if snap is None: continue
 
-        lots.append((order.assign(loads),))
+        lots_map[jet] = (order.assign(loads),)
     
-    return lots
+    return lots_map
 
 def get_order_pairs(order: Order, dmnd: Demand) -> list[tuple[Order, Order]]:
     to_remove: list[OrderView] = []
@@ -101,17 +101,11 @@ def get_order_pairs(order: Order, dmnd: Demand) -> list[tuple[Order, Order]]:
     return ret
 
 def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
-                 jets: list[Jet]) -> list[tuple[DyeLot, ...]]:
-    lots: list[tuple[DyeLot, ...]] = []
+                 jets: list[Jet]) -> dict[Jet, list[tuple[DyeLot, ...]]]:
+    lots_map: dict[Jet, list[tuple[DyeLot, ...]]] = {}
 
-    lots += get_single_lots(order, inv, jets)
-
-    pairs = get_order_pairs(order, dmnd)
-    for o1, o2 in pairs:
-        lots += get_paired_lots(o1, o2, inv, jets)
-        dmnd.add(o2)
-
-    return lots
+    """
+    """
 
 def sched_cost(jet: Jet, sched: JetSched) -> float:
     """The cost of not sequencing and of running on non-preferred jets."""
@@ -149,19 +143,10 @@ def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
 
     return sum((cur_late, rem_late, cur_inv, rem_inv, used_inv)) + scost / jet.n_ports
 
-def get_best_job(lots: list[tuple[DyeLot, ...]], order: Order, dmnd: Demand,
-                 inv: Inventory, jets: list[Jet]) -> int | None:
+def get_best_job(lots_map: dict[Jet, tuple[DyeLot, ...]], order: Order, dmnd: Demand,
+                 inv: Inventory) -> int | None:
     """
-    Loop through pairs
-        Get all dyelots that cover the pair
-    
-    Get all dyelots that cover the req
-
-    Loop through all dyelots
-        Append all jobs and costs
-    
-    Sort jobs by cost
-    Pick the best one and return it
+    Get a map from each jet to lists of valid lot(s)
     """
     return 0
 
