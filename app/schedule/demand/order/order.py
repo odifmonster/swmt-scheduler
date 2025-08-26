@@ -23,7 +23,7 @@ class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
                    'total_lbs','pnum','due_date'),
             priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','pnum','due_date')):
+            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     
     def __init__(self, req: _Req, item, pnum, cur_yds, cum_yds, p1date: dt.datetime):
         deltas = {
@@ -32,12 +32,8 @@ class Order(Data[str], mod_in_group=True,
         }
         Data.__init__(self, f'P{pnum}@{item.id}', 'Order', OrderView(self),
                       priv={'req': req, 'p1date': p1date, 'init_cur_yds': cur_yds,
-                            'init_cum_yds': cum_yds},
+                            'init_cum_yds': cum_yds}, item=item,
                       pnum=pnum, due_date=p1date+deltas[pnum])
-    
-    @property
-    def item(self):
-        return self.__req.item
     
     @property
     def greige(self):

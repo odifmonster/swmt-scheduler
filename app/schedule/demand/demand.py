@@ -4,6 +4,7 @@ import datetime as dt
 
 from app.support.grouped import Grouped, GroupedView, Atom
 from app.style import Color, GreigeStyle
+from .order import Order, OrderView
 
 class ColorGroup(Grouped[str, str]):
 
@@ -45,6 +46,16 @@ class Demand(Grouped[str, dt.datetime]):
 
     def make_group(self, data, **kwargs):
         return DateGroup(due_date=data.due_date)
+    
+    def get_matches(self, order: Order):
+        ret: list[OrderView] = []
+        dates = sorted(self)
+        for date in dates:
+            if order.greige not in self[date]: continue
+            if order.color not in self[date, order.greige]: continue
+
+            ret += list(self[date, order.greige, order.color].itervalues())
+        return ret
 
 class DemandView(GroupedView[str, dt.datetime]):
     pass

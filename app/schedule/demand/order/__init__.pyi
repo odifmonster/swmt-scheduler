@@ -19,13 +19,14 @@ class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
                    'total_lbs','pnum','due_date'),
             priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','pnum','due_date')):
+            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     """
     A class for Order objects. This represents a required quantity
     of an item and a due date. Orders will track their fulfillment
     status against their requirement, the total requirement on that
     item, and their due dates.
     """
+    item: FabricStyle # the item for this order
     pnum: int # the priority number of this order
     due_date: dt.datetime # the due date of this order
     def __init__(self, req: _Req, item: FabricStyle, pnum: int, cur_yds: float, cum_yds: float,
@@ -47,8 +48,6 @@ class Order(Data[str], mod_in_group=True,
               The date and time the P1 truck is leaving.
         """
         ...
-    @property
-    def item(self) -> FabricStyle: ...
     @property
     def greige(self) -> GreigeStyle:
         """The greige style of this order's item."""

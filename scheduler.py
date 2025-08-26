@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 from typing import NamedTuple, Generator
+import sys, math, datetime as dt
 
 from app import style
 from app.support import FloatRange
 from app.style import GreigeStyle
 from app.materials import Inventory, RollAlloc, PortLoad, Snapshot
+from app.schedule import DyeLot, Order, OrderView, Demand
 
 from loaddata import load_inv, load_demand, load_jets
 
@@ -15,6 +17,7 @@ style.fabric.init()
 LOGGER = []
 
 class Jet(NamedTuple):
+    id: str
     n_ports: int
     load_rng: FloatRange
 
@@ -62,21 +65,66 @@ def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet) \
 
     return None, ret
 
-def get_dyelots(req, inv, jets) -> list[int | tuple[int, int]]:
-    """
-    Loop through jets:
-        If approximate lbs < needed lbs: skip
-        
-        Load all ports
-        If one req:
-            Create dyelot and assign
-        else:
-            Divide ports
-            Create two dyelots, assign to corresponding thing
-    """
-    return [0]
+def get_paired_lots(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) \
+    -> list[tuple[DyeLot, DyeLot]]:
+    lots: list[tuple[DyeLot, DyeLot]] = []
+    avg_load = o1.greige.port_rng.average()
+    min_o1_ports = math.ceil(o1.lbs / avg_load)
+    min_total_ports = math.ceil((o1.lbs+o2.lbs) / avg_load)
 
-def get_best_job(combs, req, bucket, dmnd, inv, jets) -> int | None:
+    for jet in jets:
+        if not o1.item.can_run_on_jet(jet.id): continue
+        if min_total_ports > jet.n_ports: continue
+        snap, loads = get_jet_loads(inv, o1.greige, jet)
+        if snap is None: continue
+
+        ports1 = round((min_o1_ports / min_total_ports) * jet.n_ports)
+        lot1 = o1.assign(loads[:ports1])
+        lot2 = o2.assign(loads[ports1:])
+        lots.append((lot1, lot2))
+    
+    return lots
+
+def get_single_lots(order: Order, inv: Inventory, jets: list[Jet]) -> list[tuple[DyeLot]]:
+    lots: list[tuple[DyeLot]] = []
+    
+    for jet in jets:
+        if not order.item.can_run_on_jet(jet.id): continue
+        snap, loads = get_jet_loads(inv, order.greige, jet)
+        if snap is None: continue
+
+        lots.append((order.assign(loads),))
+    
+    return lots
+
+def get_order_pairs(order: Order, dmnd: Demand) -> list[tuple[Order, Order]]:
+    to_remove: list[OrderView] = []
+    for match in dmnd.get_matches(order):
+        if match.lbs <= 0: continue
+        if (order.lbs + match.lbs) / order.greige.port_rng.average() <= 8:
+            to_remove.append((order, match))
+
+    ret: list[tuple[Order, Order]] = []
+    for oview in to_remove:
+        o2 = dmnd.remove(oview)
+        ret.append((order, o2))
+    return ret
+
+def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
+                 jets: list[Jet]) -> list[tuple[DyeLot, ...]]:
+    lots: list[tuple[DyeLot, ...]] = []
+
+    lots += get_single_lots(order, inv, jets)
+
+    pairs = get_order_pairs(order, dmnd)
+    for o1, o2 in pairs:
+        lots += get_paired_lots(o1, o2, inv, jets)
+        dmnd.add(o2)
+
+    return lots
+
+def get_best_job(lots: list[tuple[DyeLot, ...]], order: Order, dmnd: Demand,
+                 inv: Inventory, jets: list[Jet]) -> int | None:
     """
     Loop through pairs
         Get all dyelots that cover the pair
@@ -91,14 +139,7 @@ def get_best_job(combs, req, bucket, dmnd, inv, jets) -> int | None:
     """
     return 0
 
-def get_req_pairs(req, pnum, matches) -> list[tuple[int, int]]:
-    pairs: list[tuple[int, int]] = []
-    for match in matches:
-        if req + match <= 8:
-            pairs.append((req, match))
-    return pairs
-
-def make_schedule(dmnd, inv, jets) -> None:
+def make_schedule(dmnd: Demand, inv: Inventory, jets) -> None:
     """
     greige, color, priority, id
     Loop through priorities
@@ -113,28 +154,28 @@ def make_schedule(dmnd, inv, jets) -> None:
                 else:
                     next req
     """
-    for pnum in range(1,5):
-        for req in dmnd: # dmnd.fullvals()
-            bucket = req[pnum]
-            while bucket > 10:
-                matches = [] # dmnd.get_matches(req)
-                pairs = get_req_pairs(bucket, matches)
-                job = get_best_job(pairs, bucket, pnum, dmnd, inv, jets)
-                if not job:
-                    break
-                # job.schedule()
-                bucket -= 1
+    dates = sorted(dmnd)
+    for date in dates:
+        for oview in dmnd[date].itervalues():
+            order = dmnd.remove(oview)
+            # while order.total_yds > 50:
+            #     pairs = get_order_pairs(order, dmnd)
+            #     lots = get_all_lots(order, dmnd, inv, jets)
 
 def write_output(dmnd, jets, lgr) -> None:
     pass
 
-def main():
+def main(start_str: str, p1date_str: str):
+    start = dt.datetime.fromisoformat(start_str)
+    p1date_raw = dt.datetime.fromisoformat(p1date_str)
+    p1date = dt.datetime(p1date_raw.year, p1date_raw.month, p1date_raw.day, hour=8)
+
     inv = load_inv()
-    dmnd = load_demand()
+    reqs, dmnd = load_demand(p1date)
     jets = load_jets()
 
     make_schedule(dmnd, inv, jets)
     write_output(dmnd, jets, LOGGER)
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1], sys.argv[2])
