@@ -31,6 +31,8 @@ class FabricStyle(HasID[str], SuperImmut,
             if soil_level - 27 >= 10:
                 return 'HEAVYSTRIP'
             return 'STRIP'
+        
         if self.color.shade == MEDIUM and soil_level >= 45:
             return 'STRIP'
+        
         return None

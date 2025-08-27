@@ -2,11 +2,13 @@ from app.materials.roll.roll import SizeClass as SizeClass, LARGE as LARGE, NORM
     SMALL as SMALL, HALF as HALF, PARTIAL as PARTIAL
 
 from app.support.grouped import Data, DataView
-from app.support import SuperImmut
+from app.support import HasID, SuperImmut
 from app.style import GreigeStyle
 from app.materials.inventory import Snapshot
 
-class RollAlloc(SuperImmut, attrs=('roll_id','lbs'), frozen=('roll_id','lbs')):
+class RollAlloc(HasID[int], SuperImmut,
+                attrs=('_prefix','id','roll_id','lbs'),
+                priv_attrs=('id',), frozen=('*id','roll_id','lbs')):
     """Simple class for representing an allocation of a piece of one roll."""
     roll_id: str
     lbs: float

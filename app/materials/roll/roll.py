@@ -3,7 +3,7 @@
 from typing import NewType
 
 from app.support.grouped import Data, DataView
-from app.support import SuperImmut, setter_like
+from app.support import HasID, SuperImmut, setter_like
 from app.style import GreigeStyle
 
 SizeClass = NewType('SizeClass', str)
@@ -13,13 +13,27 @@ SMALL = SizeClass('SMALL')
 HALF = SizeClass('HALF')
 PARTIAL = SizeClass('PARTIAL')
 
-class RollAlloc(SuperImmut, attrs=('roll_id','lbs'), frozen=('roll_id','lbs')):
+_CTR = 0
+
+class RollAlloc(HasID[int], SuperImmut,
+                attrs=('_prefix','id','roll_id','lbs'),
+                priv_attrs=('id',), frozen=('*id','roll_id','lbs')):
 
     def __init__(self, roll_id, lbs):
-        SuperImmut.__init__(self, roll_id=roll_id, lbs=lbs)
+        globals()['_CTR'] += 1
+        SuperImmut.__init__(self, priv={'id': globals()['_CTR']},
+                            roll_id=roll_id, lbs=lbs)
 
     def __repr__(self):
         return f'RollAlloc(roll={repr(self.roll_id)}, lbs={self.lbs:.2f})'
+    
+    @property
+    def _prefix(self):
+        return 'RollAlloc'
+    
+    @property
+    def id(self):
+        return self.__id
 
 class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot'),
            priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
@@ -72,6 +86,9 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
     @setter_like
     def deallocate(self, piece, snapshot = None):
         if snapshot is None:
+            if self.id == 'WF921130':
+                print(piece, piece.id)
+
             self.__allocs.remove(piece)
             self.__cur_wt += piece.lbs
         else:

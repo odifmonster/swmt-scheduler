@@ -138,13 +138,15 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
         self.__ids_map[data.id] = subkey
 
     @setter_like
-    def remove(self, dview: DataView[T]):
+    def remove(self, dview: DataView[T], remkey = False):
         groups: dict[U, 'Grouped[T] | Atom[T]'] = self.__groups
         subkey: U = getattr(dview, self.__unbound[0])
         if subkey not in groups or len(groups[subkey]) == 0:
             raise ValueError(f'Object does not contain data with {self.__unbound[0]}={repr(subkey)}')
         
-        ret = groups[subkey].remove(dview)
+        ret = groups[subkey].remove(dview, remkey=remkey)
+        if remkey and len(groups[subkey]) == 0:
+            del groups[subkey]
         del self.__ids_map[dview.id]
         return ret
     

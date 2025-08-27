@@ -84,7 +84,7 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
         data._set_in_group(True)
         self.__data = data
 
-    def remove(self, dview: DataView[T]):
+    def remove(self, dview: DataView[T], remkey = False):
         if len(self) == 0 or self.__data != dview:
             raise ValueError(f'Object does not contain data with id={repr(dview.id)}')
         temp = self.__data

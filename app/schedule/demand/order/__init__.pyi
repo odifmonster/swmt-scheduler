@@ -16,8 +16,8 @@ class _Req(Protocol):
     def unassign(lview: DyeLotView) -> DyeLot: ...
 
 class Order(Data[str], mod_in_group=True,
-            attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
-                   'total_lbs','pnum','due_date'),
+            attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
+                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
             priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
             frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     """
@@ -61,6 +61,10 @@ class Order(Data[str], mod_in_group=True,
         """The remaining yards needed to fulfill only this order by its due date."""
         ...
     @property
+    def init_yds(self) -> float:
+        """The initial yards in this order."""
+        ...
+    @property
     def cum_yds(self) -> float:
         """The cumulative remaining yards needed to fulfill the requirement by this due date."""
         ...
@@ -71,6 +75,10 @@ class Order(Data[str], mod_in_group=True,
     @property
     def lbs(self) -> float:
         """The remaining pounds needed to fulfill only this order by its due date."""
+        ...
+    @property
+    def init_lbs(self) -> float:
+        """The initial pounds in this order."""
         ...
     @property
     def cum_lbs(self) -> float:
@@ -94,8 +102,8 @@ class Order(Data[str], mod_in_group=True,
         ...
 
 class OrderView(DataView[str],
-                attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
-                       'total_lbs','pnum','due_date'),
+                attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
+                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
                 funcs=('late_table','assign','unassign'),
                 dunders=('repr',)):
     """
@@ -119,6 +127,10 @@ class OrderView(DataView[str],
         """The remaining yards needed to fulfill only this order by its due date."""
         ...
     @property
+    def init_yds(self) -> float:
+        """The initial yards in this order."""
+        ...
+    @property
     def cum_yds(self) -> float:
         """The cumulative remaining yards needed to fulfill the requirement by this due date."""
         ...
@@ -129,6 +141,10 @@ class OrderView(DataView[str],
     @property
     def lbs(self) -> float:
         """The remaining pounds needed to fulfill only this order by its due date."""
+        ...
+    @property
+    def init_lbs(self) -> float:
+        """The initial pounds in this order."""
         ...
     @property
     def cum_lbs(self) -> float:

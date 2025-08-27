@@ -10,7 +10,7 @@ class Req(HasID[str], SuperImmut,
     
     def __init__(self, item, buckets: list[tuple[int, float]], p1date):
         orders: list[Order] = []
-        buckets = sorted(buckets, lambda b: b[0])
+        buckets = sorted(buckets, key=lambda b: b[0])
         total_yds = 0
         for pnum, yds in buckets:
             total_yds += yds

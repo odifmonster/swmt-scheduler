@@ -86,10 +86,10 @@ class Inventory(Grouped[str, GreigeStyle]):
         if greige not in self or PARTIAL not in self[greige]:
             return
         
-        for view1 in self[greige, PARTIAL]:
-            for view2 in self[greige, PARTIAL]:
-                rview1: RollView = view1
-                rview2: RollView = view2
+        for id1 in self[greige, PARTIAL]:
+            for id2 in self[greige, PARTIAL]:
+                rview1: RollView = self[greige, PARTIAL, id1]
+                rview2: RollView = self[greige, PARTIAL, id2]
                 if rview1 == rview2: continue
                 if rview1.lbs < 50 or rview2.lbs < 50: continue
 
@@ -100,8 +100,8 @@ class Inventory(Grouped[str, GreigeStyle]):
                 wt_rng = min_float_rng(wt_rng, jet_rng)
                 if wt_rng.is_below(rview1.lbs) or wt_rng.is_below(rview2.lbs): continue
 
-                roll1: Roll = self.remove(view1)
-                roll2: Roll = self.remove(view2)
+                roll1: Roll = self.remove(rview1)
+                roll2: Roll = self.remove(rview2)
                 piece1, piece2 = None, None
                 if wt_rng.contains(roll1.lbs + roll2.lbs):
                     piece1 = roll1.allocate(roll1.lbs, snapshot=snapshot)

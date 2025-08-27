@@ -66,6 +66,6 @@ class Atom[T: Hashable](SuperImmut, attrs=('depth','n_items'), priv_attrs=('prop
     def add(self, data: Data[T]) -> None:
         """Add the provided data to this object."""
         ...
-    def remove(self, dview: DataView[T]) -> Data[T]:
+    def remove(self, dview: DataView[T], remkey: bool = False) -> Data[T]:
         """Remove data from this object using its view."""
         ...

@@ -20,8 +20,8 @@ class _Req(Protocol):
     def unassign(lview: DyeLotView) -> DyeLot: ...
 
 class Order(Data[str], mod_in_group=True,
-            attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
-                   'total_lbs','pnum','due_date'),
+            attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
+                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
             priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
             frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     
@@ -37,15 +37,19 @@ class Order(Data[str], mod_in_group=True,
     
     @property
     def greige(self):
-        return self.__req.greige
+        return self.item.greige
     
     @property
     def color(self):
-        return self.__req.color
+        return self.item.color
 
     @property
     def yds(self):
         return max(0, min(self.__init_cur_yds, self.cum_yds))
+    
+    @property
+    def init_yds(self):
+        return self.__init_cur_yds
 
     @property
     def cum_yds(self):
@@ -60,6 +64,10 @@ class Order(Data[str], mod_in_group=True,
     @property
     def lbs(self):
         return self.yds / self.item.yld
+    
+    @property
+    def init_lbs(self):
+        return self.init_yds / self.item.yld
     
     @property
     def cum_lbs(self):
@@ -79,7 +87,7 @@ class Order(Data[str], mod_in_group=True,
         lots: list[DyeLotView] = sorted(filter(lambda l: not l.end is None, r.lots),
                                         key=lambda l: l.end)
         if not lots:
-            return [(max_late_time, self.yds)]
+            return [(self.yds, max_late_time)]
         
         last_late = self.__init_cum_yds
         idx = 0
@@ -112,8 +120,8 @@ class Order(Data[str], mod_in_group=True,
         return self.__req.unassign(lview)
 
 class OrderView(DataView[str],
-                attrs=('item','greige','color','yds','cum_yds','total_yds','lbs','cum_lbs',
-                       'total_lbs','pnum','due_date'),
+                attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
+                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
                 funcs=('late_table','assign','unassign'),
                 dunders=('repr',)):
     pass

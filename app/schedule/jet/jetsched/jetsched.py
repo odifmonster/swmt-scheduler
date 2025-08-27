@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from typing import Callable
 import datetime as dt
 
 from app.support import HasID, SuperImmut, DateRange
@@ -81,6 +82,12 @@ class JetSched(HasID[int], SuperImmut,
     
     @property
     def jobs(self) -> tuple[Job, ...]:
+        filt_func: Callable[[Job], bool] = \
+            lambda j: j.color.shade not in (color.STRIP, color.HEAVYSTRIP)
+        return tuple(filter(filt_func, self.__jobs))
+    
+    @property
+    def full_sched(self) -> tuple[Job, ...]:
         return tuple(self.__jobs)
     
     def copy(self):
@@ -89,7 +96,7 @@ class JetSched(HasID[int], SuperImmut,
     def get_needed_strip(self, item: fabric.FabricStyle):
         strip_id = item.get_strip(self.soil_level)
         strip = None if strip_id is None else fabric.get_style(strip_id)
-        if strip_id is None and self.jobs_since_strip >= 9:
+        if strip is None and self.jobs_since_strip >= 9:
             strip = fabric.get_style('STRIP')
         
         return strip
@@ -103,8 +110,8 @@ class JetSched(HasID[int], SuperImmut,
         
         return total_cycle <= self.rem_time
     
-    def add_job(self, job: Job):
-        if job.start + dt.timedelta(minutes=1) < self.last_job_end:
+    def add_job(self, job: Job, force = False):
+        if not force and job.start + dt.timedelta(minutes=1) < self.last_job_end:
             new_start = job.start.strftime('%m/%d %H:%M')
             cur_end = self.last_job_end.strftime('%m/%d %H:%M')
             raise ValueError(f'Cannot add job with start time {new_start} to schedule with last job ending at {cur_end}')
@@ -121,7 +128,7 @@ class JetSched(HasID[int], SuperImmut,
     def add_lots(self, lots: tuple[DyeLot, ...]):
         strip = self.get_needed_strip(lots[0].item)
         if not strip is None:
-            strip_job = Job(DyeLot.new_strip(strip, self.last_job_end))
+            strip_job = Job([DyeLot.new_strip(strip, self.last_job_end)], self.last_job_end)
             self.add_job(strip_job)
         new_job = Job(lots, self.last_job_end)
         self.add_job(new_job)

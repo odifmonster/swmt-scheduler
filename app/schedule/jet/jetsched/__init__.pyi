@@ -46,7 +46,11 @@ class JetSched(HasID[int], SuperImmut,
         ...
     @property
     def jobs(self) -> tuple[Job, ...]:
-        """The jobs in this schedule."""
+        """The non-strip jobs in this schedule."""
+        ...
+    @property
+    def full_sched(self) -> tuple[Job, ...]:
+        """All the jobs in this schedule."""
         ...
     def copy(self) -> JetSched:
         """Return a new JetSched object with the same initial values as this one."""
@@ -57,8 +61,12 @@ class JetSched(HasID[int], SuperImmut,
     def can_add(self, lots: tuple[DyeLot, ...]) -> bool:
         """Returns True iff there is space in the schedule to run the given lots as a job."""
         ...
-    def add_job(self, job: Job) -> None:
-        """Adds the given job to the end of the schedule."""
+    def add_job(self, job: Job, force: bool = False) -> None:
+        """
+        Adds the given job to the end of the schedule. If 'force'
+        flag is set, then the job's start time relative to the
+        rest of the schedule will be ignored.
+        """
         ...
     def add_lots(self, lots: tuple[DyeLot, ...]) -> Job:
         """Creates a job object from the provided lots, adds them to the schedule, and returns the job."""
