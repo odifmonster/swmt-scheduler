@@ -3,7 +3,7 @@
 from app.support.logging import *
 from app.style import GreigeStyle
 from app.materials import Inventory, Snapshot, PortLoad
-from app.schedule import Order, Req, Demand, DyeLot, JetSched, Jet
+from app.schedule import Order, OrderView, Req, Demand, DyeLot, JetSched, Jet
 
 __all__ = ['make_sched_args', 'make_sched_ret', 'all_lots_args', 'all_lots_ret',
            'sched_ord_args', 'sched_ord_ret', 'single_lots_args', 'single_lots_ret',
@@ -11,7 +11,8 @@ __all__ = ['make_sched_args', 'make_sched_ret', 'all_lots_args', 'all_lots_ret',
            'gpl_loop_args', 'gpl_loop_ret', 'jload_args', 'jload_ret',
            'best_job_args', 'best_job_ret', 'cost_args', 'cost_ret', 'sc_cost_args',
            'sc_cost_ret', 'late_cost_args', 'late_cost_ret', 'inv_cost_args',
-           'inv_cost_ret', 'used_cost_args', 'used_cost_ret']
+           'inv_cost_ret', 'used_cost_args', 'used_cost_ret', 'order_cost_args',
+           'order_cost_ret']
 
 def make_sched_args(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]) \
     -> ProcessDesc:
@@ -155,6 +156,16 @@ def sc_cost_ret(res: tuple[float, float, float]) -> ProcessDesc:
     return {
         'desc1': f'strip costs={strips:.2f}', 'desc2': f'not sequenced costs={not_seq:.2f}',
         'desc3': f'non-preferred items costs={non_black_9}'
+    }
+
+def order_cost_args(order: Order | OrderView) -> ProcessDesc:
+    return {
+        'desc1': f'Calculating late and not-scheduled costs for {order}'
+    }
+
+def order_cost_ret(res: float) -> ProcessDesc:
+    return {
+        'desc1': f'late cost={res:.2f}'
     }
 
 def late_cost_args(order: Order, dmnd: Demand) -> ProcessDesc:

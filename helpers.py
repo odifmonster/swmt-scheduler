@@ -28,6 +28,7 @@ class InvTable(TypedDict):
 
 class OrderTable(TypedDict):
     item: list[str]
+    greige: list[str]
     pnum: list[int]
     due_date: list[dt.datetime]
     yds: list[float]
@@ -126,6 +127,7 @@ class LateTable(TypedDict):
 
 class MissingTable(TypedDict):
     item: list[str]
+    greige: list[str]
     due_date: list[dt.datetime]
     ordered_yds: list[float]
     yds_not_scheduled: list[float]
@@ -138,6 +140,11 @@ class LogsTable(TypedDict):
     desc2: list[str]
     desc3: list[str]
 
+def df_cols_to_string(df: pd.DataFrame, *args: *tuple[str, ...]) -> pd.DataFrame:
+    for col in args:
+        df[col] = df[col].astype('string')
+    return df
+
 type InvData = tuple[list[str], InvTable]
 type OrderData = tuple[list[str], OrderTable]
 
@@ -146,7 +153,7 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
     inv_table = InvTable(greige=[], lbs=[])
 
     order_ids: list[str] = []
-    order_table = OrderTable(item=[], pnum=[], due_date=[], yds=[], lbs=[])
+    order_table = OrderTable(item=[], greige=[], pnum=[], due_date=[], yds=[], lbs=[])
 
     for rview in inv.itervalues():
         roll_ids.append(rview.id)
@@ -156,6 +163,7 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
     for order in dmnd.itervalues():
         order_ids.append(order.id)
         order_table['item'].append(order.item.id)
+        order_table['greige'].append(order.item.greige.id)
         order_table['pnum'].append(order.pnum)
         order_table['due_date'].append(order.due_date)
         order_table['yds'].append(order.yds)
@@ -205,7 +213,7 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
     late_table = LateTable(item=[], due_date=[], ordered_yds=[], late_yds=[], days_late=[])
 
     miss_ids: list[str] = []
-    miss_table = MissingTable(item=[], due_date=[], ordered_yds=[], yds_not_scheduled=[],
+    miss_table = MissingTable(item=[], greige=[], due_date=[], ordered_yds=[], yds_not_scheduled=[],
                               lbs_not_scheduled=[])
 
     for order in dmnd.itervalues():
@@ -223,6 +231,7 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
             miss_ids.append(order.id)
 
             miss_table['item'].append(order.item.id)
+            miss_table['greige'].append(order.item.greige.id)
             miss_table['due_date'].append(order.due_date)
             miss_table['ordered_yds'].append(order.init_yds)
             rem_yds = min(order.total_yds, order.init_yds)
@@ -245,8 +254,3 @@ def get_logs_table(lgr: Logger) -> tuple[list[int], LogsTable]:
         logs_table['desc3'].append(process.desc3)
     
     return proc_ids, logs_table
-
-def df_cols_to_string(df: pd.DataFrame, *args: *tuple[str, ...]) -> pd.DataFrame:
-    for col in args:
-        df[col] = df[col].astype('string')
-    return df

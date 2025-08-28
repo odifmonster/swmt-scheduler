@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from typing import TypeVarTuple, Generator
-import sys, os, asyncio, math, datetime as dt, pandas as pd
+from typing import Generator
+import sys, os, math, datetime as dt, pandas as pd
 
 from app import style
 from app.support import logging
@@ -13,8 +13,6 @@ from helpers import add_back_piece, apply_snapshot, get_init_tables, get_sched_t
     get_late_tables, get_logs_table, df_cols_to_string
 from formatters import *
 from loaddata import load_inv, load_demand, load_jets, LOGGER
-
-Ts = TypeVarTuple('Ts')
 
 style.greige.init()
 style.fabric.init()
@@ -122,6 +120,7 @@ def get_order_pairs(order: Order, dmnd: Demand) -> list[tuple[Order, Order]]:
     for oview in to_remove:
         o2 = dmnd.remove(oview)
         ret.append((order, o2))
+        dmnd.add(o2)
     return ret
 
 @logging.logged_func(LOGGER, desc_args=all_lots_args, desc_ret=all_lots_ret)
@@ -183,10 +182,11 @@ def sched_cost(jet: Jet) -> tuple[float, float, float]:
             
     return strip_cost, not_seq_cost, non_black_9
 
+@logging.logged_func(LOGGER, order_cost_args, order_cost_ret)
 def order_cost(order: Order | OrderView) -> float:
     if order.yds < 200:
         return 0
-    
+
     table = order.late_table()
     first_row = table[0]
     _, first_delta = first_row
@@ -363,10 +363,11 @@ def schedule_order(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
         return order, False
     
     best_jet, best_snap, best_sched, _ = ret
+
+    apply_snapshot(inv, best_snap, temp=False)
     if best_snap is None:
         return order, False
     
-    apply_snapshot(inv, best_snap, temp=False)
     prevsched = best_jet.set_sched(best_sched)
     add_back_free_loads(prevsched, inv)
     return order, True
@@ -387,10 +388,20 @@ def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]
             
             dmnd.add(order)
 
-def write_output(dmnd: Demand, jets: list[Jet], lgr: logging.Logger) -> None:
-    outpath = os.path.join(os.path.dirname(__file__), 'datasrc', 'output.xlsx')
-    writer = pd.ExcelWriter(outpath, datetime_format='MM/DD HH:MM:SS')
+def write_input(writer: pd.ExcelWriter, inv: Inventory, dmnd: Demand) -> None:
+    inv_data, order_data = get_init_tables(inv, dmnd)
 
+    roll_ids, inv_table = inv_data
+    inv_df = pd.DataFrame(data=inv_table, index=roll_ids)
+    inv_df = df_cols_to_string(inv_df, 'greige')
+    inv_df.to_excel(writer, sheet_name='inventory', float_format='%.2f', index_label='roll')
+
+    order_ids, order_table = order_data
+    order_df = pd.DataFrame(data=order_table, index=order_ids)
+    order_df = df_cols_to_string(order_df, 'item')
+    order_df.to_excel(writer, sheet_name='demand', float_format='%.2f', index_label='order_id')
+
+def write_output(writer: pd.ExcelWriter, dmnd: Demand, jets: list[Jet], lgr: logging.Logger) -> None:
     jobs, lots, rolls = get_sched_tables(jets)
 
     job_ids, job_data = jobs
@@ -426,19 +437,25 @@ def write_output(dmnd: Demand, jets: list[Jet], lgr: logging.Logger) -> None:
     logs_df = df_cols_to_string(logs_df, 'name', 'desc1', 'desc2', 'desc3')
     logs_df.to_excel(writer, sheet_name='logs', index_label='process_id')
 
-    writer.close()
-
 def main(start_str: str, p1date_str: str):
+    outpath = os.path.join(os.path.dirname(__file__), 'datasrc', 'output.xlsx')
+    writer = pd.ExcelWriter(outpath, datetime_format='MM/DD HH:MM:SS')
+
     start = dt.datetime.fromisoformat(start_str)
     p1date_raw = dt.datetime.fromisoformat(p1date_str)
     p1date = dt.datetime(p1date_raw.year, p1date_raw.month, p1date_raw.day, hour=8)
 
+    print('Loading program data...')
     inv = load_inv()
     reqs, dmnd = load_demand(p1date)
     jets = load_jets(start)
+    print('\rFinished loading data!')
 
+    write_input(writer, inv, dmnd)
     make_schedule(dmnd, reqs, inv, jets)
-    write_output(dmnd, jets, LOGGER)
+    write_output(writer, dmnd, jets, LOGGER)
+
+    writer.close()
 
 if __name__ == '__main__':
-    asyncio.run(main(sys.argv[1], sys.argv[2]))
+    main(sys.argv[1], sys.argv[2])

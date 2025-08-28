@@ -94,7 +94,7 @@ class Order(Data[str], mod_in_group=True,
         for i in range(len(lots), 0, -1):
             total_prod = r.total_yds_by(lots[i-1].end)
             if self.__init_cum_yds - total_prod > 0:
-                last_late = self.__init_cum_yds - total_prod
+                last_late = min(self.__init_cum_yds - total_prod, self.init_yds)
                 idx = i
                 break
         

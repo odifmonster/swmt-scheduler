@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import pandas as pd, datetime as dt, asyncio
+import pandas as pd, datetime as dt
 
 from app import style
 from app.support.logging import Logger
@@ -51,6 +51,8 @@ def load_demand(p1date: dt.datetime) -> tuple[list[Req], Demand]:
     for row in df.index:
         fab_id = df.loc[row, 'PA Fin Item']
         fab = style.fabric.get_style(fab_id)
+        if fab_id == 'FF MESA-40241-55':
+            print(fab)
         if not fab: continue
 
         buckets: list[tuple[int, float]] = []
@@ -91,5 +93,5 @@ def load_jets(start: dt.datetime) -> list[Jet]:
     return jets
 
 if __name__ == '__main__':
-    inv = load_inv()
-    print(inv)
+    _, dmnd = load_demand(dt.datetime(2025, 8, 29, hour=8))
+    print(dmnd)

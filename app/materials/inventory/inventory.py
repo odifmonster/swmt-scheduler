@@ -9,33 +9,6 @@ from app.style import GreigeStyle
 from ..roll import Roll, RollView, RollAlloc, SizeClass, LARGE, NORMAL, SMALL, HALF, PARTIAL
 from .snapshot import Snapshot
 
-class PortLoad(NamedTuple):
-    roll1: RollAlloc
-    roll2: RollAlloc | None
-    lbs: float
-
-class SizeGroup(Grouped[str, str]):
-
-    def __init__(self, **kwargs):
-        super().__init__(SizeView(self), 'id', **kwargs)
-    
-    def make_group(self, data, **kwargs):
-        return Atom[str](data, 'item', 'size', 'id')
-    
-class SizeView(GroupedView[str, str]):
-    pass
-
-class StyleGroup(Grouped[str, SizeClass]):
-    
-    def __init__(self, **kwargs):
-        super().__init__(StyleView(self), 'size', 'id', **kwargs)
-
-    def make_group(self, data, **kwargs):
-        return SizeGroup(size=data.size, **kwargs)
-
-class StyleView(GroupedView[str, SizeClass]):
-    pass
-
 def rloads_args(slf, rview, snapshot, prev_wts, jet_rng):
     return {
         'desc1': f'Allocating pieces of roll {rview.id} to ports',
@@ -68,6 +41,33 @@ def ploads_yld(res):
     return {
         'desc1': f'port load={res}'
     }
+
+class PortLoad(NamedTuple):
+    roll1: RollAlloc
+    roll2: RollAlloc | None
+    lbs: float
+
+class SizeGroup(Grouped[str, str]):
+
+    def __init__(self, **kwargs):
+        super().__init__(SizeView(self), 'id', **kwargs)
+    
+    def make_group(self, data, **kwargs):
+        return Atom[str](data, 'item', 'size', 'id')
+    
+class SizeView(GroupedView[str, str]):
+    pass
+
+class StyleGroup(Grouped[str, SizeClass]):
+    
+    def __init__(self, **kwargs):
+        super().__init__(StyleView(self), 'size', 'id', **kwargs)
+
+    def make_group(self, data, **kwargs):
+        return SizeGroup(size=data.size, **kwargs)
+
+class StyleView(GroupedView[str, SizeClass]):
+    pass
 
 class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')):
 
