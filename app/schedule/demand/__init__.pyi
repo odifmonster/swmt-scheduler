@@ -4,6 +4,7 @@ from app.schedule.demand.req import Req as Req
 from typing import TypedDict, Unpack, Generator, overload
 import datetime as dt
 from app.support.grouped import Grouped, GroupedView, Atom
+from app.support.logging import HasLogger
 from app.style import GreigeStyle, Color
 
 class _DateProps(TypedDict):
@@ -114,7 +115,7 @@ class DateView(GroupedView[str, GreigeStyle]):
     def add(self, data: Order) -> None: ...
     def remove(self, dview: OrderView, remkey: bool = False) -> Order: ...
 
-class Demand(Grouped[str, dt.datetime]):
+class Demand(HasLogger, Grouped[str, dt.datetime], attrs=('_logger','logger')):
     """
     A class for Demand objects. Organizes Order objects by
     their due date, greige style, and color.
@@ -136,8 +137,12 @@ class Demand(Grouped[str, dt.datetime]):
     def get(self, id: str) -> OrderView: ...
     def add(self, data: Order) -> None: ...
     def remove(self, dview: OrderView, remkey: bool = False) -> Order: ...
-    def get_matches(self, order: Order) -> list[OrderView]:
-        """Get a list of views of the orders that match this one on color and greige style."""
+    def get_matches(self, order: Order) -> Generator[OrderView]:
+        """
+        Generate views of the orders that match this one on
+        color and greige style and can be combined with this
+        order on one jet.
+        """
         ...
     def view(self) -> DemandView: ...
 
@@ -162,6 +167,10 @@ class DemandView(GroupedView[str, dt.datetime]):
     def get(self, id: str) -> OrderView: ...
     def add(self, data: Order) -> None: ...
     def remove(self, dview: OrderView, remkey: bool = False) -> Order: ...
-    def get_matches(self, order: Order) -> list[OrderView]:
-        """Get a list of views of the orders that match this one on color and greige style."""
+    def get_matches(self, order: Order) -> Generator[OrderView]:
+        """
+        Generate views of the orders that match this one on
+        color and greige style and can be combined with this
+        order on one jet.
+        """
         ...

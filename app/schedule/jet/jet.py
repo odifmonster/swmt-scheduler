@@ -1,16 +1,40 @@
 #!/usr/bin/env python
 
 from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support.logging import Logger, HasLogger, logged_meth
 from ..dyelot import DyeLot
 from .jetsched import JetSched
 from .job import Job
 from datetime import datetime, timedelta
 
-class Jet(HasID[str], SuperImmut,
-          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','n_new_jobs',
-                 'cur_sched'),
+def insert_args(slf, lots, idx):
+    return {
+        'desc1': 'Attempting to insert ' + ', '.join([l.id for l in lots]) + \
+            f' after {idx} job(s) on {slf.id}'
+    }
+
+def insert_ret(res):
+    newsched, newjobs = res
+    if newsched is None:
+        return {
+            'desc1': 'Could not insert lots at given position'
+        }
+    return {
+        'desc1': f'new schedule={newsched}',
+        'desc2': 'new jobs=[' + ', '.join([f'Job({job.id})' for job in newjobs]) + ']'
+    }
+
+class Jet(HasLogger, HasID[str], SuperImmut,
+          attrs=('_logger','_prefix','id','logger','n_ports','load_rng','date_rng',
+                 'jobs','n_new_jobs','cur_sched'),
           priv_attrs=('id','init_sched','cur_sched'),
           frozen=('*id','*init_sched','n_ports','load_rng','date_rng')):
+    
+    _logger = Logger()
+
+    @classmethod
+    def set_logger(cls, lgr):
+        cls._logger = lgr
     
     def __init__(self, id, n_ports, min_load, max_load, start, end):
         date_rng = DateRange(start, end)
@@ -26,6 +50,10 @@ class Jet(HasID[str], SuperImmut,
     @property
     def id(self):
         return self.__id
+    
+    @property
+    def logger(self):
+        return type(self)._logger
     
     @property
     def jobs(self) -> tuple[Job, ...]:
@@ -62,6 +90,7 @@ class Jet(HasID[str], SuperImmut,
         
         return 0
     
+    @logged_meth(insert_args, insert_ret)
     def insert(self, lots, idx):
         if self.__cur_sched is None:
             raise RuntimeError('Cannot call \'insert\' method before initializing a new schedule')
@@ -81,10 +110,10 @@ class Jet(HasID[str], SuperImmut,
             return None, []
     
         newjobs = []
-        newjobs.append(newsched.add_lots(lots))
+        newjobs.append(newsched.add_lots(lots, idx))
         for job in self.__cur_sched.jobs[idx:]:
             if newsched.can_add(tuple(job.lots)):
-                newjobs.append(newsched.add_lots(tuple(job.lots)))
+                newjobs.append(newsched.add_lots(tuple(job.lots), -1))
         
         return newsched, newjobs
     

@@ -4,6 +4,7 @@ from typing import NamedTuple
 
 from app.support import FloatRange, min_float_rng
 from app.support.grouped import Atom, Grouped, GroupedView
+from app.support.logging import Logger, HasLogger, FailedYield, logged_generator
 from app.style import GreigeStyle
 from ..roll import Roll, RollView, RollAlloc, SizeClass, LARGE, NORMAL, SMALL, HALF, PARTIAL
 from .snapshot import Snapshot
@@ -35,10 +36,53 @@ class StyleGroup(Grouped[str, SizeClass]):
 class StyleView(GroupedView[str, SizeClass]):
     pass
 
-class Inventory(Grouped[str, GreigeStyle]):
+def rloads_args(slf, rview, snapshot, prev_wts, jet_rng):
+    return {
+        'desc1': f'Allocating pieces of roll {rview.id} to ports',
+        'desc2': f'inventory snapshot={snapshot}'
+    }
+
+def rloads_yld(res):
+    return {
+        'desc1': f'port load={res}'
+    }
+
+def comb_args(slf, greige, snapshot, prev_wts, jet_rng):
+    return {
+        'desc1': f'Allocating combinations of rolls of {greige} to ports',
+        'desc2': f'inventory snapshot={snapshot}'
+    }
+
+def comb_yld(res):
+    return {
+        'desc1': f'port load={res}'
+    }
+
+def ploads_args(slf, greige, snapshot, jet_rng, start = None):
+    return {
+        'desc1': f'Allocating rolls of {greige} to ports on inventory snapshot {snapshot}',
+        'desc2': '' if start is None else f'Starting with roll {start.id}'
+    }
+
+def ploads_yld(res):
+    return {
+        'desc1': f'port load={res}'
+    }
+
+class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')):
+
+    _logger = Logger()
+
+    @classmethod
+    def set_logger(cls, lgr):
+        cls._logger = lgr
     
     def __init__(self):
-        super().__init__(InvView(self), 'item', 'size', 'id')
+        Grouped.__init__(self, InvView(self), 'item', 'size', 'id')
+
+    @property
+    def logger(self):
+        return type(self)._logger
 
     def make_group(self, data, **kwargs):
         return StyleGroup(item=data.item)
@@ -53,6 +97,7 @@ class Inventory(Grouped[str, GreigeStyle]):
             for rview in self[greige, size].itervalues():
                 yield rview
     
+    @logged_generator(rloads_args, rloads_yld)
     def get_roll_loads(self, rview: RollView, snapshot: Snapshot, prev_wts: list[float],
                        jet_rng: FloatRange):
         if not prev_wts:
@@ -63,6 +108,9 @@ class Inventory(Grouped[str, GreigeStyle]):
 
         if rview.size == NORMAL and not wt_rng.contains(rview.lbs / 2) or \
             rview.size == HALF and not wt_rng.contains(rview.lbs):
+            yield FailedYield(desc1='Roll weight outside of allowed range',
+                              desc2=f'weight={rview.lbs} lbs',
+                              desc3=f'range=({wt_rng.minval:.2f} lbs to {wt_rng.maxval:.2f})')
             return
         
         x = round(rview.lbs / wt_rng.average())
@@ -81,9 +129,11 @@ class Inventory(Grouped[str, GreigeStyle]):
             self.add(roll)
             yield PortLoad(piece, None, cur_wt)
     
+    @logged_generator(comb_args, comb_yld)
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
                        jet_rng: FloatRange):
         if greige not in self or PARTIAL not in self[greige]:
+            yield FailedYield(desc1=f'No partial rolls of {greige}')
             return
         
         for id1 in self[greige, PARTIAL]:
@@ -122,10 +172,16 @@ class Inventory(Grouped[str, GreigeStyle]):
                     pload = PortLoad(piece1, piece2, piece1.lbs + piece2.lbs)
                     prev_wts.append(pload.lbs)
                     yield pload
+                else:
+                    yield FailedYield(desc1=f'Combined rolls too small',
+                                      desc2=f'roll1={roll1}, roll2={roll2}',
+                                      desc3=f'range=({wt_rng.minval:.2f} lbs to {wt_rng.maxval:.2f})')
     
+    @logged_generator(ploads_args, ploads_yld)
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
                        start: RollView | None = None):
         if greige not in self:
+            yield FailedYield(desc1=f'No {greige} in inventory')
             return
         
         prev_wts: list[float] = []
@@ -133,7 +189,9 @@ class Inventory(Grouped[str, GreigeStyle]):
             yield from self.get_roll_loads(start, snapshot, prev_wts, jet_rng)
         
         for size in (NORMAL, HALF, LARGE, SMALL):
-            if size not in self[greige]: continue
+            if size not in self[greige]:
+                yield FailedYield(desc1=f'No {size.lower()} rolls of {greige} in inventory')
+                continue
 
             views: list[RollView] = list(self[greige, size].itervalues())
             for rview in views:

@@ -2,8 +2,9 @@
 
 from typing import NewType
 
-from app.support.grouped import Data, DataView
 from app.support import HasID, SuperImmut, setter_like
+from app.support.logging import Logger, HasLogger, logged_meth
+from app.support.grouped import Data, DataView
 from app.style import GreigeStyle
 
 SizeClass = NewType('SizeClass', str)
@@ -14,6 +15,30 @@ HALF = SizeClass('HALF')
 PARTIAL = SizeClass('PARTIAL')
 
 _CTR = 0
+
+def alloc_args(slf, lbs, snapshot):
+    desc1 = f'Allocating {lbs:.2f} lbs of {slf.id}'
+    if not snapshot is None:
+        desc1 += f' on inventory snapshot {snapshot}'
+    return {
+        'desc1': desc1
+    }
+
+def alloc_ret(res):
+    return {
+        'desc1': f'roll piece={res}'
+    }
+
+def dealloc_args(slf, piece, snapshot):
+    desc1 = f'Deallocating {piece}'
+    if not snapshot is None:
+        desc1 += f' on inventory snapshot {snapshot}'
+    return {
+        'desc1': desc1
+    }
+
+def dealloc_ret(res):
+    return {}
 
 class RollAlloc(HasID[int], SuperImmut,
                 attrs=('_prefix','id','roll_id','lbs'),
@@ -35,10 +60,17 @@ class RollAlloc(HasID[int], SuperImmut,
     def id(self):
         return self.__id
 
-class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot'),
+class Roll(HasLogger, Data[str], mod_in_group=False,
+           attrs=('_logger','logger','item','size','lbs','snapshot'),
            priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
            frozen=('*init_wt','item')):
     
+    _logger = Logger()
+
+    @classmethod
+    def set_logger(cls, lgr):
+        cls._logger = lgr
+
     def __init__(self, id, item, lbs):
         Data.__init__(self, id, 'Roll', RollView(self),
                       priv={'init_wt': lbs, 'cur_wt': lbs, 'allocs': set(), 'temp_allocs': {}},
@@ -46,6 +78,10 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
 
     def __repr__(self):
         return f'Roll(id={repr(self.id)}, item={repr(self.item)}, wt={round(self.lbs, ndigits=2)})'
+
+    @property
+    def logger(self):
+        return type(self)._logger
 
     @property
     def lbs(self):
@@ -67,6 +103,7 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
         return LARGE
     
     @setter_like
+    @logged_meth(alloc_args, alloc_ret)
     def allocate(self, lbs, snapshot = None):
         ret = RollAlloc(self.id, lbs)
         if snapshot is None:
@@ -84,11 +121,9 @@ class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot')
         return ret
     
     @setter_like
+    @logged_meth(dealloc_args, dealloc_ret)
     def deallocate(self, piece, snapshot = None):
         if snapshot is None:
-            if self.id == 'WF921130':
-                print(piece, piece.id)
-
             self.__allocs.remove(piece)
             self.__cur_wt += piece.lbs
         else:

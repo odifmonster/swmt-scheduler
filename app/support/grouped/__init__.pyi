@@ -11,7 +11,9 @@ class Grouped[T: Hashable, U: Hashable](SuperImmut):
     organizes its contents automatically along multiple "axes", which
     are defined by the values of certain attributes of the contents.
     """
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, attrs: tuple[str, ...] = tuple(),
+                          priv_attrs: tuple[str, ...] = tuple(),
+                          frozen: tuple[str, ...] = tuple()) -> None:
         """
         Initialize a new Grouped subtype. Takes no arguments, defines
         behavior relating to private and immutable attributes.

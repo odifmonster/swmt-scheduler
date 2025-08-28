@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import pandas as pd, datetime as dt
+import pandas as pd, datetime as dt, asyncio
 
 from app import style
+from app.support.logging import Logger
 from app.materials import Inventory, Roll
 from app.schedule import DyeLot, Req, Demand, jet, Jet, Job
 
@@ -12,6 +13,12 @@ excel.init()
 style.translate.init()
 style.greige.init()
 style.fabric.init()
+
+LOGGER = Logger()
+Demand.set_logger(LOGGER)
+Jet.set_logger(LOGGER)
+Inventory.set_logger(LOGGER)
+Roll.set_logger(LOGGER)
 
 def load_inv() -> Inventory:
     inv = Inventory()

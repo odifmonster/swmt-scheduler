@@ -11,7 +11,10 @@ def init(start: dt.datetime):
     if len(globals()['_JET_MAP']) > 0 and len(globals()['_ALT_JET_MAP']) > 0:
         return
     
-    days_to_fri = 4 - start.weekday()
+    if start.weekday() >= 2:
+        days_to_fri = 11 - start.weekday()
+    else:
+        days_to_fri = 4 - start.weekday()
     friday = start + dt.timedelta(days=days_to_fri)
     end = dt.datetime(friday.year, friday.month, friday.day, hour=23, minute=59, second=59)
 

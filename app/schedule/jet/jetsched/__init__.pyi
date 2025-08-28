@@ -68,7 +68,7 @@ class JetSched(HasID[int], SuperImmut,
         rest of the schedule will be ignored.
         """
         ...
-    def add_lots(self, lots: tuple[DyeLot, ...]) -> Job:
+    def add_lots(self, lots: tuple[DyeLot, ...], idx: int) -> Job:
         """Creates a job object from the provided lots, adds them to the schedule, and returns the job."""
         ...
     def activate(self) -> None:

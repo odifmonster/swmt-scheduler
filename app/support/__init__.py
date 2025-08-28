@@ -3,7 +3,8 @@
 from .supers import *
 from .protocols import *
 from .range import *
-from . import grouped
+from . import grouped, logging
 
 __all__ = ['SuperImmut', 'SuperView', 'setter_like', 'HasID', 'grouped',
-           'ContRange', 'FloatRange', 'DateRange', 'min_float_rng', 'max_float_rng']
+           'ContRange', 'FloatRange', 'DateRange', 'min_float_rng', 'max_float_rng',
+           'logging']

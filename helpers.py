@@ -3,8 +3,35 @@
 from typing import TypedDict, Literal
 import datetime as dt, pandas as pd
 
+from app.support.logging import Logger
 from app.materials import Inventory, Snapshot, RollAlloc, PortLoad
-from app.schedule import DyeLot, Order, Demand, Jet, Job
+from app.schedule import DyeLot, Demand, Jet, Job
+
+def add_back_piece(inv: Inventory, piece: RollAlloc, snapshot: Snapshot) -> None:
+    roll = inv.remove(inv.get(piece.roll_id), remkey=True)
+    roll.deallocate(piece, snapshot=snapshot)
+    inv.add(roll)
+
+def apply_snapshot(inv: Inventory, snap: Snapshot | None, temp: bool = True) -> None:
+    views = list(inv.itervalues())
+    for rview in views:
+        roll = inv.remove(rview)
+        if temp:
+            roll.snapshot = snap
+        else:
+            roll.apply_snap(snap)
+        inv.add(roll)
+
+class InvTable(TypedDict):
+    greige: list[str]
+    lbs: list[float]
+
+class OrderTable(TypedDict):
+    item: list[str]
+    pnum: list[int]
+    due_date: list[dt.datetime]
+    yds: list[float]
+    lbs: list[float]
 
 type JobsCol = Literal['jet', 'start', 'end', 'greige', 'color', 'lbs']
 
@@ -104,20 +131,37 @@ class MissingTable(TypedDict):
     yds_not_scheduled: list[float]
     lbs_not_scheduled: list[float]
 
-def add_back_piece(inv: Inventory, piece: RollAlloc, snapshot: Snapshot) -> None:
-    roll = inv.remove(inv.get(piece.roll_id), remkey=True)
-    roll.deallocate(piece, snapshot=snapshot)
-    inv.add(roll)
+class LogsTable(TypedDict):
+    caller: list[int]
+    name: list[str]
+    desc1: list[str]
+    desc2: list[str]
+    desc3: list[str]
 
-def apply_snapshot(inv: Inventory, snap: Snapshot | None, temp: bool = True) -> None:
-    views = list(inv.itervalues())
-    for rview in views:
-        roll = inv.remove(rview)
-        if temp:
-            roll.snapshot = snap
-        else:
-            roll.apply_snap(snap)
-        inv.add(roll)
+type InvData = tuple[list[str], InvTable]
+type OrderData = tuple[list[str], OrderTable]
+
+def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
+    roll_ids: list[str] = []
+    inv_table = InvTable(greige=[], lbs=[])
+
+    order_ids: list[str] = []
+    order_table = OrderTable(item=[], pnum=[], due_date=[], yds=[], lbs=[])
+
+    for rview in inv.itervalues():
+        roll_ids.append(rview.id)
+        inv_table['greige'].append(rview.item.id)
+        inv_table['lbs'].append(rview.lbs)
+    
+    for order in dmnd.itervalues():
+        order_ids.append(order.id)
+        order_table['item'].append(order.item.id)
+        order_table['pnum'].append(order.pnum)
+        order_table['due_date'].append(order.due_date)
+        order_table['yds'].append(order.yds)
+        order_table['lbs'].append(order.lbs)
+    
+    return (roll_ids, inv_table), (order_ids, order_table)
 
 type JobsData = tuple[list[str], JobsTable]
 type LotsData = tuple[list[str], LotsTable]
@@ -156,7 +200,7 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
 type LateData = tuple[list[str], LateTable]
 type MissingData = tuple[list[str], MissingTable]
 
-def get_dmnd_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
+def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
     late_ids: list[str] = []
     late_table = LateTable(item=[], due_date=[], ordered_yds=[], late_yds=[], days_late=[])
 
@@ -187,6 +231,20 @@ def get_dmnd_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
             miss_table['lbs_not_scheduled'].append(rem_lbs)
     
     return (late_ids, late_table), (miss_ids, miss_table)
+
+def get_logs_table(lgr: Logger) -> tuple[list[int], LogsTable]:
+    proc_ids: list[int] = []
+    logs_table = LogsTable(caller=[], name=[], desc1=[], desc2=[], desc3=[])
+
+    for process in sorted(lgr.processes, key=lambda p: p.id):
+        proc_ids.append(process.id)
+        logs_table['caller'].append(process.caller)
+        logs_table['name'].append(process.name)
+        logs_table['desc1'].append(process.desc1)
+        logs_table['desc2'].append(process.desc2)
+        logs_table['desc3'].append(process.desc3)
+    
+    return proc_ids, logs_table
 
 def df_cols_to_string(df: pd.DataFrame, *args: *tuple[str, ...]) -> pd.DataFrame:
     for col in args:

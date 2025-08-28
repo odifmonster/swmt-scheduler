@@ -3,18 +3,21 @@
 from ...dyelot import DyeLot
 from datetime import datetime
 
-counter = 0
+_CTR = 20
 
 class Job:
-    def __init__(self, dyelots: list[DyeLot], start: datetime):
+    def __init__(self, dyelots: list[DyeLot], start: datetime, idx = None):
         self.id = ""
 
         for dyelot in dyelots:
             self.id += dyelot.id
 
-        globals()['counter'] += 1
-        self.id+= "@"
-        self.id += str(globals()['counter'])
+        if idx:
+            if idx >= 0:
+                self.id+= f"@{idx}"
+            else:
+                globals()['_CTR'] += 1
+                self.id += f'@{globals()['_CTR']}'
 
         self.lots = dyelots
         self.start = start

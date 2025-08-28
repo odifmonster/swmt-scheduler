@@ -1,8 +1,9 @@
 from app.materials.roll.roll import SizeClass as SizeClass, LARGE as LARGE, NORMAL as NORMAL, \
     SMALL as SMALL, HALF as HALF, PARTIAL as PARTIAL
 
-from app.support.grouped import Data, DataView
 from app.support import HasID, SuperImmut
+from app.support.logging import HasLogger
+from app.support.grouped import Data, DataView
 from app.style import GreigeStyle
 from app.materials.inventory import Snapshot
 
@@ -14,7 +15,8 @@ class RollAlloc(HasID[int], SuperImmut,
     lbs: float
     def __init__(self, roll_id: str, lbs: float) -> None: ...
 
-class Roll(Data[str], mod_in_group=False, attrs=('item','size','lbs','snapshot'),
+class Roll(HasLogger, Data[str],
+           mod_in_group=False, attrs=('_logger','logger','item','size','lbs','snapshot'),
            priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
            frozen=('*init_wt','item')):
     """

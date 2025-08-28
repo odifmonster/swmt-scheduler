@@ -8,10 +8,11 @@ from .data import Data, DataView, match_props, repr_props
 
 class Grouped[T: Hashable, U: Hashable](SuperImmut):
     
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, attrs = tuple(), priv_attrs = tuple(), frozen = tuple()):
         privs = tuple(map(lambda a: f'_Grouped__{a}', ['ids_map','props','unbound','groups','view']))
-        frozen = tuple(map(lambda a: f'_Grouped__{a}', ['unbound','props','view']))
-        super().__init_subclass__(attrs=('n_items','depth')+privs, frozen=frozen)
+        priv_frozen = tuple(map(lambda a: f'_Grouped__{a}', ['unbound','props','view']))
+        super().__init_subclass__(attrs=('n_items','depth')+privs+attrs,
+                                  priv_attrs=priv_attrs, frozen=priv_frozen+frozen)
     
     def __init__(self, view: 'GroupedView[T, U]', *args: Unpack[tuple[str, ...]], **kwargs):
         if not set(args).isdisjoint(kwargs.keys()):

@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 
 from typing import TypeVarTuple, Generator
-import sys, os, math, datetime as dt, pandas as pd
+import sys, os, asyncio, math, datetime as dt, pandas as pd
 
 from app import style
+from app.support import logging
 from app.style import GreigeStyle, color
 from app.materials import Inventory, PortLoad, Snapshot
 from app.schedule import DyeLot, Order, OrderView, Req, Demand, Jet, JetSched
 
-from helpers import add_back_piece, apply_snapshot, get_sched_tables, get_dmnd_tables, \
-    df_cols_to_string
-from loaddata import load_inv, load_demand, load_jets
+from helpers import add_back_piece, apply_snapshot, get_init_tables, get_sched_tables, \
+    get_late_tables, get_logs_table, df_cols_to_string
+from formatters import *
+from loaddata import load_inv, load_demand, load_jets, LOGGER
 
 Ts = TypeVarTuple('Ts')
 
 style.greige.init()
 style.fabric.init()
-
-LOGGER = []
 
 def try_load_jet(inv: Inventory, loads: Generator[PortLoad], jet: Jet, snapshot: Snapshot) \
     -> list[PortLoad]:
@@ -34,6 +34,7 @@ def try_load_jet(inv: Inventory, loads: Generator[PortLoad], jet: Jet, snapshot:
     
     return ret
 
+@logging.logged_func(LOGGER, jload_args, jload_ret)
 def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet) \
     -> tuple[Snapshot | None, list[PortLoad]]:
     snap = Snapshot()
@@ -55,59 +56,78 @@ def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet) \
     ret = try_load_jet(inv, inv.get_port_loads(greige, snap, jet.load_rng), jet, snap)
     if len(ret) == jet.n_ports:
         return snap, ret
+    elif len(ret) > len(max_ret):
+        max_ret = ret
 
-    return None, ret
+    return None, max_ret
 
-def get_paired_lots(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) \
-    -> dict[Jet, tuple[DyeLot, DyeLot, Snapshot]]:
-    lots_map: dict[Jet, tuple[DyeLot, DyeLot, Snapshot]] = {}
+@logging.logged_func(LOGGER, gpl_loop_args, gpl_loop_ret)
+def gpl_loop(o1: Order, o2: Order, inv: Inventory, jet: Jet) \
+    -> tuple[DyeLot, DyeLot, Snapshot] | str:
+    if not (o1.item.can_run_on_jet(jet.id) and o2.item.can_run_on_jet(jet.id)):
+        return 'Jet cannot run items'
+    
     avg_load = o1.greige.port_rng.average()
     min_o1_ports = math.ceil(o1.total_lbs / avg_load)
     min_total_ports = math.ceil((o1.total_lbs+o2.lbs) / avg_load)
 
-    for jet in jets:
-        if not o1.item.can_run_on_jet(jet.id): continue
-        if min_total_ports > jet.n_ports: continue
-        snap, loads = get_jet_loads(inv, o1.greige, jet)
-        if snap is None: continue
+    if min_total_ports > jet.n_ports:
+        return 'Minimum required ports exceeds jet size'
+    
+    snap, loads = get_jet_loads(inv, o1.greige, jet)
+    if snap is None:
+        return 'Could not fill jet'
+    
+    ports1 = round((min_o1_ports / min_total_ports) * jet.n_ports)
+    lot1 = o1.assign(loads[:ports1])
+    lot2 = o2.assign(loads[ports1:])
+    
+    return lot1, lot2, snap
 
-        ports1 = round((min_o1_ports / min_total_ports) * jet.n_ports)
-        lot1 = o1.assign(loads[:ports1])
-        lot2 = o2.assign(loads[ports1:])
-        lots_map[jet] = ((lot1, lot2, snap))
+def get_paired_lots(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) \
+    -> dict[Jet, tuple[DyeLot, DyeLot, Snapshot]]:
+    lots_map: dict[Jet, tuple[DyeLot, DyeLot, Snapshot]] = {}
+
+    for jet in jets:
+        res = gpl_loop(o1, o2, inv, jet)
+        if type(res) is str: continue
+        lots_map[jet] = res
     
     return lots_map
 
+@logging.logged_func(LOGGER, gsl_loop_args, gsl_loop_ret)
+def gsl_loop(order: Order, inv: Inventory, jet: Jet) -> tuple[DyeLot, Snapshot] | str:
+    if not order.item.can_run_on_jet(jet.id):
+        return 'Jet cannot run item'
+    snap, loads = get_jet_loads(inv, order.greige, jet)
+    if snap is None:
+        return 'Could not fill jet'
+    return order.assign(loads), snap
+
+@logging.logged_func(LOGGER, single_lots_args, single_lots_ret)
 def get_single_lots(order: Order, inv: Inventory, jets: list[Jet]) \
     -> dict[Jet, tuple[DyeLot, Snapshot]]:
     lots_map: dict[Jet, tuple[DyeLot, Snapshot]] = {}
     
     for jet in jets:
-        if not order.item.can_run_on_jet(jet.id): continue
-        snap, loads = get_jet_loads(inv, order.greige, jet)
-        if snap is None: continue
-
-        lots_map[jet] = (order.assign(loads),snap)
+        ret = gsl_loop(order, inv, jet)
+        if type(ret) is str: continue
+        lots_map[jet] = ret
     
     return lots_map
 
 def get_order_pairs(order: Order, dmnd: Demand) -> list[tuple[Order, Order]]:
-    to_remove: list[OrderView] = []
-    for match in dmnd.get_matches(order):
-        if match.lbs <= 0: continue
-        if (order.total_lbs + match.lbs) / order.greige.port_rng.average() <= 8:
-            to_remove.append(match)
-
+    to_remove: list[OrderView] = list(dmnd.get_matches(order))
     ret: list[tuple[Order, Order]] = []
     for oview in to_remove:
         o2 = dmnd.remove(oview)
         ret.append((order, o2))
     return ret
 
+@logging.logged_func(LOGGER, desc_args=all_lots_args, desc_ret=all_lots_ret)
 def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
-                 jets: list[Jet]) -> dict[Jet, list[tuple[DyeLot, *Ts, Snapshot]]]:
-    lots_map: dict[Jet, list[tuple[DyeLot, *Ts, Snapshot]]] = {}
-    pairs = get_order_pairs(order, dmnd)
+                 jets: list[Jet]) -> dict[Jet, list[tuple[DyeLot, *tuple[DyeLot, ...], Snapshot]]]:
+    lots_map: dict[Jet, list[tuple[DyeLot, *tuple[DyeLot, ...], Snapshot]]] = {}
 
     single_lots = get_single_lots(order, inv, jets)
     for single_lot in single_lots:
@@ -116,6 +136,7 @@ def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
         else:
             lots_map[single_lot] = [single_lots[single_lot]]
 
+    pairs = get_order_pairs(order, dmnd)
     for pair in pairs:
         paired_lots = get_paired_lots(pair[0], pair[1], inv, jets)
         for paired_lot in paired_lots:
@@ -126,6 +147,7 @@ def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
                 
     return lots_map
 
+@logging.logged_func(LOGGER, sc_cost_args, sc_cost_ret)
 def sched_cost(jet: Jet) -> tuple[float, float, float]:
     shade_vals = {
         color.SOLUTION: 0, color.LIGHT: 5, color.MEDIUM: 10, color.BLACK: 20
@@ -195,6 +217,7 @@ def order_cost(order: Order | OrderView) -> float:
         cost += row[0] * scaling_map[index]
     return cost
 
+@logging.logged_func(LOGGER, late_cost_args, late_cost_ret)
 def late_cost(order: Order, dmnd: Demand) -> tuple[float, float]:
     cur_late = order_cost(order)
     rem_late = 0.0
@@ -211,6 +234,7 @@ def req_cost(req: Req) -> float:
         return 0
     return abs(sorted_ords[-1].total_yds) * .04
 
+@logging.logged_func(LOGGER, inv_cost_args, inv_cost_ret)
 def excess_inv_cost(order: Order, reqs: list[Req]) -> tuple[float, float]:
     cur_inv, rem_inv = 0, 0
     for req in reqs:
@@ -221,6 +245,7 @@ def excess_inv_cost(order: Order, reqs: list[Req]) -> tuple[float, float]:
 
     return cur_inv, rem_inv
 
+@logging.logged_func(LOGGER, used_cost_args, used_cost_ret)
 def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmnd: Demand) -> float:
     needed_grg: dict[GreigeStyle, dict[dt.datetime, float]] = {}
     p4date = dt.datetime.fromtimestamp(0)
@@ -269,6 +294,7 @@ def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmn
     
     return used_cost
 
+@logging.logged_func(LOGGER, cost_args, cost_ret)
 def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
          snap: Snapshot, inv: Inventory) -> float:
     apply_snapshot(inv, snap)
@@ -290,8 +316,9 @@ def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
 def key_sched(s_and_c: tuple[Jet, Snapshot | None, JetSched, float]):
     return s_and_c[-1]
 
-def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, *Ts, Snapshot]]], order: Order,
-                 dmnd: Demand, reqs: list[Req], inv: Inventory) \
+@logging.logged_func(LOGGER, best_job_args, best_job_ret)
+def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snapshot]]],
+                 order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory) \
                     -> tuple[Jet, Snapshot | None, JetSched, float] | None:
     sched_and_costs: list[tuple[Jet, Snapshot | None, JetSched, float]] = []
     for jet in lots_map:
@@ -327,6 +354,24 @@ def add_back_free_loads(prevsched: JetSched, inv: Inventory) -> None:
                 roll2.deallocate(load.roll2)
                 inv.add(roll2)
 
+@logging.logged_func(LOGGER, desc_args=sched_ord_args, desc_ret=sched_ord_ret)
+def schedule_order(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
+                   jets: list[Jet]) -> tuple[Order, bool]:
+    lots_map = get_all_lots(order, dmnd, inv, jets)
+    ret = get_best_job(lots_map, order, dmnd, reqs, inv)
+    if ret is None:
+        return order, False
+    
+    best_jet, best_snap, best_sched, _ = ret
+    if best_snap is None:
+        return order, False
+    
+    apply_snapshot(inv, best_snap, temp=False)
+    prevsched = best_jet.set_sched(best_sched)
+    add_back_free_loads(prevsched, inv)
+    return order, True
+
+@logging.logged_func(LOGGER, desc_args=make_sched_args, desc_ret=make_sched_ret)
 def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]) -> None:
     dates = sorted(dmnd)
     for date in dates:
@@ -336,23 +381,13 @@ def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]
             order = dmnd.remove(oview)
 
             while order.total_yds > 200:
-                lots_map = get_all_lots(order, dmnd, inv, jets)
-
-                ret = get_best_job(lots_map, order, dmnd, reqs, inv)
-                if ret is None:
+                order, cont = schedule_order(order, dmnd, reqs, inv, jets)
+                if not cont:
                     break
-
-                best_jet, best_snap, best_sched, _ = ret
-                if best_sched == best_jet.cur_sched:
-                    break
-
-                apply_snapshot(inv, best_snap, temp=False)
-                prevsched = best_jet.set_sched(best_sched)
-                add_back_free_loads(prevsched, inv)
             
             dmnd.add(order)
 
-def write_output(dmnd: Demand, jets: list[Jet], lgr) -> None:
+def write_output(dmnd: Demand, jets: list[Jet], lgr: logging.Logger) -> None:
     outpath = os.path.join(os.path.dirname(__file__), 'datasrc', 'output.xlsx')
     writer = pd.ExcelWriter(outpath, datetime_format='MM/DD HH:MM:SS')
 
@@ -374,7 +409,7 @@ def write_output(dmnd: Demand, jets: list[Jet], lgr) -> None:
     rolls_df.to_excel(writer, sheet_name='roll_allocation', float_format='%.2f',
                       index=False)
     
-    late, missing = get_dmnd_tables(dmnd)
+    late, missing = get_late_tables(dmnd)
 
     late_ids, late_data = late
     late_df = pd.DataFrame(data=late_data, index=late_ids)
@@ -386,6 +421,11 @@ def write_output(dmnd: Demand, jets: list[Jet], lgr) -> None:
     missing_df = df_cols_to_string(missing_df, 'item')
     missing_df.to_excel(writer, sheet_name='not_scheduled', float_format='%.2f', index_label='order_id')
 
+    proc_ids, logs_data = get_logs_table(lgr)
+    logs_df = pd.DataFrame(data=logs_data, index=proc_ids)
+    logs_df = df_cols_to_string(logs_df, 'name', 'desc1', 'desc2', 'desc3')
+    logs_df.to_excel(writer, sheet_name='logs', index_label='process_id')
+
     writer.close()
 
 def main(start_str: str, p1date_str: str):
@@ -396,10 +436,9 @@ def main(start_str: str, p1date_str: str):
     inv = load_inv()
     reqs, dmnd = load_demand(p1date)
     jets = load_jets(start)
-    print('Finished loading data')
 
     make_schedule(dmnd, reqs, inv, jets)
     write_output(dmnd, jets, LOGGER)
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    asyncio.run(main(sys.argv[1], sys.argv[2]))

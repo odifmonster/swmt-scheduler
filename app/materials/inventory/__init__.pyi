@@ -2,6 +2,7 @@ from app.materials.inventory.snapshot import Snapshot as Snapshot
 
 from typing import NamedTuple, TypedDict, Unpack, Generator, overload
 from app.support import FloatRange
+from app.support.logging import HasLogger, Logger
 from app.support.grouped import Atom, Grouped, GroupedView
 from app.style import GreigeStyle
 from app.materials.roll import SizeClass, Roll, RollView, RollAlloc
@@ -83,7 +84,7 @@ class StyleView(GroupedView[str, SizeClass]):
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView, remkey: bool = False) -> Roll: ...
 
-class Inventory(Grouped[str, GreigeStyle]):
+class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')):
     """
     A class for Inventory objects. Organizes Roll objects by their
     item and size. Includes methods for allocating rolls to ports.

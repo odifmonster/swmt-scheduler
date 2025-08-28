@@ -3,11 +3,12 @@ from app.schedule.jet.jetsched import JetSched as JetSched
 
 import datetime as dt
 from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support.logging import HasLogger
 from app.schedule import DyeLot
 
-class Jet(HasID[str], SuperImmut,
-          attrs=('_prefix','id','n_ports','load_rng','date_rng','jobs','n_new_jobs',
-                 'cur_sched'),
+class Jet(HasLogger, HasID[str], SuperImmut,
+          attrs=('_logger','_prefix','id','logger','n_ports','load_rng','date_rng',
+                 'jobs','n_new_jobs','cur_sched'),
           priv_attrs=('id','init_sched','cur_sched'),
           frozen=('*id','*init_sched','n_ports','load_rng','date_rng')):
     """

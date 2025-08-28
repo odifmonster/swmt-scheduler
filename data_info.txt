@@ -29,8 +29,8 @@ jet_info:
     sheet_name=jets
 
 inventory:
-    excel_book="1427_PACOHINVDCSH - 2025-08-21T092718.633.xlsx"
-    sheet_name="1427_PACOHINVDCSH"
+    excel_book=LamDemandPlanning.xlsx
+    sheet_name=Inventory
     columns=Roll, Item, Quality, Pounds, ASSIGNED_ORDER
     start_row=4
 
@@ -39,7 +39,7 @@ adaptive_orders:
     sheet_name=Adaptive
 
 pa_demand_plan:
-    excel_book="Demand Planning 20250820.xlsx"
+    excel_book="Demand Planning 20250827.xlsx"
     sheet_name="Demand Planning20230927"
     start_row=8
     excel_columns="D,M:P" # this argument also has to be wrapped in quotes
