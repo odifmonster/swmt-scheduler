@@ -1,187 +1,125 @@
 #!/usr/bin/env python
 
-from typing import Callable
-import datetime as dt
-
-from app.support import HasID, SuperImmut, FloatRange, DateRange, logging
-from app.style.color import STRIP, HEAVYSTRIP
-from ..req import Req, Demand
-from ..job import Job
+from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support.logging import Logger, HasLogger, logged_meth
+from ..dyelot import DyeLot
 from .jetsched import JetSched
+from .job import Job
+from datetime import datetime, timedelta
 
-type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
-
-def all_opts_args(job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> logging.ProcessDesc:
+def insert_args(slf, lots, idx):
     return {
-        'desc1': f'Getting available insertion points and costs for test job {job.lots[0]}',
-        'desc2': f'Targeted item: {cur_req.item.id}'
+        'desc1': 'Attempting to insert ' + ', '.join([l.id for l in lots]) + \
+            f' after {idx} job(s) on {slf.id}'
     }
 
-def all_opts_ret(ret: list[tuple[int, float]]) -> logging.ProcessDesc:
-    return {
-        'desc1': 'Finished calculating costs for all insertion points'
-    }
-
-def try_insert_args(job: Job, idx: int) -> logging.ProcessDesc:
-    return {
-        'desc1': f'Trying to insert {job.lots[0]} after {idx} job(s)'
-    }
-
-def try_insert_ret(ret: tuple[JetSched, list[Job], bool]) -> logging.ProcessDesc:
-    desc: logging.ProcessDesc = {}
-    newsched, kicked, success = ret
-
-    if not success:
-        desc['desc1'] = 'Could not schedule test job at given insertion point'
-    else:
-        desc['desc1'] = 'Able to schedule test job at given insertion point'
-
-        if kicked:
-            desc['desc2'] = 'Kicked jobs: ' + ', '.join([k.id for k in kicked])
-    
-    return desc
-
-def sched_cost_args(newjob: Job, newsched: JetSched, kicked: list[Job], cur_req: Req,
-                    dmnd: Demand, cost_func: CostFunc) -> logging.ProcessDesc:
-    desc: logging.ProcessDesc = {}
-    if newjob in kicked:
-        desc['desc1'] = f'Calculating penalties for not scheduling test job {newjob.lots[0]}'
-    else:
-        desc['desc1'] = f'Calculating penalties for scheduling test job {newjob.lots[0]} at current position'
-    return desc
-
-def sched_cost_ret(ret: float) -> logging.ProcessDesc:
-    return {
-        'desc1': f'Penalty: {ret:.2f}'
-    }
-
-class Jet(logging.HasLogger, HasID[str], SuperImmut,
-          attrs=('_logger','logger','_prefix','id','n_ports','load_rng','date_rng','jobs',
-                 'new_jobs','sched'),
-          priv_attrs=('prefix','id','init_sched'),
-          frozen=('_Jet__prefix','_Jet__id','_Jet__init_sched','n_ports','load_rng',
-                  'date_rng')):
-    
-    _logger = logging.Logger()
-
-    def __init__(self, id: str, n_ports: int, load_min: float, load_max: float, min_date: dt.datetime,
-                 max_date: dt.datetime):
-        priv = {
-            'prefix': 'Jet', 'id': id, 'init_sched': JetSched(min_date, max_date)
+def insert_ret(res):
+    newsched, newjobs = res
+    if newsched is None:
+        return {
+            'desc1': 'Could not insert lots at given position'
         }
-        SuperImmut.__init__(self, priv=priv, n_ports=n_ports, load_rng=FloatRange(load_min, load_max),
-                            date_rng=DateRange(min_date, max_date), sched=None)
+    return {
+        'desc1': f'new schedule={newsched}',
+        'desc2': 'new jobs=[' + ', '.join([f'Job({job.id})' for job in newjobs]) + ']'
+    }
+
+class Jet(HasLogger, HasID[str], SuperImmut,
+          attrs=('_logger','_prefix','id','logger','n_ports','load_rng','date_rng',
+                 'jobs','n_new_jobs','cur_sched'),
+          priv_attrs=('id','init_sched','cur_sched'),
+          frozen=('*id','*init_sched','n_ports','load_rng','date_rng')):
+    
+    _logger = Logger()
 
     @classmethod
-    def set_logger(cls, lgr: logging.Logger):
+    def set_logger(cls, lgr):
         cls._logger = lgr
-
-    @property
-    def logger(self):
-        return type(self)._logger
-
-    @property
-    def _prefix(self) -> str:
-        return self.__prefix
+    
+    def __init__(self, id, n_ports, min_load, max_load, start, end):
+        date_rng = DateRange(start, end)
+        SuperImmut.__init__(self, priv={'id': id, 'init_sched': JetSched(date_rng),
+                                        'cur_sched': None},
+                            n_ports=n_ports, load_rng=FloatRange(min_load, max_load),
+                            date_rng=date_rng)
     
     @property
-    def id(self) -> str:
+    def _prefix(self):
+        return 'Jet'
+    
+    @property
+    def id(self):
         return self.__id
     
     @property
-    def jobs(self) -> list[Job]:
-        if self.sched is None:
-            return self.__init_sched.jobs
-        return self.__init_sched.jobs + self.sched.jobs
+    def logger(self):
+        return type(self)._logger
     
     @property
-    def new_jobs(self) -> list[Job]:
-        if self.sched is None:
-            return []
-        return self.sched.jobs
+    def jobs(self) -> tuple[Job, ...]:
+        if self.__cur_sched is None:
+            return self.__init_sched.full_sched
+        return self.__init_sched.full_sched + self.__cur_sched.full_sched
     
-    def add_placeholder(self, job: Job) -> None:
-        self.__init_sched.add_job(job)
+    @property
+    def n_new_jobs(self) -> int:
+        return len(self.__cur_sched.jobs)
     
-    def init_new_sched(self) -> None:
-        self.sched = JetSched(max(self.__init_sched.last_job_end, self.date_rng.minval),
-                              self.date_rng.maxval, soil_level=self.__init_sched.soil_level,
-                              njobs=self.__init_sched.jobs_since_strip)
+    @property
+    def cur_sched(self):
+        return self.__cur_sched
     
-    def get_start_idx(self, job: Job):
-        curjobs = self.new_jobs
-        finish_time = dt.timedelta(hours=16)
+    def add_adaptive_job(self, job):
+        self.__init_sched.add_job(job, force=True)
 
-        for i in range(len(curjobs), 0, -1):
-            if curjobs[i-1].end + job.cycle_time + finish_time <= job.due_date \
-                and curjobs[i-1].shade <= job.shade:
-                return i
-
+    def init_new_sched(self):
+        self.__cur_sched = JetSched(DateRange(max(self.date_rng.minval,
+                                                  self.__init_sched.last_job_end),
+                                              self.date_rng.maxval),
+                                    prev_sched=self.__init_sched)
+    
+    def get_start_idx(self, lots: tuple[DyeLot, ...], due_date: datetime):
+        curjobs = self.__cur_sched.jobs
+        rev_index = len(curjobs) - 1
+        for i in range(len(curjobs)):
+            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date) and lots[0].shade >= curjobs[rev_index - i].shade:
+                return rev_index - i + 1
+        for i in range(len(curjobs)):
+            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date):
+                return rev_index - i + 1
+        
         return 0
     
-    @logging.logged_meth(desc_args=try_insert_args, desc_ret=try_insert_ret)
-    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
-        curjobs = self.new_jobs
-        newsched = JetSched(self.sched.date_rng.minval, self.sched.date_rng.maxval,
-                            soil_level=self.__init_sched.soil_level,
-                            njobs=self.__init_sched.jobs_since_strip)
-        kicked: list[Job] = []
+    @logged_meth(insert_args, insert_ret)
+    def insert(self, lots, idx):
+        if self.__cur_sched is None:
+            raise RuntimeError('Cannot call \'insert\' method before initializing a new schedule')
+        
+        newsched = self.__cur_sched.copy()
+        cur_reg_jobs = self.__cur_sched.jobs
+        cur_jobs = self.__cur_sched.full_sched
 
-        for i in range(idx):
-            if newsched.rem_time < curjobs[i].cycle_time:
-                kicked.append(curjobs[i])
-            newsched.add_job(curjobs[i])
+        if idx > 0:
+            last_job_before = cur_reg_jobs[idx-1]
+            for job in cur_jobs:
+                newsched.add_job(job)
+                if job.id == last_job_before.id:
+                    break
         
-        strip, fits = newsched.check_for_strip(job)
-        scheduled = fits
-        
-        if fits:
-            if strip:
-                newsched.add_job(strip)
-            newsched.add_job(job)
-        else:
-            kicked.append(job)
-        
-        for j in curjobs[idx:]:
-            if j.shade in (STRIP, HEAVYSTRIP):
-                continue
-            strip, fits = newsched.check_for_strip(j)
-            if not fits:
-                kicked.append(j)
-            else:
-                if strip:
-                    newsched.add_job(strip)
-                newsched.add_job(j)
-        
-        return newsched, kicked, scheduled
-
-    @logging.logged_meth(desc_args=sched_cost_args, desc_ret=sched_cost_ret)
-    def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job],
-                       cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> float:
-        newsched.set_times()
-        for kjob in kicked:
-            kjob.start = None
-        newcost = cost_func(newsched, self, cur_req, dmnd)
-        newjob.start = None
-        self.sched.set_times()
-
-        late_cost, rem_cost = newcost
-        return late_cost + 5 * rem_cost / len(newsched.jobs)
+        if not newsched.can_add(lots):
+            return None, []
     
-    @logging.logged_meth(desc_args=all_opts_args, desc_ret=all_opts_ret)
-    def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) -> \
-        list[tuple[int, float]]:
-        idx = self.get_start_idx(job)
-        costs: list[tuple[int, float]] = []
-        cur_req = job.lots[0].req
-
-        for i in range(idx, len(self.new_jobs)+1):
-            newsched, kicked, scheduled = self.try_insert_job(job, i)
-            cost = self.get_sched_cost(job, newsched, kicked, cur_req, dmnd, cost_func)
-            if scheduled:
-                idx = i
-            else:
-                idx = -1
-            costs.append((idx, cost))
+        newjobs = []
+        newjobs.append(newsched.add_lots(lots, idx))
+        for job in self.__cur_sched.jobs[idx:]:
+            if newsched.can_add(tuple(job.lots)):
+                newjobs.append(newsched.add_lots(tuple(job.lots), -1))
         
-        return costs
+        return newsched, newjobs
+    
+    def set_sched(self, newsched: JetSched):
+        temp = self.__cur_sched
+        temp.deactivate()
+        self.__cur_sched = newsched
+        newsched.activate()
+        return temp

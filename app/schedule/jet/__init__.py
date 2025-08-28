@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
+from .job import Job
 from .jetsched import JetSched
 from .jet import Jet
-from .loadjets import init, get_jets, get_jet_by_alt
+from .jets import init, get_jets, get_by_alt_id
 
-__all__ = ['JetSched', 'Jet', 'init', 'get_jets', 'get_jet_by_alt']
+__all__ = ['Job', 'JetSched', 'Jet', 'init', 'get_jets', 'get_by_alt_id']

@@ -1,179 +1,191 @@
 #!/usr/bin/env python
 
-from typing import Literal
-
-from app.support.logging import ProcessDesc
-from app.support import FloatRange
+from app.support.logging import *
 from app.style import GreigeStyle
-from app.inventory import Inventory, RollView
-from app.schedule import Demand, Jet, Req, DyeLot, JetSched
+from app.materials import Inventory, Snapshot, PortLoad
+from app.schedule import Order, Req, Demand, DyeLot, JetSched, Jet
 
-from schedtypes import NewJobInfo, PortLoad, RollPiece
+__all__ = ['make_sched_args', 'make_sched_ret', 'all_lots_args', 'all_lots_ret',
+           'sched_ord_args', 'sched_ord_ret', 'single_lots_args', 'single_lots_ret',
+           'gsl_loop_args', 'gsl_loop_ret', 'paired_lots_args', 'paired_lots_ret',
+           'gpl_loop_args', 'gpl_loop_ret', 'jload_args', 'jload_ret',
+           'best_job_args', 'best_job_ret', 'cost_args', 'cost_ret', 'sc_cost_args',
+           'sc_cost_ret', 'late_cost_args', 'late_cost_ret', 'inv_cost_args',
+           'inv_cost_ret', 'used_cost_args', 'used_cost_ret']
 
-def make_sched_args(demand: Demand, inv: Inventory, jets: list[Jet]) -> ProcessDesc:
-    return { 'desc1': 'Running schedule algorithm' }
-
-def make_sched_ret(ret: None) -> ProcessDesc:
-    return { 'desc1': 'Finished scheduling algorithm' }
-
-def best_job_args(req: Req, pnum: int, jets: list[Jet], inv: Inventory, dmnd: Demand) \
+def make_sched_args(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]) \
     -> ProcessDesc:
     return {
-        'desc1': f'Finding best job for P{pnum} of {req.id}',
-        'desc2': f'{req.bucket(pnum).yds:.2f} yds needed to make truck',
-        'desc3': f'{req.bucket(pnum).total_yds:.2f} yds needed to meet requirement'
+        'desc1': 'Generating the current schedule'
     }
 
-def best_job_ret(ret: NewJobInfo | None) -> ProcessDesc:
-    if ret is None:
+def make_sched_ret(res: None) -> ProcessDesc:
+    return {
+        'desc1': 'Finished generating the current schedule'
+    }
+
+def sched_ord_args(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
+                   jets: list[Jet]) -> ProcessDesc:
+    return {
+        'desc1': f'Attempting to fulfill {order}',
+        'desc2': f'due date={order.due_date.strftime('%m/%d')}',
+        'desc3': f'yards missing truck={order.yds:.2f}, yards not scheduled={min(order.init_yds,order.total_yds):.2f}'
+    }
+
+def sched_ord_ret(res: tuple[Order, bool]) -> ProcessDesc:
+    order, _ = res
+    return {
+        'desc1': f'remaining unscheduled yards={min(order.init_yds,order.total_yds):.2f}'
+    }
+
+def all_lots_args(order: Order, dmnd: Demand, inv: Inventory, jets: list[Jet]) -> ProcessDesc:
+    return {
+        'desc1': f'Getting all possible dyelots to assign to {order}',
+        'desc2': f'greige={order.greige}, color={order.color}'
+    }
+
+def all_lots_ret(res: dict[Jet, list[tuple[DyeLot, *tuple[DyeLot, ...], Snapshot]]]) -> ProcessDesc:
+    return {}
+
+def single_lots_args(order: Order, inv: Inventory, jets: list[Jet]) -> ProcessDesc:
+    return {
+        'desc1': f'Getting all possible single dyelots to assign to {order}'
+    }
+
+def single_lots_ret(res: dict[Jet, tuple[DyeLot, Snapshot]]) -> ProcessDesc:
+    return {}
+
+def gsl_loop_args(order: Order, inv: Inventory, jet: Jet) -> ProcessDesc:
+    return {
+        'desc1': f'Creating dyelot for {jet.id} to assign to {order}'
+    }
+
+def gsl_loop_ret(res: tuple[DyeLot, Snapshot] | str) -> ProcessDesc:
+    fmtd: ProcessDesc = {}
+    if type(res) is str:
+        fmtd['desc1'] = 'Failed to create dyelot'
+        fmtd['desc2'] = res
+    else:
+        lot, snap = res
+        fmtd['desc1'] = f'lot={lot.id}, inventory snapshot={snap}'
+    return fmtd
+
+def paired_lots_args(o1: Order, o2: Order, inv: Inventory, jets: list[Jet]) -> ProcessDesc:
+    return {
+        'desc1': f'Getting all possible dyelots to assign to {o1} and {o2}'
+    }
+
+def paired_lots_ret(res: dict[Jet, tuple[DyeLot, DyeLot, Snapshot]]) -> ProcessDesc:
+    return {}
+
+def gpl_loop_args(o1: Order, o2: Order, inv: Inventory, jet: Jet) -> ProcessDesc:
+    return {
+        'desc1': f'Creating dyelot for {jet.id} to assign to {o1} and {o2}'
+    }
+
+def gpl_loop_ret(res: tuple[DyeLot, DyeLot, Snapshot] | str) -> ProcessDesc:
+    if type(res) is str:
         return {
-            'desc1': 'Will not schedule current demand'
+            'desc1': 'Failed to create dyelot', 'desc2': res
+        }
+    lot1, lot2, snap = res
+    return {
+        'desc1': f'lot1={lot1.id}, lot2={lot2.id}, inventory snapshot={snap}'
+    }
+
+def jload_args(inv: Inventory, greige: GreigeStyle, jet: Jet) -> ProcessDesc:
+    return {
+        'desc1': f'Searching inventory for {greige} to load {jet.id}'
+    }
+
+def jload_ret(res: tuple[Snapshot | None, list[PortLoad]]) -> ProcessDesc:
+    snap, loads = res
+    if snap is None:
+        return {
+            'desc1': 'Could not fill jet', 'desc2': f'Could only fill {len(loads)} port(s)'
         }
     return {
-        'desc1': f'Best option is on {ret.jet.id} after {ret.idx} job(s)'
+        'desc1': 'Able to fill jet'
     }
 
-type DyeLotRet = tuple[list[PortLoad], set[RollView], DyeLot | None,
-                       Literal['N/A', 'CANNOT RUN', 'NO GREIGE']]
-
-def dyelot_args(req: Req, pnum: int, jet: Jet, inv: Inventory) -> ProcessDesc:
+def best_job_args(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snapshot]]],
+                  order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory) -> ProcessDesc:
     return {
-        'desc1': f'Trying to create dyelot for {req.item.id} on {jet.id}',
-        'desc2': f'Greige style: {req.item.greige.id}'
+        'desc1': f'Finding best job for {order}'
     }
 
-def dyelot_ret(ret: DyeLotRet) -> ProcessDesc:
-    pls, rvs, lot, reason = ret
-    desc: ProcessDesc = {}
-    if lot is None:
-        desc['desc1'] = 'Failed to create dyelot'
-        if reason == 'CANNOT RUN':
-            desc['desc2'] = 'Jet cannot run item'
-        elif reason == 'NO GREIGE':
-            desc['desc2'] = 'Not enough greige to load jet'
-            desc['desc3'] = f'Could only fill {len(pls)} port(s)'
-    else:
-        desc['desc1'] = f'Able to create test dyelot {lot}'
-        desc['desc2'] = f'Will use {lot.lbs:.2f} pounds of {lot.greige.id}'
-        desc['desc3'] = f'Will yield {lot.yds:.2f} yards of {lot.item.id}'
-    
-    return desc
-
-def jet_loads_args(greige: GreigeStyle, inv: Inventory, jet: Jet) -> ProcessDesc:
+def best_job_ret(res: tuple[Jet, Snapshot | None, JetSched, float] | None) -> ProcessDesc:
+    if res is None:
+        return { 'desc1': 'Could not find any jobs' }
+    jet, snap, sched, cost = res
+    if snap is None:
+        return {
+            'desc1': 'Chose not to schedule any jobs',
+            'desc2': f'cost={cost:.2f}'
+        }
     return {
-        'desc1': f'Searching for {greige.id} to load {jet.id}'
+        'desc1': f'Best option is {sched} on {jet.id}',
+        'desc2': f'cost={cost:.2f}'
     }
 
-def jet_loads_ret(ret: list[PortLoad]) -> ProcessDesc:
+def cost_args(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
+              snap: Snapshot, inv: Inventory) -> ProcessDesc:
+    if sched == jet.cur_sched:
+        return {
+            'desc1': f'Getting the total cost for the current schedule of {jet.id}',
+            'desc2': f'sched={jet.cur_sched}'
+        }
     return {
-        'desc1': f'Found enough greige for {len(ret)} port(s)'
+        'desc1': f'Getting the total cost of {sched} for {jet.id}',
+        'desc2': f'inventory snapshot={snap}'
     }
 
-def grg_starts_args(greige: GreigeStyle, inv: Inventory, jet: Jet) -> ProcessDesc:
+def cost_ret(res: float) -> ProcessDesc:
     return {
-        'desc1': f'Searching for valid rolls of {greige.id} to put in first port of {jet.id}'
+        'desc1': f'cost={res:.2f}'
     }
 
-def grg_starts_yld(ret: list[PortLoad]) -> ProcessDesc:
+def sc_cost_args(jet: Jet) -> ProcessDesc:
     return {
-        'desc1': f'Starting with roll {ret[0].roll1.id}',
-        'desc2': f'Weight: {ret[0].roll1.lbs:.2f} lbs',
-        'desc3': f'Can fill {len(ret)} port(s)'
+        'desc1': f'Getting the schedule-related costs of {jet.cur_sched}'
     }
 
-def port_loads_args(greige: GreigeStyle, inv: Inventory, jet_rng: FloatRange,
-                    used: PortLoad | None = None) -> ProcessDesc:
-    desc: ProcessDesc =  {
-        'desc1': f'Searching for {greige.id} to load ports'
-    }
-    if used:
-        desc['desc2'] = f'Using {used.roll1.lbs:.2f} lbs of {used.roll1.id} in first port'
-    return desc
-
-def port_loads_yld(ret: PortLoad) -> ProcessDesc:
-    desc: ProcessDesc = {
-        'desc1': 'Created port load', 'desc2': f'Used {ret.roll1.lbs:.2f} lbs of {ret.roll1.id}'
-    }
-    if ret.roll2:
-        desc['desc3'] = f'Used {ret.roll2.lbs: .2f} of {ret.roll2.id}'
-    return desc
-
-def normal_rolls_args(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                      jet_rng: FloatRange, used: str | None = None) -> ProcessDesc:
+def sc_cost_ret(res: tuple[float, float, float]) -> ProcessDesc:
+    strips, not_seq, non_black_9 = res
     return {
-        'desc1': f'Searching for normal-sized rolls of {greige.id} to load ports'
+        'desc1': f'strip costs={strips:.2f}', 'desc2': f'not sequenced costs={not_seq:.2f}',
+        'desc3': f'non-preferred items costs={non_black_9}'
     }
 
-def normal_rolls_yld(ret: PortLoad) -> ProcessDesc:
+def late_cost_args(order: Order, dmnd: Demand) -> ProcessDesc:
     return {
-        'desc1': f'Can load port with {ret.roll1.lbs:.2f} lbs of {ret.roll1.id}'
+        'desc1': 'Getting the cost of late and not-scheduled orders'
     }
 
-def half_rolls_args(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                      jet_rng: FloatRange, used: str | None = None) -> ProcessDesc:
+def late_cost_ret(res: tuple[float, float]) -> ProcessDesc:
     return {
-        'desc1': f'Searching for half-sized rolls of {greige.id} to load ports'
+        'desc1': f'late costs on current order={res[0]:.2f}',
+        'desc2': f'late costs on other orders={res[1]:.2f}'
     }
 
-def half_rolls_yld(ret: PortLoad) -> ProcessDesc:
+def inv_cost_args(order: Order, reqs: list[Req]) -> ProcessDesc:
     return {
-        'desc1': f'Can load port with {ret.roll1.lbs:.2f} lbs of {ret.roll1.id}'
+        'desc1': 'Getting the cost of any excess inventory'
     }
 
-def odd_rolls_args(greige: GreigeStyle, inv: Inventory, prev_wts: list[float],
-                  jet_rng: FloatRange, extras: list[RollPiece]) -> ProcessDesc:
+def inv_cost_ret(res: tuple[float, float]) -> ProcessDesc:
     return {
-        'desc1': f'Searching for odd-sized rolls of {greige.id} to split and load ports'
+        'desc1': f'excess inv costs on current order={res[0]:.2f}',
+        'desc2': f'excess inv costs on other orders={res[1]:.2f}'
     }
 
-def odd_rolls_yld(ret: PortLoad) -> ProcessDesc:
+def used_cost_args(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]],
+                   dmnd: Demand) -> ProcessDesc:
     return {
-        'desc1': f'Can load port with {ret.roll1.lbs:.2f} lbs of {ret.roll1.id}'
+        'desc1': 'Getting the cost of using up greige inventory'
     }
 
-def comb_rolls_args(greige: GreigeStyle, inv: Inventory, extras: list[RollPiece],
-                   tgt_rng: FloatRange) -> ProcessDesc:
+def used_cost_ret(res: float) -> ProcessDesc:
     return {
-        'desc1': f'Looking for partials of {greige.id} to combine and load ports'
-    }
-
-def comb_rolls_yld(ret: PortLoad) -> ProcessDesc:
-    return {
-        'desc1': f'Can combine {ret.roll1.id} and {ret.roll2.id}',
-        'desc2': f'Total weight: {ret.roll1.lbs+ret.roll2.lbs:.2f} lbs'
-    }
-
-def req_cost_args(cur_req: Req, dmnd: Demand) -> ProcessDesc:
-    return {
-        'desc1': 'Calculating penalties for late orders and excess inventory',
-        'desc2': f'Target item: {cur_req.item.id}'
-    }
-
-def req_cost_ret(ret: tuple[float, float, float, float]) -> ProcessDesc:
-    cur_late, cur_inv, other_late, other_inv = ret
-    return {
-        'desc1': f'Late penalties for current item: {cur_late:.2f}',
-        'desc3': f'Total penalties on other items: {other_late:.2f}',
-        'desc2': f'Inventory penalties for current item: {cur_inv + other_inv:.2f}'
-    }
-
-def strip_cost_args(sched: JetSched, jet: Jet) -> ProcessDesc:
-    return {
-        'desc1': f'Calculating penalties for strip cycles on {jet.id}'
-    }
-
-def strip_cost_ret(ret: float) -> ProcessDesc:
-    return {
-        'desc1': f'Strip penalties: {ret:.2f}'
-    }
-
-def not_seq_args(sched: JetSched, jet: Jet) -> ProcessDesc:
-    return {
-        'desc1': f'Calculating penalties for minor schedule violations on {jet.id}'
-    }
-
-def not_seq_ret(ret: tuple[float, float]) -> ProcessDesc:
-    return {
-        'desc1': f'Not sequenced penalties: {ret[0]}',
-        'desc2': f'Other penalties: {ret[1]}'
+        'desc1': f'used up inv costs={res:.2f}'
     }

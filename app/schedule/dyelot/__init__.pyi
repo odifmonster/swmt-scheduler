@@ -1,208 +1,147 @@
-from typing import Protocol, Literal
 import datetime as dt
-from app.support import HasID, SuperImmut, SuperView, Viewable
-from app.style import GreigeStyle, Color, FabricStyle
-from app.inventory import AllocRoll
+from app.support import HasID, SuperImmut, SuperView
+from app.style import FabricStyle, GreigeStyle
+from app.style.fabric.color import Color, ShadeGrade
+from app.materials.inventory import PortLoad
 
-class _Bucket(Protocol):
+class DyeLot(HasID[str], SuperImmut,
+             attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
+                    'start','end','yds','lbs'),
+             priv_attrs=('id','start','fin_time','view'),
+             frozen=('*id','*fin_time','*view','ports','item','cycle_time')):
     """
-    A class for "buckets" of a requirement. One bucket contains information regarding the total yards
-    of a given item and the date they must be finished. It tracks the number of late yards and how
-    late they will be using the DyeLots currently assigned to the overall requirement.
+    A class for DyeLot objects. Can be linked to multiple jobs
+    for the purpose of comparing schedules. All attributes
+    other than 'start' are immutable.
     """
+    @classmethod
+    def from_adaptive(cls, id: str, start: dt.datetime, end: dt.datetime) -> 'DyeLot':
+        """
+        Create a new DyeLot object using data from adaptive. The
+        resulting object has a fabric style of EMPTY unless the
+        provided 'id' is for a strip cycle.
+        """
+        ...
+    @classmethod
+    def new_strip(cls, item: FabricStyle, start: dt.datetime) -> 'DyeLot':
+        """
+        Create a new DyeLot object representing a strip cycle with
+        the given start time. The item should be STRIP or HEAVYSTRIP.
+        """
+        ...
+    @classmethod
+    def new_lot(cls, item: FabricStyle, ports: list[PortLoad]) -> 'DyeLot':
+        """
+        Create a new DyeLot for a particular fabric item using the
+        provided roll pieces.
+        """
+        ...
+    ports: tuple[PortLoad, ...]
     item: FabricStyle
-    @property
-    def greige(self) -> GreigeStyle:
-        """The greige style for this object."""
-        ...
-    @property
-    def color(self) -> Color:
-        """The color for this object."""
-        ...
-    @property
-    def lots(self) -> list[DyeLotView]:
-        """The DyeLots used to fulfill the total requirement that contains this bucket."""
-        ...
-    @property
-    def date(self) -> dt.datetime:
-        """The date and time the truck for this bucket will leave."""
-        ...
-    @property
-    def yds(self) -> float:
-        """The remaining yards needed to fulfill this bucket on time."""
-        ...
-    @property
-    def lbs(self) -> float:
-        """The remaining pounds needed to fulfill this bucket on time."""
-        ...
-    @property
-    def total_yds(self) -> float:
-        """The total yards remaining to fulfill this bucket, ignoring the due date."""
-        ...
-    @property
-    def total_lbs(self) -> float:
-        """The total pounds remaining to fulfill this bucket, ignoring the due date."""
-        ...
-    @property
-    def late_yds(self) -> tuple[float, dt.timedelta]:
-        """
-        A tuple containing the number of yards in this bucket that will miss their truck, and
-        the amount of time they will miss it by.
-        """
-        ...
-    @property
-    def late_lbs(self) -> tuple[float, dt.timedelta]:
-        """
-        A tuple containing the number of pounds in this bucket that will miss their truck, and
-        the amount of time they will miss it by.
-        """
-        ...
-
-class _ReqView(Protocol):
-    """
-    A class for fabric item requirements. The requirements are broken down into 4 "buckets", where
-    each bucket has a due date attached. The total requirements are only represented in the number
-    of late yards, otherwise buckets should be used.
-    """
-    item: FabricStyle
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...
-    @property
-    def greige(self) -> GreigeStyle:
-        """The greige style of this requirement's item."""
-        ...
-    @property
-    def color(self) -> Color:
-        """The color of this requirement's item."""
-        ...
-    @property
-    def lots(self) -> list[DyeLotView]:
-        """The views of the lots assigned to this requirement."""
-        ...
-    def bucket(self, pnum: Literal[1, 2, 3, 4]) -> _Bucket:
-        """
-        Get a Bucket by priority number.
-
-            pnum:
-              The priority number (1-4) of the desired bucket.
-
-        Returns the Bucket object corresponding to the given priority.
-        """
-        ...
-    def late_yd_buckets(self) -> list[tuple[float, dt.timedelta]]:
-        """
-        Returns a list of any requirements (in yards) that will not be fulfilled on time and
-        the amount of time they will miss their respective trucks by. If a requirement will not
-        be fulfilled at all, the time defaults to one week.
-        """
-        ...
-    def late_lb_buckets(self) -> list[tuple[float, dt.timedelta]]:
-        """
-        Returns a list of any requirements (in pounds) that will not be fulfilled on time and
-        the amount of time they will miss their respective trucks by. If a requirement will not
-        be fulfilled at all, the time defaults to one week.
-        """
-        ...
-    def assign_lot(self, rolls: list[AllocRoll]) -> DyeLot:
-        """
-        Create and assign a DyeLot with the given allocated rolls to this requirement.
-
-            rolls:
-              The list of allocated rolls to use.
-        
-        Returns the newly created DyeLot object.
-        """
-        ...
-    def unassign_lot(self, lot: DyeLotView) -> None:
-        """
-        Unassign the provided DyeLot from this requirement. It will no longer be factored into
-        the remaining and late quantity calculations for each bucket.
-
-            lot:
-              The view of the DyeLot to unassign.
-        """
-        ...
-
-class DyeLotView(SuperView['DyeLot']):
-    """
-    A class for views of DyeLot objects.
-    """
-    start: dt.datetime | None
-    end: dt.datetime | None
-    rolls: tuple[AllocRoll, ...]
-    item: FabricStyle
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> int: ...
-    @property
-    def greige(self) -> GreigeStyle: ...
-    @property
-    def color(self) -> Color: ...
-    @property
-    def lbs(self) -> float: ...
-    @property
-    def yds(self) -> float: ...
-    @property
-    def req(self) -> _ReqView: ...
-    @property
-    def due_date(self) -> dt.datetime: ...
-    def __repr__(self) -> str: ...
-    def __eq__(self, other: 'DyeLotView') -> bool: ...
-    def __hash__(self) -> int: ...
-
-class DyeLot(HasID[int], Viewable[DyeLotView], SuperImmut):
-    """
-    A class for DyeLot objects. Must be initialized with the rolls that will be allocated to it
-    and a link to the requirement it is fulfilling. Its start and end attributes are mutable, but
-    should generally only be modified by the enclosing Jobs unless being used in unittests.
-    """
-    start: dt.datetime | None
-    end: dt.datetime | None
-    rolls: tuple[AllocRoll, ...]
-    item: FabricStyle
-    def __init__(self, rolls: list[AllocRoll], item: FabricStyle, rview: _ReqView,
-                 pnum: int) -> None:
+    cycle_time: dt.timedelta
+    def __init__(self, id: str, ports: tuple[PortLoad, ...], item: FabricStyle,
+                 start: dt.datetime | None, cycle_time: dt.timedelta,
+                 fin_time: dt.timedelta) -> None:
         """
         Initialize a new DyeLot object.
 
-            rolls:
-              The allocated rolls to use for this lot.
+            id:
+              The unique id of this DyeLot.
+            ports:
+              A tuple of PortLoad objects, containing the roll pieces
+              allocated to this DyeLot.
             item:
               The item that will be produced by this lot.
-            rview:
-              A ReqView that links to the requirement this lot aims to fulfill.
-            pnum:
-              The priority number of the bucket this lot is targeting.
+            start:
+              The start date for this lot, or None if it is not linked
+              to a Job yet.
+            cycle_time:
+              The cycle time of this DyeLot. Should usually be the cycle
+              time of the produced item.
+            fin_time:
+              The amount of time required to finish the item after
+              dyeing.
         """
         ...
-    @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> int: ...
+    def __repr__(self) -> str: ...
     @property
     def greige(self) -> GreigeStyle:
-        """The greige style used for this lot."""
+        """The greige style used for this DyeLot."""
         ...
     @property
     def color(self) -> Color:
-        """The color used for this lot."""
+        """The color of this DyeLot."""
         ...
     @property
-    def lbs(self) -> float:
-        """The total pounds in this lot."""
+    def shade(self) -> ShadeGrade:
+        """The shade of this lot's color."""
+        ...
+    @property
+    def start(self) -> dt.datetime | None:
+        """The start time of this lot. If None, the lot has not been scheduled."""
+        ...
+    @start.setter
+    def start(self, new: dt.datetime | None) -> None: ...
+    @property
+    def end(self) -> dt.datetime | None:
+        """
+        The date and time this lot will be available for shipping. If
+        None, the lot has not been scheduled.
+        """
         ...
     @property
     def yds(self) -> float:
-        """The total yards produced by this lot."""
+        """The yards of fabric this lot will produce."""
         ...
     @property
-    def req(self) -> _ReqView:
-        """A view of the Req object this lot is fulfilling."""
+    def lbs(self) -> float:
+        """The pounds of greige this lot will consume."""
+        ...
+    def view(self) -> 'DyeLotView':
+        """A live, read-only view of this object."""
+        ...
+
+class DyeLotView(SuperView[DyeLot],
+                 attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
+                        'start','end','yds','lbs'),
+                 dunders=('eq','hash','repr')):
+    """A class for views of DyeLot objects."""
+    ports: tuple[PortLoad, ...]
+    item: FabricStyle
+    cycle_time: dt.timedelta
+    def __eq__(self, other: 'DyeLotView | DyeLot') -> bool: ...
+    def __hash__(self) -> int: ...
+    def __repr__(self) -> str: ...
+    @property
+    def greige(self) -> GreigeStyle:
+        """The greige style used for this DyeLot."""
         ...
     @property
-    def due_date(self) -> dt.datetime:
-        """The date of the truck the yards from this lot should be on."""
+    def color(self) -> Color:
+        """The color of this DyeLot."""
+        ...
+    @property
+    def shade(self) -> ShadeGrade:
+        """The shade of this lot's color."""
+        ...
+    @property
+    def start(self) -> dt.datetime | None:
+        """The start time of this lot. If None, the lot has not been scheduled."""
+        ...
+    @start.setter
+    def start(self, new: dt.datetime | None) -> None: ...
+    @property
+    def end(self) -> dt.datetime | None:
+        """
+        The date and time this lot will be available for shipping. If
+        None, the lot has not been scheduled.
+        """
+        ...
+    @property
+    def yds(self) -> float:
+        """The yards of fabric this lot will produce."""
+        ...
+    @property
+    def lbs(self) -> float:
+        """The pounds of greige this lot will consume."""
         ...

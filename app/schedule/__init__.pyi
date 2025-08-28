@@ -1,10 +1,7 @@
-from app.schedule.dyelot import DyeLot as DyeLot, DyeLotView as DyeLotView
-from app.schedule.job import Job as Job
-from app.schedule.req import Bucket as Bucket, Req as Req, ReqView as ReqView, \
-    ReqColorKeys as ReqColorKeys, ReqGreigeKeys as ReqGreigeKeys, DemandKeys as DemandKeys, \
-    ReqColorView as ReqColorView, ReqGreigeView as ReqGreigeView, DemandView as DemandView, \
-    ReqColorGroup as ReqColorGroup, ReqGreigeGroup as ReqGreigeGroup, Demand as Demand
 from app.schedule import jet as jet
-
-Jet = jet.Jet
-JetSched = jet.JetSched
+from app.schedule.dyelot import DyeLot as DyeLot, DyeLotView as DyeLotView
+from app.schedule.jet import Job as Job, JetSched as JetSched, Jet as Jet
+from app.schedule.demand import Order as Order, OrderView as OrderView, Req as Req, \
+    ColorGroup as ColorGroup, ColorView as ColorView, GreigeGroup as GreigeGroup, \
+    GreigeView as GreigeView, DateGroup as DateGroup, DateView as DateView, Demand as Demand, \
+    DemandView as DemandView

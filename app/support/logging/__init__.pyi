@@ -1,8 +1,5 @@
-from typing import Protocol, TypedDict, TypeVar, ParamSpec, Concatenate, Callable, Generator
+from typing import Protocol, TypedDict, Callable, Concatenate, Generator
 from abc import abstractmethod
-
-_T = TypeVar('_T')
-_P = ParamSpec('_P')
 
 class Process:
     id: int
@@ -11,12 +8,12 @@ class Process:
     desc1: str
     desc2: str
     desc3: str
-    def __init__(self, caller: int, name: str, desc1: str = '', desc2: str = '',
-                 desc3: str = '') -> None: ...
+    def __init__(self, caller: int, name: str) -> None: ...
     def set_desc(self, desc1: str = '', desc2: str = '', desc3: str = '') -> None: ...
 
 class Logger:
     processes: list[Process]
+    callers: list[int]
     def __init__(self) -> None: ...
     def add_process(self, p: Process) -> None: ...
     def push_caller(self, p: Process) -> None: ...
@@ -36,24 +33,26 @@ class FailedYield:
     desc2: str
     desc3: str
     def __init__(self, desc1: str = '', desc2: str = '', desc3: str = '') -> None: ...
+    def as_dict(self) -> ProcessDesc: ...
 
 class ProcessDesc(TypedDict, total=False):
     desc1: str
     desc2: str
     desc3: str
 
-type DescArgsFunc[**P] = Callable[P, ProcessDesc]
-type DescRetFunc[T] = Callable[[T], ProcessDesc]
+def logged_func[**P, T](
+        lgr: Logger,
+        desc_args: Callable[P, ProcessDesc],
+        desc_ret: Callable[[T], ProcessDesc]) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
-def logged_func(lgr: Logger, desc_args: DescArgsFunc[_P], desc_ret: DescRetFunc[_T]) \
-    -> Callable[[Callable[_P, _T]], Callable[_P, _T]]: ...
+def logged_meth[**P, C: HasLogger, T](
+        desc_args: Callable[P, ProcessDesc],
+        desc_ret: Callable[[T], ProcessDesc]) \
+            -> Callable[[Callable[Concatenate[C, P], T]], Callable[Concatenate[C, P], T]]: ...
 
-type LoggedMeth[**P, T] = Callable[Concatenate[HasLogger, P], T]
+type GenMethod[**P, C: HasLogger, T] = Callable[Concatenate[C, P], Generator[T]]
 
-def logged_meth(desc_args: DescArgsFunc[_P], desc_ret: DescRetFunc[_T]) \
-    -> Callable[[LoggedMeth[_P, _T]], LoggedMeth[_P, _T]]: ...
-
-type LoggedGen[**P, T] = Callable[P, Generator[T]]
-
-def logged_generator(lgr: Logger, desc_args: DescArgsFunc[_P], desc_yld: DescRetFunc[_T]) \
-    -> Callable[[LoggedGen[_P, _T | FailedYield]], LoggedGen[_P, _T]]: ...
+def logged_generator[**P, C: HasLogger, T](
+        desc_args: Callable[Concatenate[C, P], ProcessDesc],
+        desc_yld: Callable[[T], ProcessDesc]) \
+            -> Callable[[GenMethod[P, C, FailedYield | T]], GenMethod[P, C, T]]: ...

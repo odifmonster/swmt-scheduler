@@ -1,84 +1,91 @@
+from app.schedule.jet.job import Job as Job
 from app.schedule.jet.jetsched import JetSched as JetSched
 
-from typing import Callable
 import datetime as dt
-from app.support import logging, HasID, SuperImmut, FloatRange, DateRange
-from app.schedule import Req, Job, Demand
+from app.support import HasID, SuperImmut, FloatRange, DateRange
+from app.support.logging import HasLogger
+from app.schedule import DyeLot
 
-type CostFunc = Callable[['JetSched', 'Jet', Req, Demand], tuple[float, float]]
-
-class Jet(logging.HasLogger, HasID[str], SuperImmut):
+class Jet(HasLogger, HasID[str], SuperImmut,
+          attrs=('_logger','_prefix','id','logger','n_ports','load_rng','date_rng',
+                 'jobs','n_new_jobs','cur_sched'),
+          priv_attrs=('id','init_sched','cur_sched'),
+          frozen=('*id','*init_sched','n_ports','load_rng','date_rng')):
     """
-    A class for Jet objects. All attributes are frozen, but the sched object is (purposefully)
-    mutable.
+    A class for Jet objects. They have frozen 'n_ports',
+    'load_rng', and 'date_rng' attributes.
     """
-    n_ports: int
-    load_rng: FloatRange
-    date_rng: DateRange
-    sched: JetSched
-    def __init__(self, id: str, n_ports: int, load_min: float, load_max: float,
-                 min_date: dt.datetime, max_date: dt.datetime) -> None:
+    n_ports: int # the number of ports on this jet
+    load_rng: FloatRange # the range of weights one port will accept
+    date_rng: DateRange # the range of dates this jet's schedule should cover
+    def __init__(self, id: str, n_ports: int, min_load: float, max_load: float,
+                 start: dt.datetime, end: dt.datetime) -> None:
         """
         Initialize a new Jet object.
 
             id:
-              This jet's id (as seen on the demand planning file).
+              This machine's id.
             n_ports:
               The number of ports on this jet.
-            load_min:
-              The minimum pounds that can be loaded into one port on this jet.
-            load_max:
-              The maximum pounds that can be loaded into one port on this jet.
-            min_date:
-              The earliest date to schedule new jobs.
-            max_date:
-              The latest date to schedule new jobs.
+            min_load:
+              The minimum number of pounds to load a port with.
+            max_load:
+              The maximum number of pounds to load a port with.
+            start:
+              The earliest date to schedule a new job.
+            end:
+              The latest date to schedule a new job.
         """
         ...
     @property
-    def _prefix(self) -> str: ...
-    @property
-    def id(self) -> str: ...
-    @property
-    def jobs(self) -> list[Job]:
-        """The jobs currently scheduled to this jet."""
+    def jobs(self) -> tuple[Job, ...]:
+        """All the jobs currently scheduled to this jet."""
         ...
     @property
-    def new_jobs(self) -> list[Job]: ...
-    def add_placeholder(self, job: Job) -> None: ...
-    def init_new_sched(self) -> None: ...
-    def get_start_idx(self, job: Job) -> int:
+    def n_new_jobs(self) -> int:
+        """The number of new, non-strip jobs scheduled to this jet."""
+        ...
+    @property
+    def cur_sched(self) -> JetSched: ...
+    def add_adaptive_job(self, job: Job) -> None:
+        """Directly adds the provided job object to the initial schedule."""
+        ...
+    def init_new_sched(self) -> None:
+        """Initializes a new schedule, passing in the adaptive schedule as the previous one."""
+        ...
+    def get_start_idx(self, lots: tuple[DyeLot, ...], due_date: dt.datetime) -> int: ...
+    def insert(self, lots: tuple[DyeLot, ...], idx: int) -> tuple[JetSched | None, list[Job]]:
         """
-        Get the latest possible point in the schedule at which to insert the given Job in order to
-        finish on time and maintain shade sequencing. Being on time is prioritized.
+        Tries to insert a job with the given lots at the given
+        index in the schedule.
 
-            job:
-              The Job to be inserted.
-        
-        Returns an index at which to insert the new Job. If the job cannot be run on time, it returns
-        -1.
-        """
-        ...
-    def try_insert_job(self, job: Job, idx: int) -> tuple[JetSched, list[Job], bool]:
-        """
-        Create a new schedule, inserting 'job' at the provided 'idx'.
-
-            job:
-              The Job to be inserted.
+            lots:
+              The dyelots that will go in the new job.
             idx:
-              The index at which to insert the new Job.
+              The index at which to insert the new job.
         
-        Returns a tuple containing the new schedule and any jobs that were "kicked out" due to the
-        insertion.
+        Returns the new JetSched if there is space and None otherwise
+        and a list of the new jobs created by the insertion.
         """
         ...
-    def get_sched_cost(self, newjob: Job, newsched: JetSched, kicked: list[Job], cur_req: Req,
-                       dmnd: Demand, cost_func: CostFunc) -> tuple[float, float, float, float, float]: ...
-    def get_all_options(self, job: Job, cur_req: Req, dmnd: Demand, cost_func: CostFunc) \
-        -> list[tuple[int, tuple[float, float, float, float, float]]]: ...
+    def set_sched(self, sched: JetSched) -> JetSched:
+        """
+        Sets the current schedule to the provided JetSched and
+        activates it. Deactivates the previous schedule and
+        returns it.
+        """
+        ...
 
-def init(start: dt.datetime, end: dt.datetime) -> None: ...
+def init(start: dt.datetime) -> None:
+    """
+    Initialize necessary components of app.schedule.jet sub-module.
+    You must run this function before using this sub-module.
+
+        start:
+          The starting date to use for scheduling new jobs.
+    """
+    ...
 
 def get_jets() -> list[Jet]: ...
 
-def get_jet_by_alt(alt_id: str) -> Jet | None: ...
+def get_by_alt_id(id: str) -> Jet | None: ...

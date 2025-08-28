@@ -1,37 +1,36 @@
-from app.style.greige.greige import EMPTY as EMPTY
-
 from app.support import HasID, SuperImmut, FloatRange
 
-class GreigeStyle(HasID[str], SuperImmut):
+class GreigeStyle(HasID[str], SuperImmut, attrs=('_prefix','id','roll_rng','port_rng'),
+                  priv_attrs=('prefix','id'), frozen=('*prefix','*id','roll_rng','port_rng')):
     """
-    A class for greige style information. All properties are immutable.
+    A class for GreigeStyle objects. All attributes are immutable.
     """
-
-    port_range: FloatRange # The range of pounds allowed in one port
-    roll_range: FloatRange # The range of pounds standard to a roll
-
-    def __init__(self, item: str, port_min: float, port_max: float) -> None:
+    roll_rng: FloatRange # The standard weight range for rolls in this style
+    port_rng: FloatRange # The standard port load for this style
+    def __init__(self, id: str, port_min: float, port_max: float) -> None:
         """
         Initialize a new GreigeStyle object.
 
-            item:
-              The style's (translated) item number. Becomes the object's id.
+            id:
+              The greige item number (as seen in the Demand Planning file).
             port_min:
-              The minimum number of pounds to load on one port.
+              The minimum target pounds of this greige to load in a port.
             port_max:
-              The maximum number of pounds to load on one port.
+              The maximum target pounds of this greige to load in a port.
         """
         ...
 
 def init() -> None:
     """
-    Initialize necessary components of app.style.greige sub-module. You must run this
-    function before using this sub-module.
+    Initialize necessary components of app.style.greige sub-module. You must run this function
+    before using this sub-module.
     """
     ...
 
-def get_greige_style(id: str) -> GreigeStyle | None:
+def get_style(id: str) -> GreigeStyle | None:
     """
-    Returns the GreigeStyle object with the given id, or None if it does not exist.
+    Get a GreigeStyle object by its id. Although these are hashable and immutable, this prevents
+    the creation of too many GreigeStyle objects, as well as allowing FabricStyle and Inventory
+    data to be loaded without having all the necessary greige information.
     """
     ...

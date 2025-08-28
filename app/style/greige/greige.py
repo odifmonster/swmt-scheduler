@@ -2,22 +2,18 @@
 
 from app.support import HasID, SuperImmut, FloatRange
 
-class GreigeStyle(HasID[str], SuperImmut,
-                  attrs=('_prefix','id','port_range','roll_range'),
-                  priv_attrs=('prefix','id')):
+class GreigeStyle(HasID[str], SuperImmut, attrs=('_prefix','id','roll_rng','port_rng'),
+                  priv_attrs=('prefix','id'), frozen=('*prefix','*id','roll_rng','port_rng')):
     
-    def __init__(self, item: str, port_min: float, port_max: float):
-        priv = { 'prefix': 'GreigeStyle', 'id': item }
-        prt_rng = FloatRange(port_min, port_max)
-        rll_rng = FloatRange(port_min*2, port_max*2)
-        SuperImmut.__init__(self, priv=priv, port_range=prt_rng, roll_range=rll_rng)
-
+    def __init__(self, id: str, port_min: float, port_max: float):
+        SuperImmut.__init__(self, priv={'id': id, 'prefix': 'GreigeStyle'},
+                            port_rng=FloatRange(port_min, port_max),
+                            roll_rng=FloatRange(port_min*2, port_max*2))
+    
     @property
     def _prefix(self):
         return self.__prefix
     
     @property
-    def id(self) -> str:
+    def id(self):
         return self.__id
-
-EMPTY = GreigeStyle('NONE', 0, 400)

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+#!/usr/bin/env python
+
 import os
 
 from .greige import GreigeStyle
@@ -7,17 +9,21 @@ from .greige import GreigeStyle
 _GREIGE_STYLES = {}
 
 def init():
+    if len(globals()['_GREIGE_STYLES']) > 0:
+        return
+    
     srcpath = os.path.join(os.path.dirname(__file__), 'styles.csv')
     with open(srcpath) as infile:
         for line in infile:
             line = line.strip()
             if not line: continue
 
-            item, tgt_lbs = line.split(',')
-            tgt_lbs = float(tgt_lbs)
-            globals()['_GREIGE_STYLES'][item] = GreigeStyle(item, tgt_lbs-40, tgt_lbs+40)
+            item, min_lbs, max_lbs = line.split(',')
+            min_lbs = float(min_lbs)
+            max_lbs = float(max_lbs)
+            globals()['_GREIGE_STYLES'][item] = GreigeStyle(item, min_lbs, max_lbs)
 
-def get_greige_style(id: str) -> GreigeStyle | None:
+def get_style(id):
     if id not in globals()['_GREIGE_STYLES']:
         return None
     return globals()['_GREIGE_STYLES'][id]
