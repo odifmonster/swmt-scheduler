@@ -16,7 +16,7 @@ PARTIAL = SizeClass('PARTIAL')
 
 _CTR = 0
 
-def alloc_args(slf, lbs, snapshot):
+def alloc_args(slf, lbs, snapshot = None):
     desc1 = f'Allocating {lbs:.2f} lbs of {slf.id}'
     if not snapshot is None:
         desc1 += f' on inventory snapshot {snapshot}'
@@ -29,7 +29,7 @@ def alloc_ret(res):
         'desc1': f'roll piece={res}'
     }
 
-def dealloc_args(slf, piece, snapshot):
+def dealloc_args(slf, piece, snapshot = None):
     desc1 = f'Deallocating {piece}'
     if not snapshot is None:
         desc1 += f' on inventory snapshot {snapshot}'

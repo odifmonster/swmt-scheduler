@@ -12,7 +12,7 @@ class Job:
         for dyelot in dyelots:
             self.id += dyelot.id
 
-        if idx:
+        if idx is not None:
             if idx >= 0:
                 self.id+= f"@{idx}"
             else:

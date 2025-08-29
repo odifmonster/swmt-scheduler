@@ -207,6 +207,7 @@ def order_cost(order: Order | OrderView) -> float:
         index = 11
     
     for row in table:
+        found_idx = False
         for idx in days_late_idxs:
             if row[1] < dt.timedelta(days=idx) and not found_idx:
                 found_idx = True
