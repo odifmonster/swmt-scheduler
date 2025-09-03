@@ -79,6 +79,7 @@ class Demand(HasLogger, Grouped[str, dt.datetime], attrs=('_logger','logger')):
             for view in self[date, order.greige, order.color].itervalues():
                 match: OrderView = view
                 if match.total_lbs <= 0: continue
+                if match.item == order.item: continue
                 total_lbs = order.total_lbs + match.total_lbs
                 needed_ports = total_lbs / order.greige.port_rng.average()
                 if needed_ports > 8:

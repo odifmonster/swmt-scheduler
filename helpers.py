@@ -25,6 +25,7 @@ def apply_snapshot(inv: Inventory, snap: Snapshot | None, temp: bool = True) -> 
 class InvTable(TypedDict):
     greige: list[str]
     lbs: list[float]
+    avail_date: list[dt.datetime]
 
 class OrderTable(TypedDict):
     item: list[str]
@@ -54,8 +55,8 @@ class JobsTable(TypedDict):
             case 'color': return job.color.name
             case 'lbs': return sum(map(lambda l: l.lbs, job.lots))
 
-type LotsCol = Literal['jet', 'job', 'item', 'start', 'end', 'greige', 'color', 'lbs',
-                       'yds']
+type LotsCol = Literal['jet', 'job', 'item', 'start', 'end', 'min_date', 'greige',
+                       'color', 'lbs', 'yds']
 
 class LotsTable(TypedDict):
     jet: list[str]
@@ -63,6 +64,7 @@ class LotsTable(TypedDict):
     item: list[str]
     start: list[dt.datetime]
     end: list[dt.datetime]
+    min_date: list[dt.datetime]
     greige: list[str]
     color: list[str]
     lbs: list[float]
@@ -76,13 +78,14 @@ class LotsTable(TypedDict):
             case 'item': return lot.item.id
             case 'start': return job.start
             case 'end': return job.end
+            case 'min_date': return lot.min_date
             case 'greige': return job.greige.id
             case 'color': return job.color.name
             case 'lbs': return lot.lbs
             case 'yds': return lot.yds
 
 type RollsCol = Literal['jet', 'job', 'lot', 'greige', 'roll1', 'lbs1', 'roll2',
-                        'lbs2', 'start', 'item', 'color']
+                        'lbs2', 'avail_date', 'start', 'item', 'color']
 
 class RollsTable(TypedDict):
     jet: list[str]
@@ -93,6 +96,7 @@ class RollsTable(TypedDict):
     lbs1: list[float]
     roll2: list[str]
     lbs2: list[float]
+    avail_date: list[dt.datetime]
     start: list[dt.datetime]
     item: list[str]
     color: list[str]
@@ -114,6 +118,7 @@ class RollsTable(TypedDict):
                 if pl.roll2:
                     return pl.roll2.lbs
                 return 0
+            case 'avail_date': return pl.avail_date
             case 'start': return job.start
             case 'item': return lot.item.id
             case 'color': return lot.color.name
@@ -123,6 +128,15 @@ class LateTable(TypedDict):
     due_date: list[dt.datetime]
     ordered_yds: list[float]
     late_yds: list[float]
+    days_late: list[float]
+
+class LateTableDetail(TypedDict):
+    order: list[str]
+    item: list[str]
+    due_date: list[dt.datetime]
+    ordered_yds: list[float]
+    late_yds: list[float]
+    cum_late_yds: list[float]
     days_late: list[float]
 
 class MissingTable(TypedDict):
@@ -150,7 +164,7 @@ type OrderData = tuple[list[str], OrderTable]
 
 def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
     roll_ids: list[str] = []
-    inv_table = InvTable(greige=[], lbs=[])
+    inv_table = InvTable(greige=[], lbs=[], avail_date=[])
 
     order_ids: list[str] = []
     order_table = OrderTable(item=[], greige=[], pnum=[], due_date=[], yds=[], lbs=[])
@@ -159,6 +173,7 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
         roll_ids.append(rview.id)
         inv_table['greige'].append(rview.item.id)
         inv_table['lbs'].append(rview.lbs)
+        inv_table['avail_date'].append(rview.avail_date)
     
     for order in dmnd.itervalues():
         order_ids.append(order.id)
@@ -179,11 +194,11 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
     jobs_table = JobsTable(jet=[], start=[], end=[], greige=[], color=[], lbs=[])
 
     lot_ids: list[str] = []
-    lots_table = LotsTable(jet=[], job=[], item=[], start=[], end=[], greige=[], color=[],
-                           lbs=[], yds=[])
+    lots_table = LotsTable(jet=[], job=[], item=[], start=[], end=[], min_date=[],
+                           greige=[], color=[], lbs=[], yds=[])
     
     rolls_table = RollsTable(jet=[], job=[], lot=[], greige=[], roll1=[], lbs1=[], roll2=[],
-                             lbs2=[], start=[], item=[], color=[])
+                             lbs2=[], avail_date=[], start=[], item=[], color=[])
     
     for jet in jets:
         for job in jet.jobs:
@@ -193,23 +208,29 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
             
             for lot in job.lots:
                 lot_ids.append(lot.id)
-                for lot_col in ('jet', 'job', 'item', 'start', 'end', 'greige', 'color',
-                                'lbs', 'yds'):
+                for lot_col in ('jet', 'job', 'item', 'start', 'end', 'min_date', 'greige',
+                                'color', 'lbs', 'yds'):
                     lots_table[lot_col].append(LotsTable.get_col_info(lot_col, jet, job, lot))
                 
                 for port in lot.ports:
                     for roll_col in ('jet', 'job', 'lot', 'greige', 'roll1', 'lbs1',
-                                     'roll2', 'lbs2', 'start', 'item', 'color'):
+                                     'roll2', 'lbs2', 'avail_date', 'start', 'item',
+                                     'color'):
                         cur_info = RollsTable.get_col_info(roll_col, jet, job, lot, port)
                         rolls_table[roll_col].append(cur_info)
     
     return (job_ids, jobs_table), (lot_ids, lots_table), rolls_table
 
 type LateData = tuple[list[str], LateTable]
+type LateDetailData = tuple[list[str], LateTableDetail]
 type MissingData = tuple[list[str], MissingTable]
 
-def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
+def get_late_tables(dmnd: Demand) -> tuple[LateData, LateDetailData, MissingData]:
     late_ids: list[str] = []
+    late_detail = LateTableDetail(order=[], item=[], due_date=[], ordered_yds=[], late_yds=[],
+                                  cum_late_yds=[], days_late=[])
+    
+    order_ids: list[str] = []
     late_table = LateTable(item=[], due_date=[], ordered_yds=[], late_yds=[], days_late=[])
 
     miss_ids: list[str] = []
@@ -218,15 +239,30 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
 
     for order in dmnd.itervalues():
         if order.yds > 0 and order.total_yds <= 0:
-            late_ids.append(order.id)
+            cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
+            next_fri = cur_fri + dt.timedelta(weeks=2)
+            late_pairs = sorted(order.late_table(next_fri), key=lambda x: x[1])
+            total_yds = 0
+
+            order_ids.append(order.id)
             late_table['item'].append(order.item.id)
             late_table['due_date'].append(order.due_date)
             late_table['ordered_yds'].append(order.init_yds)
             late_table['late_yds'].append(order.yds)
+            late_table['days_late'].append(late_pairs[-1][1].total_seconds() / (3600*24))
+            
+            for i, pair in enumerate(late_pairs):
+                late_ids.append(order.id+f'@{i}')
+                late_detail['order'].append(order.id)
+                late_detail['item'].append(order.item.id)
+                late_detail['due_date'].append(order.due_date)
+                late_detail['ordered_yds'].append(order.init_yds)
 
-            late_pairs = order.late_table()
-            late_delta = late_pairs[0][1]
-            late_table['days_late'].append(late_delta.total_seconds() / (3600 * 24))
+                late_yds, late_delta = pair
+                total_yds += late_yds
+                late_detail['late_yds'].append(late_yds)
+                late_detail['cum_late_yds'].append(total_yds)
+                late_detail['days_late'].append(late_delta.total_seconds() / (3600 * 24))
         elif order.total_yds > 0:
             miss_ids.append(order.id)
 
@@ -239,7 +275,7 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, MissingData]:
             miss_table['yds_not_scheduled'].append(rem_yds)
             miss_table['lbs_not_scheduled'].append(rem_lbs)
     
-    return (late_ids, late_table), (miss_ids, miss_table)
+    return (order_ids, late_table), (late_ids, late_detail), (miss_ids, miss_table)
 
 def get_logs_table(lgr: Logger) -> tuple[list[int], LogsTable]:
     proc_ids: list[int] = []

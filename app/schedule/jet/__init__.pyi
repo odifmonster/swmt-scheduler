@@ -76,7 +76,7 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         """
         ...
 
-def init(start: dt.datetime) -> None:
+def init(start: dt.datetime, end: dt.datetime) -> None:
     """
     Initialize necessary components of app.schedule.jet sub-module.
     You must run this function before using this sub-module.

@@ -22,18 +22,14 @@ class _Req(Protocol):
 class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
                    'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
-            priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
+            priv_attrs=('req','init_cur_yds','init_cum_yds'),
+            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     
-    def __init__(self, req: _Req, item, pnum, cur_yds, cum_yds, p1date: dt.datetime):
-        deltas = {
-            1: dt.timedelta(days=0), 2: dt.timedelta(days=4), 3: dt.timedelta(days=7),
-            4: dt.timedelta(days=11)
-        }
+    def __init__(self, req: _Req, item, pnum, due_date, cur_yds, cum_yds):
         Data.__init__(self, f'P{pnum}@{item.id}', 'Order', OrderView(self),
-                      priv={'req': req, 'p1date': p1date, 'init_cur_yds': cur_yds,
+                      priv={'req': req, 'init_cur_yds': cur_yds,
                             'init_cum_yds': cum_yds}, item=item,
-                      pnum=pnum, due_date=p1date+deltas[pnum])
+                      pnum=pnum, due_date=due_date)
     
     @property
     def greige(self):
@@ -77,13 +73,12 @@ class Order(Data[str], mod_in_group=True,
     def total_lbs(self):
         return self.total_yds / self.item.yld
     
-    def late_table(self):
+    def late_table(self, next_avail: dt.datetime):
         if self.yds <= 0:
             return []
         
         r: _Req = self.__req
-        min_avail_date = self.__p1date + dt.timedelta(days=12)
-        max_late_time = min_avail_date - self.due_date
+        max_late_time = next_avail - self.due_date
         lots: list[DyeLotView] = sorted(filter(lambda l: not l.end is None, r.lots),
                                         key=lambda l: l.end)
         if not lots:

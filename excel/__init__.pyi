@@ -2,7 +2,8 @@ from typing import TypedDict, Literal
 import os
 
 type ParsedKey = Literal['fabric_items', 'greige_sizes', 'greige_translation', 'inventory',
-                         'adaptive_orders', 'pa_demand_plan', 'jet_info']
+                         'adaptive_orders', 'pa_demand_plan', 'jet_info', 'ship_dates',
+                         'incoming_si_greige', 'incoming_wv_greige', 'pa_min_reqs']
 
 class ExcelInfo(TypedDict):
     fpath: str = ''

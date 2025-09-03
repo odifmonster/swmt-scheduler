@@ -14,10 +14,12 @@ fabric_items: # information about fabric items (which jets they can run on, whic
         "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "JET 10", "SHADE RATING"
 
 greige_sizes: # information about target lbs per greige style roll
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book=master.xlsx
     sheet_name="greige info"
 
 greige_translation:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book=LamDemandPlanning.xlsx
     sheet_name="Greige Style Translation"
     column_names=inventory, plan # only use this if the workbook has no column names
@@ -25,22 +27,59 @@ greige_translation:
     start_row=2 # the first row of data to start reading
 
 jet_info:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book=master.xlsx
     sheet_name=jets
 
 inventory:
-    excel_book="1427_PACOHINVDCSH - 2025-08-28T082859.985.xlsx"
-    sheet_name="1427_PACOHINVDCSH"
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    sheet_name="1427"
     columns=Roll, Item, Quality, Pounds, ASSIGNED_ORDER
     start_row=4
 
+incoming_si_greige:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="SI release 20250825.xlsx"
+    sheet_name="Vendor Release Report - Weekly "
+    excel_columns="F,AS,AT"
+    column_names=greige, daily_lbs, weekly_lbs
+    start_row=3
+    end_row=25
+
+incoming_wv_greige:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="SI release 20250825.xlsx"
+    sheet_name="Vendor Release Report - Weekly "
+    excel_columns="F,AU"
+    column_names=greige, weekly_lbs
+    start_row=29
+    end_row=35
+
 adaptive_orders:
-    excel_book=LamDemandPlanning.xlsx
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="PA plant orders against Lam demand 20250901.xlsx"
     sheet_name=Adaptive
+    columns=Machine, StartTime, EndTime, FinItem, DyelotID1, DyelotID2, Qty
 
 pa_demand_plan:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book="Demand Planning 20250827.xlsx"
     sheet_name="Demand Planning20230927"
     start_row=8
     excel_columns="D,M:P" # this argument also has to be wrapped in quotes
     end_row=112
+
+ship_dates:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    sheet_name="Lam Release"
+    columns="Stock Item", "Ply1 Item", "Ship Day"
+
+pa_min_reqs:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    sheet_name="Fab shortage 9-2"
+    columns="PA Item", "Ply1 Item", "FAB req'd past due", "FAB req'd WK0", ...
+        "FAB req'd WK1", "FAB req'd WK2", "FAB req'd WK3", "FAB req'd WK4", "PA Fin", ...
+        "Inspection", "Frame", "Dye Orders"

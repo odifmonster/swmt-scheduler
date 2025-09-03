@@ -82,7 +82,8 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         curjobs = self.__cur_sched.jobs
         rev_index = len(curjobs) - 1
         for i in range(len(curjobs)):
-            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date) and lots[0].shade >= curjobs[rev_index - i].shade:
+            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date) \
+                and lots[0].shade >= curjobs[rev_index - i].shade:
                 return rev_index - i + 1
         for i in range(len(curjobs)):
             if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date):
@@ -106,7 +107,9 @@ class Jet(HasLogger, HasID[str], SuperImmut,
                 if job.id == last_job_before.id:
                     break
         
-        if not newsched.can_add(lots):
+        min_date = max(map(lambda l: l.min_date, lots))
+        if not newsched.can_add(lots) or (newsched.last_job_end > min_date and \
+            idx < len(cur_reg_jobs)):
             return None, []
     
         newjobs = []

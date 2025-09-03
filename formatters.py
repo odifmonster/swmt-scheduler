@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import datetime as dt
+
 from app.support.logging import *
 from app.style import GreigeStyle
 from app.materials import Inventory, Snapshot, PortLoad
@@ -14,7 +16,8 @@ __all__ = ['make_sched_args', 'make_sched_ret', 'all_lots_args', 'all_lots_ret',
            'inv_cost_ret', 'used_cost_args', 'used_cost_ret', 'order_cost_args',
            'order_cost_ret']
 
-def make_sched_args(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]) \
+def make_sched_args(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
+                    next_avail: dt.datetime) \
     -> ProcessDesc:
     return {
         'desc1': 'Generating the current schedule'
@@ -26,7 +29,7 @@ def make_sched_ret(res: None) -> ProcessDesc:
     }
 
 def sched_ord_args(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
-                   jets: list[Jet]) -> ProcessDesc:
+                   jets: list[Jet], next_avail: dt.datetime) -> ProcessDesc:
     return {
         'desc1': f'Attempting to fulfill {order}',
         'desc2': f'due date={order.due_date.strftime('%m/%d')}',
@@ -110,7 +113,8 @@ def jload_ret(res: tuple[Snapshot | None, list[PortLoad]]) -> ProcessDesc:
     }
 
 def best_job_args(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snapshot]]],
-                  order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory) -> ProcessDesc:
+                  order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
+                  next_avail: dt.datetime) -> ProcessDesc:
     return {
         'desc1': f'Finding best job for {order}'
     }
@@ -130,7 +134,7 @@ def best_job_ret(res: tuple[Jet, Snapshot | None, JetSched, float] | None) -> Pr
     }
 
 def cost_args(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
-              snap: Snapshot, inv: Inventory) -> ProcessDesc:
+              snap: Snapshot, inv: Inventory, next_avail: dt.datetime) -> ProcessDesc:
     if sched == jet.cur_sched:
         return {
             'desc1': f'Getting the total cost for the current schedule of {jet.id}',
@@ -158,7 +162,7 @@ def sc_cost_ret(res: tuple[float, float, float]) -> ProcessDesc:
         'desc3': f'non-preferred items costs={non_black_9}'
     }
 
-def order_cost_args(order: Order | OrderView) -> ProcessDesc:
+def order_cost_args(order: Order | OrderView, next_avail: dt.datetime) -> ProcessDesc:
     return {
         'desc1': f'Calculating late and not-scheduled costs for {order}'
     }
@@ -168,7 +172,7 @@ def order_cost_ret(res: float) -> ProcessDesc:
         'desc1': f'late cost={res:.2f}'
     }
 
-def late_cost_args(order: Order, dmnd: Demand) -> ProcessDesc:
+def late_cost_args(order: Order, dmnd: Demand, next_avail: dt.datetime) -> ProcessDesc:
     return {
         'desc1': 'Getting the cost of late and not-scheduled orders'
     }

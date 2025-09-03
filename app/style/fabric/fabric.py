@@ -27,12 +27,14 @@ class FabricStyle(HasID[str], SuperImmut,
         return jet_id in self.__jets
     
     def get_strip(self, soil_level):
-        if self.color.shade == LIGHT and soil_level >= 25:
+        if self.color.shade == LIGHT and soil_level >= 20:
             if soil_level - 27 >= 10:
                 return 'HEAVYSTRIP'
             return 'STRIP'
         
-        if self.color.shade == MEDIUM and soil_level >= 45:
+        if self.color.shade == MEDIUM and soil_level >= 35:
+            if soil_level - 27 >= 25:
+                return 'HEAVYSTRIP'
             return 'STRIP'
         
         return None

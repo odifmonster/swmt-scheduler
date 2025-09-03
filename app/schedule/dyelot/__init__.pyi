@@ -6,16 +6,18 @@ from app.materials.inventory import PortLoad
 
 class DyeLot(HasID[str], SuperImmut,
              attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                    'start','end','yds','lbs'),
+                    'start','end','yds','lbs','min_date'),
              priv_attrs=('id','start','fin_time','view'),
-             frozen=('*id','*fin_time','*view','ports','item','cycle_time')):
+             frozen=('*id','*fin_time','*view','ports','item','cycle_time',
+                     'min_date')):
     """
     A class for DyeLot objects. Can be linked to multiple jobs
     for the purpose of comparing schedules. All attributes
     other than 'start' are immutable.
     """
     @classmethod
-    def from_adaptive(cls, id: str, start: dt.datetime, end: dt.datetime) -> 'DyeLot':
+    def from_adaptive(cls, id: str, item: FabricStyle, start: dt.datetime,
+                      end: dt.datetime) -> 'DyeLot':
         """
         Create a new DyeLot object using data from adaptive. The
         resulting object has a fabric style of EMPTY unless the
@@ -39,9 +41,10 @@ class DyeLot(HasID[str], SuperImmut,
     ports: tuple[PortLoad, ...]
     item: FabricStyle
     cycle_time: dt.timedelta
+    min_date: dt.datetime
     def __init__(self, id: str, ports: tuple[PortLoad, ...], item: FabricStyle,
                  start: dt.datetime | None, cycle_time: dt.timedelta,
-                 fin_time: dt.timedelta) -> None:
+                 fin_time: dt.timedelta, min_date: dt.datetime) -> None:
         """
         Initialize a new DyeLot object.
 
@@ -103,12 +106,13 @@ class DyeLot(HasID[str], SuperImmut,
 
 class DyeLotView(SuperView[DyeLot],
                  attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                        'start','end','yds','lbs'),
+                        'start','end','yds','lbs','min_date'),
                  dunders=('eq','hash','repr')):
     """A class for views of DyeLot objects."""
     ports: tuple[PortLoad, ...]
     item: FabricStyle
     cycle_time: dt.timedelta
+    min_date: dt.datetime
     def __eq__(self, other: 'DyeLotView | DyeLot') -> bool: ...
     def __hash__(self) -> int: ...
     def __repr__(self) -> str: ...

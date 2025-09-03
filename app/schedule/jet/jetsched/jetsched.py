@@ -56,7 +56,7 @@ class JetSched(HasID[int], SuperImmut,
         else:
             lje = self.__jobs[-1].end
 
-        if lje.weekday() > 4:
+        if lje.weekday() > 4 and (lje.weekday() == 6 or lje.hour >= 20):
             return _first_monday_after(lje)
         return lje
     
@@ -65,11 +65,11 @@ class JetSched(HasID[int], SuperImmut,
         lje = self.last_job_end
         rem_rng = DateRange(lje, self.__date_rng.maxval)
         first_mon = _first_monday_after(lje)
-        cur_wknd = DateRange(first_mon - dt.timedelta(hours=48), first_mon)
+        cur_wknd = DateRange(first_mon - dt.timedelta(hours=24), first_mon)
         rem_t = rem_rng.maxval - lje
 
         while rem_rng.overlaps(cur_wknd):
-            rem_t -= dt.timedelta(hours=48)
+            rem_t -= dt.timedelta(hours=24)
             if cur_wknd.minval < rem_rng.minval:
                 rem_t += (rem_rng.minval - cur_wknd.minval)
             if cur_wknd.maxval > rem_rng.maxval:
@@ -130,7 +130,8 @@ class JetSched(HasID[int], SuperImmut,
         if not strip is None:
             strip_job = Job([DyeLot.new_strip(strip, self.last_job_end)], self.last_job_end)
             self.add_job(strip_job)
-        new_job = Job(lots, self.last_job_end, idx=idx)
+        min_date = max(map(lambda l: l.min_date, lots))
+        new_job = Job(lots, max(min_date, self.last_job_end), idx=idx)
         self.add_job(new_job)
         return new_job
     

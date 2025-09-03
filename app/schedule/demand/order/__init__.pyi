@@ -18,8 +18,8 @@ class _Req(Protocol):
 class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
                    'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
-            priv_attrs=('req','p1date','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*p1date','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
+            priv_attrs=('req','init_cur_yds','init_cum_yds'),
+            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     """
     A class for Order objects. This represents a required quantity
     of an item and a due date. Orders will track their fulfillment
@@ -29,8 +29,8 @@ class Order(Data[str], mod_in_group=True,
     item: FabricStyle # the item for this order
     pnum: int # the priority number of this order
     due_date: dt.datetime # the due date of this order
-    def __init__(self, req: _Req, item: FabricStyle, pnum: int, cur_yds: float, cum_yds: float,
-                 p1date: dt.datetime) -> None:
+    def __init__(self, req: _Req, item: FabricStyle, pnum: int, cur_yds: float,
+                 cum_yds: float) -> None:
         """
         Initialize a new Order object.
 
@@ -88,7 +88,7 @@ class Order(Data[str], mod_in_group=True,
     def total_lbs(self) -> float:
         """The total remaining pounds needed to fulfill this requirement, ignoring due date."""
         ...
-    def late_table(self) -> list[tuple[float, dt.timedelta]]:
+    def late_table(self, next_avail: dt.datetime) -> list[tuple[float, dt.timedelta]]:
         """
         Returns a list of pairs containing yards and how late
         they will be compared to this order's due date.
@@ -154,7 +154,7 @@ class OrderView(DataView[str],
     def total_lbs(self) -> float:
         """The total remaining pounds needed to fulfill this requirement, ignoring due date."""
         ...
-    def late_table(self) -> list[tuple[float, dt.timedelta]]:
+    def late_table(self, next_avail: dt.datetime) -> list[tuple[float, dt.timedelta]]:
         """
         Returns a list of pairs containing yards and how late
         they will be compared to this order's due date.

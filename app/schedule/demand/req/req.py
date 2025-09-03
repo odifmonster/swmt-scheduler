@@ -8,14 +8,16 @@ class Req(HasID[str], SuperImmut,
           attrs=('_prefix','id','item','orders','lots'),
           priv_attrs=('id','lots'), frozen=('*id','item','orders')):
     
-    def __init__(self, item, buckets: list[tuple[int, float]], p1date):
+    def __init__(self, item, buckets):
         orders: list[Order] = []
         buckets = sorted(buckets, key=lambda b: b[0])
         total_yds = 0
-        for pnum, yds in buckets:
+        pnum = 0
+        for due_date, yds in buckets:
             total_yds += yds
+            pnum += 1
             if yds > 0:
-                orders.append(Order(self, item, pnum, yds, total_yds, p1date))
+                orders.append(Order(self, item, pnum, due_date, yds, total_yds))
 
         SuperImmut.__init__(self, priv={'id': item.id, 'lots': []}, item=item, orders=tuple(orders))
     
