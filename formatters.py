@@ -97,7 +97,8 @@ def gpl_loop_ret(res: tuple[DyeLot, DyeLot, Snapshot] | str) -> ProcessDesc:
         'desc1': f'lot1={lot1.id}, lot2={lot2.id}, inventory snapshot={snap}'
     }
 
-def jload_args(inv: Inventory, greige: GreigeStyle, jet: Jet) -> ProcessDesc:
+def jload_args(inv: Inventory, greige: GreigeStyle, jet: Jet,
+               max_date: dt.datetime | None = None, create: bool = False) -> ProcessDesc:
     return {
         'desc1': f'Searching inventory for {greige} to load {jet.id}'
     }

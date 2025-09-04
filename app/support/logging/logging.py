@@ -22,11 +22,21 @@ class Process:
 class Logger:
     
     def __init__(self):
-        self.processes = []
+        self.processes: list[Process] = []
         self.callers = [0]
 
+    def _get_insert_idx(self, id: int, lo: int, hi: int):
+        if hi <= lo:
+            return lo
+        
+        mid = int((lo + hi) / 2)
+        if id > self.processes[mid].id:
+            return self._get_insert_idx(id, mid+1, hi)
+        return self._get_insert_idx(id, lo, mid)
+
     def add_process(self, p: Process):
-        self.processes.append(p)
+        idx = self._get_insert_idx(p.id, 0, len(self.processes))
+        self.processes.insert(idx, p)
     
     def push_caller(self, p: Process):
         self.callers.append(p.id)

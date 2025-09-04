@@ -14,6 +14,11 @@ SMALL = SizeClass('SMALL')
 HALF = SizeClass('HALF')
 PARTIAL = SizeClass('PARTIAL')
 
+KnitPlant = NewType('KnitPlant', str)
+FAIRYSTONE = KnitPlant('FAIRYSTONE')
+WHITEVILLE = KnitPlant('WHITEVILLE')
+ANY = KnitPlant('ANY')
+
 _CTR = 0
 
 def alloc_args(slf, lbs, snapshot = None):
@@ -41,13 +46,14 @@ def dealloc_ret(res):
     return {}
 
 class RollAlloc(HasID[int], SuperImmut,
-                attrs=('_prefix','id','roll_id','lbs','avail_date'),
-                priv_attrs=('id',), frozen=('*id','roll_id','lbs','avail_date')):
+                attrs=('_prefix','id','roll_id','lbs','avail_date','plant'),
+                priv_attrs=('id',), frozen=('*id','roll_id','lbs','avail_date','plant')):
 
-    def __init__(self, roll_id, lbs, avail_date):
+    def __init__(self, roll_id, lbs, avail_date, plant):
         globals()['_CTR'] += 1
         SuperImmut.__init__(self, priv={'id': globals()['_CTR']},
-                            roll_id=roll_id, lbs=lbs, avail_date=avail_date)
+                            roll_id=roll_id, lbs=lbs, avail_date=avail_date,
+                            plant=plant)
 
     def __repr__(self):
         return f'RollAlloc(roll={repr(self.roll_id)}, lbs={self.lbs:.2f})'
@@ -61,9 +67,10 @@ class RollAlloc(HasID[int], SuperImmut,
         return self.__id
 
 class Roll(HasLogger, Data[str], mod_in_group=False,
-           attrs=('_logger','logger','item','size','lbs','avail_date','snapshot'),
-           priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
-           frozen=('*init_wt','item','avail_date')):
+           attrs=('_logger','logger','item','size','init_wt','lbs','avail_date',
+                  'snapshot','plant'),
+           priv_attrs=('cur_wt','allocs','temp_allocs'),
+           frozen=('item','init_wt','avail_date','plant')):
     
     _logger = Logger()
 
@@ -71,10 +78,11 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
     def set_logger(cls, lgr):
         cls._logger = lgr
 
-    def __init__(self, id, item, lbs, avail_date):
+    def __init__(self, id, item, lbs, avail_date, plant):
         Data.__init__(self, id, 'Roll', RollView(self),
-                      priv={'init_wt': lbs, 'cur_wt': lbs, 'allocs': set(), 'temp_allocs': {}},
-                      item=item, avail_date=avail_date, snapshot=None)
+                      priv={'cur_wt': lbs, 'allocs': set(), 'temp_allocs': {}},
+                      init_wt=lbs, item=item, avail_date=avail_date, snapshot=None,
+                      plant=plant)
 
     def __repr__(self):
         return f'Roll(id={repr(self.id)}, item={repr(self.item)}, wt={round(self.lbs, ndigits=2)})'
@@ -105,7 +113,7 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
     @setter_like
     @logged_meth(alloc_args, alloc_ret)
     def allocate(self, lbs, snapshot = None):
-        ret = RollAlloc(self.id, lbs, self.avail_date)
+        ret = RollAlloc(self.id, lbs, self.avail_date, self.plant)
         if snapshot is None:
             if self.__cur_wt + 1 < lbs:
                 raise ValueError(f'{lbs:.2f} lbs exceeds remaining weight in roll ({self.lbs:.2f})')
@@ -138,7 +146,8 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
         
         self.__temp_allocs.clear()
 
-class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot'),
+class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot',
+                                     'init_wt','plant'),
                funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     pass

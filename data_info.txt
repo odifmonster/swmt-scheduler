@@ -79,7 +79,7 @@ ship_dates:
 pa_min_reqs:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
     excel_book="PA plant orders against Lam demand 20250901.xlsx"
-    sheet_name="Fab shortage 9-2"
+    sheet_name="Fab shortage 9-4"
     columns="PA Item", "Ply1 Item", "FAB req'd past due", "FAB req'd WK0", ...
-        "FAB req'd WK1", "FAB req'd WK2", "FAB req'd WK3", "FAB req'd WK4", "PA Fin", ...
-        "Inspection", "Frame", "Dye Orders"
+        "FAB req'd WK1", "FAB req'd WK2", "FAB req'd WK3", "FAB req'd WK4", ...
+        "FAB req'd WK5", "PA Fin", "Inspection", "Frame", "Dye Orders"

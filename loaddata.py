@@ -5,7 +5,7 @@ import pandas as pd, datetime as dt, re, math
 
 from app import style
 from app.support.logging import Logger
-from app.materials import Inventory, Roll
+from app.materials import roll, Inventory, Roll
 from app.schedule import DyeLot, Req, Demand, jet, Jet, Job
 
 import excel
@@ -33,7 +33,7 @@ def agg_sched_info[T, U](start: dt.datetime, get_val: Callable[[pd.DataFrame, in
 
     return res
 
-def load_inv(start: dt.datetime) -> Inventory:
+def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, float]]:
     inv = Inventory()
 
     fpath, pdargs = excel.get_excel_info('inventory')
@@ -54,7 +54,13 @@ def load_inv(start: dt.datetime) -> Inventory:
         grg = style.greige.get_style(grg_id)
         if grg is None: continue
 
-        r = Roll(inv_df.loc[i, 'Roll'], grg, inv_df.loc[i, 'Pounds'], dt.datetime.fromtimestamp(0))
+        roll_id = inv_df.loc[i, 'Roll']
+        if roll_id[:2] == 'WF':
+            plt = roll.WHITEVILLE
+        else:
+            plt = roll.FAIRYSTONE
+        r = Roll(inv_df.loc[i, 'Roll'], grg, inv_df.loc[i, 'Pounds'],
+                 dt.datetime.fromtimestamp(0), plt)
         inv.add(r)
 
     fpath, pdargs = excel.get_excel_info('incoming_si_greige')
@@ -68,7 +74,10 @@ def load_inv(start: dt.datetime) -> Inventory:
     today = dt.datetime.now()
     raw_mon = today + dt.timedelta(days=0-today.weekday())
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
+    max_date = monday + dt.timedelta(weeks=1, days=3)
     counter = 0
+
+    weekly_plan: dict[style.GreigeStyle, float] = {}
 
     for i in si_df.index:
         grg_id = si_df.loc[i, 'greige']
@@ -76,16 +85,24 @@ def load_inv(start: dt.datetime) -> Inventory:
         if grg is None:
             continue
 
+        if grg not in weekly_plan:
+            weekly_plan[grg] = 0
+
+        weekly_plan[grg] += si_df.loc[i, 'weekly_lbs']
+
         total_lbs = 0
         rolls_added = 0
         for wks in range(5):
             for days in range(5):
+                avail_date = monday + dt.timedelta(weeks=wks, days=days)
+                if avail_date <= today or avail_date >= max_date: continue
                 total_lbs += si_df.loc[i, 'daily_lbs']
                 nrolls = int(total_lbs / grg.roll_rng.average()) - rolls_added
 
                 for j in range(nrolls):
-                    r = Roll(f'ROLL{counter+j+1:04}', grg, grg.roll_rng.average(),
-                             monday + dt.timedelta(weeks=wks, days=days))
+                    r = Roll(f'FSPLAN{counter+j+1:06}', grg, grg.roll_rng.average(),
+                             monday + dt.timedelta(weeks=wks, days=days),
+                             roll.FAIRYSTONE)
                     inv.add(r)
 
                 counter += nrolls
@@ -97,21 +114,30 @@ def load_inv(start: dt.datetime) -> Inventory:
         if grg is None:
             continue
 
+        if grg not in weekly_plan:
+            weekly_plan[grg] = 0
+        
+        weekly_plan[grg] += wv_df.loc[i, 'weekly_lbs']
+
         total_lbs = 0
         rolls_added = 0
-        for wks in range(5):
+        for wks in range(1, 5):
+            avail_date = monday + dt.timedelta(weeks=wks, days=1)
+            if avail_date <= today or avail_date >= max_date: continue
+
             total_lbs += wv_df.loc[i, 'weekly_lbs']
             nrolls = int(total_lbs / grg.roll_rng.average()) - rolls_added
 
             for j in range(nrolls):
-                r = Roll(f'ROLL{counter+j+1:04}', grg, grg.roll_rng.average(),
-                         monday + dt.timedelta(weeks=wks, days=1))
+                r = Roll(f'WFPLAN{counter+j+1:06}', grg, grg.roll_rng.average(),
+                         monday + dt.timedelta(weeks=wks, days=1),
+                         roll.WHITEVILLE)
                 inv.add(r)
 
             counter += nrolls
             rolls_added += nrolls
     
-    return inv
+    return inv, weekly_plan
 
 def _parse_ship_day(day_str: str):
     day_str = day_str.lower()
@@ -195,7 +221,7 @@ def load_demand(start: dt.datetime) -> tuple[list[Req], Demand]:
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
 
     pairs = [(-1, 'past due')]
-    for i in range(5):
+    for i in range(6):
         pairs.append((i, f'WK{i}'))
 
     for i in reqs_df.index:

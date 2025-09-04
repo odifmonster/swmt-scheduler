@@ -96,7 +96,9 @@ class JetSched(HasID[int], SuperImmut,
     def get_needed_strip(self, item: fabric.FabricStyle):
         strip_id = item.get_strip(self.soil_level)
         strip = None if strip_id is None else fabric.get_style(strip_id)
-        if strip is None and self.jobs_since_strip >= 9:
+        if strip is None and (self.jobs_since_strip >= 9 or \
+            self.full_sched and item.color.shade == fabric.color.LIGHT and \
+            self.full_sched[-1].color.shade == fabric.color.BLACK):
             strip = fabric.get_style('STRIP')
         
         return strip
@@ -131,6 +133,8 @@ class JetSched(HasID[int], SuperImmut,
             strip_job = Job([DyeLot.new_strip(strip, self.last_job_end)], self.last_job_end)
             self.add_job(strip_job)
         min_date = max(map(lambda l: l.min_date, lots))
+        if min_date.weekday() == 6:
+            min_date += dt.timedelta(days=1)
         new_job = Job(lots, max(min_date, self.last_job_end), idx=idx)
         self.add_job(new_job)
         return new_job

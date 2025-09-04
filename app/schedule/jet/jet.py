@@ -8,9 +8,11 @@ from .job import Job
 from datetime import datetime, timedelta
 
 def insert_args(slf, lots, idx):
+    min_date = max(map(lambda l: l.min_date, lots))
     return {
         'desc1': 'Attempting to insert ' + ', '.join([l.id for l in lots]) + \
-            f' after {idx} job(s) on {slf.id}'
+            f' after {idx} job(s) on {slf.id}',
+        'desc2': f'min date={min_date.strftime('%m/%d')}'
     }
 
 def insert_ret(res):
@@ -80,16 +82,11 @@ class Jet(HasLogger, HasID[str], SuperImmut,
     
     def get_start_idx(self, lots: tuple[DyeLot, ...], due_date: datetime):
         curjobs = self.__cur_sched.jobs
-        rev_index = len(curjobs) - 1
-        for i in range(len(curjobs)):
-            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date) \
-                and lots[0].shade >= curjobs[rev_index - i].shade:
-                return rev_index - i + 1
-        for i in range(len(curjobs)):
-            if (curjobs[rev_index - i].end + lots[0].cycle_time + timedelta(hours=16) <= due_date):
-                return rev_index - i + 1
-        
-        return 0
+        for i, job in enumerate(curjobs):
+            tdelta = due_date - job.start
+            if tdelta.days < 18:
+                return i
+        return len(curjobs)
     
     @logged_meth(insert_args, insert_ret)
     def insert(self, lots, idx):
@@ -108,7 +105,7 @@ class Jet(HasLogger, HasID[str], SuperImmut,
                     break
         
         min_date = max(map(lambda l: l.min_date, lots))
-        if not newsched.can_add(lots) or (newsched.last_job_end > min_date and \
+        if not newsched.can_add(lots) or (newsched.last_job_end < min_date and \
             idx < len(cur_reg_jobs)):
             return None, []
     

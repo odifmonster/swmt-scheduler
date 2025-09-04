@@ -1,5 +1,6 @@
 from app.materials.roll.roll import SizeClass as SizeClass, LARGE as LARGE, NORMAL as NORMAL, \
-    SMALL as SMALL, HALF as HALF, PARTIAL as PARTIAL
+    SMALL as SMALL, HALF as HALF, PARTIAL as PARTIAL, KnitPlant as KnitPlant, \
+    FAIRYSTONE as FAIRYSTONE, WHITEVILLE as WHITEVILLE, ANY as ANY
 
 import datetime as dt
 from app.support import HasID, SuperImmut
@@ -9,27 +10,33 @@ from app.style import GreigeStyle
 from app.materials.inventory import Snapshot
 
 class RollAlloc(HasID[int], SuperImmut,
-                attrs=('_prefix','id','roll_id','lbs','avail_date'),
-                priv_attrs=('id',), frozen=('*id','roll_id','lbs','avail_date')):
+                attrs=('_prefix','id','roll_id','lbs','avail_date','plant'),
+                priv_attrs=('id',), frozen=('*id','roll_id','lbs','avail_date',
+                                            'plant')):
     """Simple class for representing an allocation of a piece of one roll."""
     roll_id: str
     lbs: float
     avail_date: dt.datetime
-    def __init__(self, roll_id: str, lbs: float, avail_date: dt.datetime) -> None: ...
+    plant: KnitPlant
+    def __init__(self, roll_id: str, lbs: float, avail_date: dt.datetime,
+                 plant: KnitPlant) -> None: ...
 
 class Roll(HasLogger, Data[str],
            mod_in_group=False,
-           attrs=('_logger','logger','item','size','lbs','avail_date','snapshot'),
-           priv_attrs=('init_wt','cur_wt','allocs','temp_allocs'),
-           frozen=('*init_wt','item','avail_date')):
+           attrs=('_logger','logger','item','size','lbs','avail_date','snapshot',
+                  'init_wt','plant'),
+           priv_attrs=('cur_wt','allocs','temp_allocs'),
+           frozen=('init_wt','item','avail_date','plant')):
     """
     A class for Roll objects.
     """
     item: GreigeStyle
+    init_wt: float
     avail_date: dt.datetime
     snapshot: Snapshot | None # The currently active inventory "snapshot"
+    plant: KnitPlant
     def __init__(self, id: str, item: GreigeStyle, lbs: float,
-                 avail_date: dt.datetime) -> None:
+                 avail_date: dt.datetime, plant: KnitPlant) -> None:
         """
         Initialize a new Roll object.
 
@@ -79,12 +86,15 @@ class Roll(HasLogger, Data[str],
         ...
     def view(self) -> RollView: ...
 
-class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot'),
+class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot',
+                                     'init_wt','plant'),
                funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     item: GreigeStyle
+    init_wt: float
     avail_date: dt.datetime
     snapshot: Snapshot | None # The currently active inventory "snapshot"
+    plant: KnitPlant
     def __init__(self, link: Roll) -> None: ...
     @property
     def lbs(self) -> float:

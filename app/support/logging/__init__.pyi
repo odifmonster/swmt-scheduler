@@ -46,7 +46,7 @@ def logged_func[**P, T](
         desc_ret: Callable[[T], ProcessDesc]) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
 def logged_meth[**P, C: HasLogger, T](
-        desc_args: Callable[P, ProcessDesc],
+        desc_args: Callable[Concatenate[C, P], ProcessDesc],
         desc_ret: Callable[[T], ProcessDesc]) \
             -> Callable[[Callable[Concatenate[C, P], T]], Callable[Concatenate[C, P], T]]: ...
 

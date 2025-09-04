@@ -32,7 +32,7 @@ class DyeLot(HasID[str], SuperImmut,
     def new_lot(cls, item: fabric.FabricStyle, ports):
         globals()['_CTR'] += 1
         new_id = f'LOT{globals()['_CTR']:05}'
-        min_date = max(map(lambda pl: pl.avail_date, ports))
+        min_date = max(map(lambda pl: pl.avail_date, ports)) + dt.timedelta(days=1)
         return cls(new_id, tuple(ports), item, None, item.cycle_time, dt.timedelta(hours=16),
                    min_date)
 

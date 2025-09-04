@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from typing import TypedDict, Literal
-import datetime as dt, pandas as pd
+import re, datetime as dt, pandas as pd
 
 from app.support.logging import Logger
 from app.materials import Inventory, Snapshot, RollAlloc, PortLoad
@@ -123,6 +123,11 @@ class RollsTable(TypedDict):
             case 'item': return lot.item.id
             case 'color': return lot.color.name
 
+class NewInvTable(TypedDict):
+    greige: list[str]
+    lbs: list[float]
+    avail_date: list[dt.datetime]
+
 class LateTable(TypedDict):
     item: list[str]
     due_date: list[dt.datetime]
@@ -221,6 +226,22 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
     
     return (job_ids, jobs_table), (lot_ids, lots_table), rolls_table
 
+type NewInvData = tuple[list[str], NewInvTable]
+
+def get_new_inv(inv: Inventory) -> NewInvData:
+    roll_ids: list[str] = []
+    inv_table = NewInvTable(greige=[], lbs=[], avail_date=[])
+
+    for rview in inv.itervalues():
+        if 'NEW' not in rview.id: continue
+
+        roll_ids.append(rview.id)
+        inv_table['greige'].append(rview.item.id)
+        inv_table['lbs'].append(rview.init_wt)
+        inv_table['avail_date'].append(rview.avail_date)
+    
+    return roll_ids, inv_table
+
 type LateData = tuple[list[str], LateTable]
 type LateDetailData = tuple[list[str], LateTableDetail]
 type MissingData = tuple[list[str], MissingTable]
@@ -277,16 +298,52 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, LateDetailData, MissingData
     
     return (order_ids, late_table), (late_ids, late_detail), (miss_ids, miss_table)
 
-def get_logs_table(lgr: Logger) -> tuple[list[int], LogsTable]:
-    proc_ids: list[int] = []
-    logs_table = LogsTable(caller=[], name=[], desc1=[], desc2=[], desc3=[])
+def get_logs_table(lgr: Logger) -> list[tuple[str, list[int], LogsTable]]:
+    tables: list[tuple[str, list[int], LogsTable]] = []
+
+    cur_pnum = 1
+    cur_date = None
+    date_idx = 0
+    cur_ids: list[int] = []
+    cur_table = LogsTable(caller=[], name=[], desc1=[], desc2=[], desc3=[])
 
     for process in sorted(lgr.processes, key=lambda p: p.id):
-        proc_ids.append(process.id)
-        logs_table['caller'].append(process.caller)
-        logs_table['name'].append(process.name)
-        logs_table['desc1'].append(process.desc1)
-        logs_table['desc2'].append(process.desc2)
-        logs_table['desc3'].append(process.desc3)
+        if process.name == 'schedule_order':
+            x: re.Match = re.match(r'.*Order\(id=(.*)\)', process.desc1)
+            order_id: str = x.group(1)
+            prefix = order_id[1:3]
+            pnum = int(prefix[1:])
+
+            x: re.Match = re.match(r'.*=(.*)', process.desc2)
+            day: str = x.group(1)
+            
+            if pnum > cur_pnum or pnum >= 5 and day != cur_date:
+                if cur_pnum >= 5:
+                    fname = f'p{cur_pnum}_logs_{date_idx}.tsv'
+                    date_idx += 1
+                    if pnum > cur_pnum:
+                        date_idx = 0
+                else:
+                    fname = f'p{cur_pnum}_logs.tsv'
+
+                tables.append((fname, cur_ids, cur_table))
+                cur_ids: list[int] = []
+                cur_table = LogsTable(caller=[], name=[], desc1=[], desc2=[],
+                                      desc3=[])
+                cur_pnum = pnum
+                cur_date = day
+
+        cur_ids.append(process.id)
+        cur_table['caller'].append(process.caller)
+        cur_table['name'].append(process.name)
+        cur_table['desc1'].append(process.desc1)
+        cur_table['desc2'].append(process.desc2)
+        cur_table['desc3'].append(process.desc3)
     
-    return proc_ids, logs_table
+    if cur_pnum >= 5:
+        fname = f'p{cur_pnum}_logs_{date_idx}.tsv'
+    else:
+        fname = f'p{cur_pnum}_logs.tsv'
+    tables.append((fname, cur_ids, cur_table))
+    
+    return tables

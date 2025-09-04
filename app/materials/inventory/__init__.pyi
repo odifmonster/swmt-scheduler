@@ -163,8 +163,8 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
         """
         ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None, max_date: dt.datetime | None = None) \
-                        -> Generator[PortLoad]:
+                       start: RollView | None = None, max_date: dt.datetime | None = None,
+                       create: bool = False) -> Generator[PortLoad]:
         """
         Generates all port loads in inventory using an optional start
         roll.
@@ -261,8 +261,8 @@ class InvView(GroupedView[str, GreigeStyle],
         """
         ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None, max_date: dt.datetime | None = None) \
-                        -> Generator[PortLoad]:
+                       start: RollView | None = None, max_date: dt.datetime | None = None,
+                       create: bool = False) -> Generator[PortLoad]:
         """
         Generates all port loads in inventory using an optional start
         roll.
