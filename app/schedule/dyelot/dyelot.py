@@ -9,14 +9,15 @@ _CTR = 0
 
 class DyeLot(HasID[str], SuperImmut,
              attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                    'start','end','yds','lbs','min_date'),
-             priv_attrs=('id','start','fin_time','view'),
-             frozen=('*id','*fin_time','*view','ports','item','cycle_time','min_date')):
+                    'start','end','yds','lbs','min_date','moveable'),
+             priv_attrs=('id','start','fin_time','view','alt_lbs'),
+             frozen=('*id','*fin_time','*view','*alt_lbs','ports','item','greige',
+                     'cycle_time','min_date','moveable')):
     
     @classmethod
-    def from_adaptive(cls, id, item, start, end):
-        return cls(id, tuple(), item, start, end - start, dt.timedelta(hours=0),
-                   start)
+    def from_adaptive(cls, id, item, start, end, alt_lbs = 0):
+        return cls(id, tuple(), item, item.greige, start, end - start,
+                   dt.timedelta(hours=0), start, alt_lbs=alt_lbs, moveable=False)
     
     @classmethod
     def new_strip(cls, item: fabric.FabricStyle, start):
@@ -25,22 +26,23 @@ class DyeLot(HasID[str], SuperImmut,
         
         globals()['_CTR'] += 1
         new_id = f'{item.id}{globals()['_CTR']:05}'
-        return cls(new_id, tuple(), item, start, item.cycle_time, dt.timedelta(hours=0),
-                   start)
+        return cls(new_id, tuple(), item, item.greige, start, item.cycle_time,
+                   dt.timedelta(hours=0), start)
     
     @classmethod
-    def new_lot(cls, item: fabric.FabricStyle, ports):
+    def new_lot(cls, item: fabric.FabricStyle, greige, ports):
         globals()['_CTR'] += 1
         new_id = f'LOT{globals()['_CTR']:05}'
         min_date = max(map(lambda pl: pl.avail_date, ports)) + dt.timedelta(days=1)
-        return cls(new_id, tuple(ports), item, None, item.cycle_time, dt.timedelta(hours=16),
-                   min_date)
+        return cls(new_id, tuple(ports), item, greige, None, item.cycle_time,
+                   dt.timedelta(hours=16), min_date)
 
-    def __init__(self, id, ports, item, start, cycle_time, fin_time, min_date):
+    def __init__(self, id, ports, item, greige, start, cycle_time, fin_time, min_date,
+                 alt_lbs = None, moveable = True):
         SuperImmut.__init__(self, priv={'id': id, 'start': start, 'fin_time': fin_time,
-                                        'view': DyeLotView(self)},
-                            ports=ports, item=item, cycle_time=cycle_time,
-                            min_date=min_date)
+                                        'view': DyeLotView(self), 'alt_lbs': alt_lbs},
+                            ports=ports, item=item, greige=greige, cycle_time=cycle_time,
+                            min_date=min_date, moveable=moveable)
         
     def __repr__(self):
         start = 'N/A' if self.start is None else self.start.strftime('%m/%d %H:%M')
@@ -54,10 +56,6 @@ class DyeLot(HasID[str], SuperImmut,
     @property
     def id(self):
         return self.__id
-    
-    @property
-    def greige(self):
-        return self.item.greige
     
     @property
     def color(self):
@@ -88,6 +86,8 @@ class DyeLot(HasID[str], SuperImmut,
     
     @property
     def lbs(self):
+        if self.__alt_lbs is not None:
+            return self.__alt_lbs
         return sum(map(lambda p: p.lbs, self.ports))
     
     def view(self):
@@ -95,6 +95,6 @@ class DyeLot(HasID[str], SuperImmut,
     
 class DyeLotView(SuperView[DyeLot],
                  attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                        'start','end','yds','lbs','min_date'),
+                        'start','end','yds','lbs','min_date','moveable'),
                  dunders=('eq','hash','repr')):
     pass

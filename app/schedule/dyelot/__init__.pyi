@@ -6,10 +6,10 @@ from app.materials.inventory import PortLoad
 
 class DyeLot(HasID[str], SuperImmut,
              attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                    'start','end','yds','lbs','min_date'),
-             priv_attrs=('id','start','fin_time','view'),
-             frozen=('*id','*fin_time','*view','ports','item','cycle_time',
-                     'min_date')):
+                    'start','end','yds','lbs','min_date','moveable'),
+             priv_attrs=('id','start','fin_time','view','alt_lbs'),
+             frozen=('*id','*fin_time','*view','*alt_lbs','ports','item','greige',
+                     'cycle_time','min_date','moveable')):
     """
     A class for DyeLot objects. Can be linked to multiple jobs
     for the purpose of comparing schedules. All attributes
@@ -17,7 +17,7 @@ class DyeLot(HasID[str], SuperImmut,
     """
     @classmethod
     def from_adaptive(cls, id: str, item: FabricStyle, start: dt.datetime,
-                      end: dt.datetime) -> 'DyeLot':
+                      end: dt.datetime, alt_lbs: float = 0) -> 'DyeLot':
         """
         Create a new DyeLot object using data from adaptive. The
         resulting object has a fabric style of EMPTY unless the
@@ -32,7 +32,8 @@ class DyeLot(HasID[str], SuperImmut,
         """
         ...
     @classmethod
-    def new_lot(cls, item: FabricStyle, ports: list[PortLoad]) -> 'DyeLot':
+    def new_lot(cls, item: FabricStyle, greige: GreigeStyle,
+                ports: list[PortLoad]) -> 'DyeLot':
         """
         Create a new DyeLot for a particular fabric item using the
         provided roll pieces.
@@ -40,11 +41,14 @@ class DyeLot(HasID[str], SuperImmut,
         ...
     ports: tuple[PortLoad, ...]
     item: FabricStyle
+    greige: GreigeStyle
     cycle_time: dt.timedelta
     min_date: dt.datetime
+    moveable: bool
     def __init__(self, id: str, ports: tuple[PortLoad, ...], item: FabricStyle,
-                 start: dt.datetime | None, cycle_time: dt.timedelta,
-                 fin_time: dt.timedelta, min_date: dt.datetime) -> None:
+                 greige: GreigeStyle, start: dt.datetime | None, cycle_time: dt.timedelta,
+                 fin_time: dt.timedelta, min_date: dt.datetime,
+                 alt_lbs: float | None = None, moveable: bool = True) -> None:
         """
         Initialize a new DyeLot object.
 
@@ -67,10 +71,6 @@ class DyeLot(HasID[str], SuperImmut,
         """
         ...
     def __repr__(self) -> str: ...
-    @property
-    def greige(self) -> GreigeStyle:
-        """The greige style used for this DyeLot."""
-        ...
     @property
     def color(self) -> Color:
         """The color of this DyeLot."""
@@ -106,20 +106,18 @@ class DyeLot(HasID[str], SuperImmut,
 
 class DyeLotView(SuperView[DyeLot],
                  attrs=('_prefix','id','ports','item','greige','shade','cycle_time',
-                        'start','end','yds','lbs','min_date'),
+                        'start','end','yds','lbs','min_date','moveable'),
                  dunders=('eq','hash','repr')):
     """A class for views of DyeLot objects."""
     ports: tuple[PortLoad, ...]
     item: FabricStyle
+    greige: GreigeStyle
     cycle_time: dt.timedelta
     min_date: dt.datetime
+    moveable: bool
     def __eq__(self, other: 'DyeLotView | DyeLot') -> bool: ...
     def __hash__(self) -> int: ...
     def __repr__(self) -> str: ...
-    @property
-    def greige(self) -> GreigeStyle:
-        """The greige style used for this DyeLot."""
-        ...
     @property
     def color(self) -> Color:
         """The color of this DyeLot."""

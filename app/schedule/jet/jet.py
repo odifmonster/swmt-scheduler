@@ -84,7 +84,7 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         curjobs = self.__cur_sched.jobs
         for i, job in enumerate(curjobs):
             tdelta = due_date - job.start
-            if tdelta.days < 18:
+            if tdelta.days < 21:
                 return i
         return len(curjobs)
     
@@ -100,7 +100,8 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         if idx > 0:
             last_job_before = cur_reg_jobs[idx-1]
             for job in cur_jobs:
-                newsched.add_job(job)
+                moveable = all(map(lambda l: l.moveable, job.lots))
+                newsched.add_job(job, force=not moveable)
                 if job.id == last_job_before.id:
                     break
         
@@ -114,6 +115,8 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         for job in self.__cur_sched.jobs[idx:]:
             if newsched.can_add(tuple(job.lots)):
                 newjobs.append(newsched.add_lots(tuple(job.lots), -1))
+            elif any(map(lambda l: not l.moveable, job.lots)):
+                return None, []
         
         return newsched, newjobs
     

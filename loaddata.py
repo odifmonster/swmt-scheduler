@@ -46,6 +46,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     #                               _reducer, set())
 
     inv_df = inv_df[(inv_df['Quality'] == 'A') & inv_df['ASSIGNED_ORDER'].isna()]
+    inv_df = inv_df[inv_df['Warehouse'] != 'CC']
 
     for i in inv_df.index:
         inv_id = inv_df.loc[i, 'Item']
@@ -65,13 +66,14 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
     fpath, pdargs = excel.get_excel_info('incoming_si_greige')
     si_df = pd.read_excel(fpath, **pdargs)
-    si_df['greige'] = si_df['greige'].str.upper()
+    si_df['Greige'] = si_df['Greige'].str.upper()
 
     fpath, pdargs = excel.get_excel_info('incoming_wv_greige')
     wv_df = pd.read_excel(fpath, **pdargs)
-    wv_df['greige'] = wv_df['greige'].str.upper()
+    wv_df['Greige'] = wv_df['Greige'].str.upper()
 
     today = dt.datetime.now()
+    today = dt.datetime(today.year, today.month, today.day)
     raw_mon = today + dt.timedelta(days=0-today.weekday())
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
     max_date = monday + dt.timedelta(weeks=1, days=3)
@@ -80,28 +82,33 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     weekly_plan: dict[style.GreigeStyle, float] = {}
 
     for i in si_df.index:
-        grg_id = si_df.loc[i, 'greige']
+        grg_id = si_df.loc[i, 'Greige']
         grg = style.greige.get_style(grg_id)
         if grg is None:
             continue
 
-        if grg not in weekly_plan:
-            weekly_plan[grg] = 0
+        # if grg not in weekly_plan:
+        #     weekly_plan[grg] = 0
 
-        weekly_plan[grg] += si_df.loc[i, 'weekly_lbs']
+        # weekly_plan[grg] += si_df.loc[i, 'weekly_lbs']
 
         total_lbs = 0
         rolls_added = 0
+        if si_df.loc[i, 'Expected SI daily'] <= 0: continue
+
         for wks in range(5):
             for days in range(5):
-                avail_date = monday + dt.timedelta(weeks=wks, days=days)
-                if avail_date <= today or avail_date >= max_date: continue
-                total_lbs += si_df.loc[i, 'daily_lbs']
-                nrolls = int(total_lbs / grg.roll_rng.average()) - rolls_added
+                avail_date = monday + dt.timedelta(weeks=wks, days=days, hours=8)
+                if avail_date < today or avail_date > max_date: continue
+                total_lbs += si_df.loc[i, 'Expected SI daily']
+                wt = grg.roll_rng.average()
+                if grg.id == 'ANMUT-C':
+                    wt = grg.port_rng.average()
+                nrolls = int(total_lbs / wt) - rolls_added
 
                 for j in range(nrolls):
-                    r = Roll(f'FSPLAN{counter+j+1:06}', grg, grg.roll_rng.average(),
-                             monday + dt.timedelta(weeks=wks, days=days),
+                    r = Roll(f'FSPLAN{counter+j+1:06}', grg, wt,
+                             monday + dt.timedelta(weeks=wks, days=days, hours=10),
                              roll.FAIRYSTONE)
                     inv.add(r)
 
@@ -109,28 +116,34 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
                 rolls_added += nrolls
 
     for i in wv_df.index:
-        grg_id = wv_df.loc[i, 'greige']
+        grg_id = wv_df.loc[i, 'Greige']
         grg = style.greige.get_style(grg_id)
         if grg is None:
             continue
 
-        if grg not in weekly_plan:
-            weekly_plan[grg] = 0
+        # if grg not in weekly_plan:
+        #     weekly_plan[grg] = 0
         
-        weekly_plan[grg] += wv_df.loc[i, 'weekly_lbs']
+        # weekly_plan[grg] += wv_df.loc[i, 'weekly_lbs']
 
         total_lbs = 0
         rolls_added = 0
-        for wks in range(1, 5):
-            avail_date = monday + dt.timedelta(weeks=wks, days=1)
-            if avail_date <= today or avail_date >= max_date: continue
+        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 9/9'] / 2
+        if avg_wkly_lbs <= 0: continue
 
-            total_lbs += wv_df.loc[i, 'weekly_lbs']
-            nrolls = int(total_lbs / grg.roll_rng.average()) - rolls_added
+        for wks in range(5):
+            avail_date = monday + dt.timedelta(weeks=wks, days=1)
+            if avail_date < today or avail_date > max_date: continue
+
+            total_lbs += avg_wkly_lbs
+            wt = grg.roll_rng.average()
+            if grg.id == 'ANMUT-C':
+                wt = grg.port_rng.average()
+            nrolls = int(total_lbs / wt) - rolls_added
 
             for j in range(nrolls):
-                r = Roll(f'WFPLAN{counter+j+1:06}', grg, grg.roll_rng.average(),
-                         monday + dt.timedelta(weeks=wks, days=1),
+                r = Roll(f'WFPLAN{counter+j+1:06}', grg, wt,
+                         monday + dt.timedelta(weeks=wks, days=1, hours=10),
                          roll.WHITEVILLE)
                 inv.add(r)
 
@@ -175,7 +188,7 @@ def _map_ship_day(item, ship_days_data):
         return ship_days_data[item]
     return math.inf
 
-def load_demand(start: dt.datetime) -> tuple[list[Req], Demand]:
+def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], Demand]:
     reqs: list[Req] = []
     dmnd = Demand()
 
@@ -232,11 +245,14 @@ def load_demand(start: dt.datetime) -> tuple[list[Req], Demand]:
             continue
 
         fin = reqs_df.loc[i, 'PA Fin']
-        insp = reqs_df.loc[i, 'Inspection']
-        frame = reqs_df.loc[i, 'Frame']
+        insp = reqs_df.loc[i, 'Inspection'] * 0.9
+        frame = reqs_df.loc[i, 'Frame'] * 0.85
         on_sched = reqs_df.loc[i, 'Dye Orders']
 
-        total_avail = fin + insp + frame + on_sched
+        if new_only:
+            total_avail = fin + insp + frame + on_sched
+        else:
+            total_avail = fin
         # if fab.id in not_avail:
         #     total_avail -= not_avail[fab.id]
 
@@ -245,6 +261,10 @@ def load_demand(start: dt.datetime) -> tuple[list[Req], Demand]:
 
         for wk_delta, col_end in pairs:
             req_raw = reqs_df.loc[i, f'FAB req\'d {col_end}']
+            if col_end == 'past due':
+                pnum = -1
+            else:
+                pnum = int(col_end[2:])
             wkday = reqs_df.loc[i, 'Ship Day']
             if wkday == math.inf:
                 wkday = 2
@@ -256,7 +276,7 @@ def load_demand(start: dt.datetime) -> tuple[list[Req], Demand]:
 
             cum_req += req_raw
             cur_req_yds = max(0, min(req_raw, cum_req - total_avail))
-            dates_yds.append((due_date, cur_req_yds))
+            dates_yds.append((pnum, due_date, cur_req_yds))
 
         x = Req(fab, dates_yds)
         for o in x.orders:
@@ -271,28 +291,32 @@ def load_jets(start: dt.datetime, end: dt.datetime) -> list[Jet]:
     fpath, pdargs = excel.get_excel_info('adaptive_orders')
     df = pd.read_excel(fpath, **pdargs)
     df = df[~(df['StartTime'].isna() | df['EndTime'].isna())]
-
-    for i in df.index:
-        cur_jet = jet.get_by_alt_id(df.loc[i, 'Machine'])
-        if cur_jet is None:
-            continue
-
-        job_id = df.loc[i, 'DyelotID2']
-        job_start = df.loc[i, 'StartTime']
-        # if job_start > start: continue
-
-        job_end = df.loc[i, 'EndTime']
-        job_item = style.fabric.get_style(df.loc[i, 'FinItem'])
-        if job_item is None:
-            job_item = style.fabric.get_style('EMPTY')
-
-        cur_lot = DyeLot.from_adaptive(job_id, job_item, job_start, job_end)
-        cur_job = Job([cur_lot], job_start)
-        cur_jet.add_adaptive_job(cur_job)
+    moveable_df = df
     
     jets = jet.get_jets()
     for j in jets:
         j.init_new_sched()
+
+    for i in moveable_df.index:
+        cur_jet = jet.get_by_alt_id(moveable_df.loc[i, 'Machine'])
+        if cur_jet is None: continue
+
+        job_id = moveable_df.loc[i, 'DyelotID2']
+        job_start = moveable_df.loc[i, 'StartTime']
+        job_end = moveable_df.loc[i, 'EndTime']
+        job_item = style.fabric.get_style(moveable_df.loc[i, 'FinItem'])
+        if job_item is None:
+            job_item = style.fabric.get_style('EMPTY')
+
+        if not pd.isna(moveable_df.loc[i, 'Qty']):
+            job_lbs = moveable_df.loc[i, 'Qty'] / job_item.yld
+        else:
+            job_lbs = 0
+
+        cur_lot = DyeLot.from_adaptive(job_id, job_item, job_start, job_end,
+                                       alt_lbs=job_lbs)
+        cur_job = Job([cur_lot], job_start)
+        cur_jet.cur_sched.add_job(cur_job, force=True)
     
     return jets
 

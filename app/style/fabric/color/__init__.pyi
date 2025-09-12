@@ -1,14 +1,14 @@
 from app.style.fabric.color.color import ShadeGrade as ShadeGrade, HEAVYSTRIP as HEAVYSTRIP, \
-    STRIP as STRIP, EMPTY as EMPTY, SOLUTION as SOLUTION, LIGHT as LIGHT, \
-    MEDIUM as MEDIUM, BLACK as BLACK
+    STRIP as STRIP, EMPTY as EMPTY, SOLUTION as SOLUTION, LIGHT0 as LIGHT0, \
+    LIGHT as LIGHT, MEDIUM as MEDIUM, BLACK as BLACK
 
 from typing import Literal
 import datetime as dt
 from app.support import HasID, SuperImmut
 
-type _RawShadeName = Literal['HEAVYSTRIP', 'STRIP', 'EMPTY', 'SOLTUION', 'LIGHT',
-                             'MEDIUM', 'BLACK']
-type _RawShadeInt = Literal[1, 2, 3, 4, 5, 6, 7]
+type _RawShadeName = Literal['HEAVYSTRIP', 'STRIP', 'EMPTY', 'SOLTUION', 'LIGHT0',
+                             'LIGHT', 'MEDIUM', 'BLACK']
+type _RawShadeInt = Literal[0, 1, 2, 3, 4, 5, 6, 7]
 type _RawShadeVal = _RawShadeName | _RawShadeInt
 
 class Color(HasID[str], SuperImmut,

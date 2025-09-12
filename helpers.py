@@ -5,7 +5,7 @@ import re, datetime as dt, pandas as pd
 
 from app.support.logging import Logger
 from app.materials import Inventory, Snapshot, RollAlloc, PortLoad
-from app.schedule import DyeLot, Demand, Jet, Job
+from app.schedule import DyeLot, Demand, Jet, Job, Req, Order
 
 def add_back_piece(inv: Inventory, piece: RollAlloc, snapshot: Snapshot) -> None:
     roll = inv.remove(inv.get(piece.roll_id), remkey=True)
@@ -84,8 +84,13 @@ class LotsTable(TypedDict):
             case 'lbs': return lot.lbs
             case 'yds': return lot.yds
 
+class LotPnumsTable(TypedDict):
+    order: list[str]
+    pnum: list[int]
+    due_date: list[dt.datetime]
+
 type RollsCol = Literal['jet', 'job', 'lot', 'greige', 'roll1', 'lbs1', 'roll2',
-                        'lbs2', 'avail_date', 'start', 'item', 'color']
+                        'lbs2', 'avail_date', 'start', 'item', 'color', 'order_yds']
 
 class RollsTable(TypedDict):
     jet: list[str]
@@ -100,6 +105,7 @@ class RollsTable(TypedDict):
     start: list[dt.datetime]
     item: list[str]
     color: list[str]
+    order_yds: list[float]
 
     @classmethod
     def get_col_info(cls, col: RollsCol, jet: Jet, job: Job, lot: DyeLot, pl: PortLoad):
@@ -122,6 +128,7 @@ class RollsTable(TypedDict):
             case 'start': return job.start
             case 'item': return lot.item.id
             case 'color': return lot.color.name
+            case 'order_yds': return lot.yds
 
 class NewInvTable(TypedDict):
     greige: list[str]
@@ -203,7 +210,8 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
                            greige=[], color=[], lbs=[], yds=[])
     
     rolls_table = RollsTable(jet=[], job=[], lot=[], greige=[], roll1=[], lbs1=[], roll2=[],
-                             lbs2=[], avail_date=[], start=[], item=[], color=[])
+                             lbs2=[], avail_date=[], start=[], item=[], color=[],
+                             order_yds=[])
     
     for jet in jets:
         for job in jet.jobs:
@@ -220,11 +228,39 @@ def get_sched_tables(jets: list[Jet]) -> tuple[JobsData, LotsData, RollsTable]:
                 for port in lot.ports:
                     for roll_col in ('jet', 'job', 'lot', 'greige', 'roll1', 'lbs1',
                                      'roll2', 'lbs2', 'avail_date', 'start', 'item',
-                                     'color'):
+                                     'color', 'order_yds'):
                         cur_info = RollsTable.get_col_info(roll_col, jet, job, lot, port)
                         rolls_table[roll_col].append(cur_info)
     
     return (job_ids, jobs_table), (lot_ids, lots_table), rolls_table
+
+def get_lot_pnums(reqs: list[Req]) -> tuple[list[str], LotPnumsTable]:
+    lot_ids: list[str] = []
+    pnum_table = LotPnumsTable(order=[], pnum=[], due_date=[])
+
+    for req in reqs:
+        has_start = list(filter(lambda l: l.start is not None, req.lots))
+        lots: list[DyeLot] = sorted(has_start, key=lambda l: l.start)
+        orders: list[Order] = sorted(req.orders, key=lambda o: o.due_date)
+
+        o_idx = 0
+        l_idx = 0
+        total_prod_yds = 0
+        total_req_yds = 0
+        while o_idx < len(orders) and l_idx < len(lots):
+            lot_ids.append(lots[l_idx].id)
+            pnum_table['order'].append(orders[o_idx].id)
+            pnum_table['pnum'].append(orders[o_idx].pnum)
+            pnum_table['due_date'].append(orders[o_idx].due_date)
+
+            if total_prod_yds + lots[l_idx].yds >= total_req_yds + orders[o_idx].init_yds:
+                total_req_yds += orders[o_idx].init_yds
+                o_idx += 1
+            else:
+                total_prod_yds += lots[l_idx].yds
+                l_idx += 1
+
+    return lot_ids, pnum_table
 
 type NewInvData = tuple[list[str], NewInvTable]
 

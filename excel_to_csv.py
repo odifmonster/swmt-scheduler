@@ -18,7 +18,9 @@ def run_trans_converts(df: pd.DataFrame) -> pd.DataFrame:
 
 def run_fabric_converts(df: pd.DataFrame) -> pd.DataFrame:
     df['GREIGE ITEM'] = df['GREIGE ITEM'].str.upper()
-    sub_df = df[~df['COLOR NUMBER'].isna() & ~df['Yield'].isna() & ~df['SHADE RATING'].isna() & ~df['PA FIN ITEM'].isna()]
+    sub_df = df[(df['STATUS'] == 'A') | df['STATUS'].isna()]
+    sub_df = sub_df[~sub_df['COLOR NUMBER'].isna() & ~sub_df['Yield'].isna() & ~sub_df['SHADE RATING'].isna()]
+    sub_df = sub_df[~sub_df['PA FIN ITEM'].isna()]
     sub_df = sub_df[~sub_df['GREIGE ITEM'].str.contains('CAT')]
     return sub_df
 
@@ -45,7 +47,13 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
                 if not pd.isna(df.loc[i, f'JET {jeti}']):
                     jets.append(f'Jet-{jeti:02}')
             row: list[str] = []
-            row.append(df.loc[i, 'PA FIN ITEM'])
+            master = df.loc[i, 'STYLE'].strip()
+            color = df.loc[i, 'COLOR NUMBER']
+            width = df.loc[i, 'WD']
+            if width == int(width):
+                width = int(width)
+
+            row.append(f'FF {master}-{color:05}-{width}')
             row.append(df.loc[i, 'GREIGE ITEM'])
             row.append(df.loc[i, 'STYLE'])
             row.append(df.loc[i, 'COLOR NAME'])

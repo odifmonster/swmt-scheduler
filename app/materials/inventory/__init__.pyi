@@ -11,6 +11,7 @@ from app.materials.roll import SizeClass, Roll, RollView, RollAlloc
 class PortLoad(NamedTuple):
     roll1: RollAlloc
     roll2: RollAlloc | None
+    greige: GreigeStyle
     lbs: float
     avail_date: dt.datetime
 
@@ -106,7 +107,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView, remkey: bool = False) -> Roll: ...
-    def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange,
+    def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange, n_ports: int,
                    max_date: dt.datetime | None = None) -> Generator[RollView]:
         """
         Generates the valid "starting" greige rolls in inventory for
@@ -163,7 +164,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
         """
         ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None, max_date: dt.datetime | None = None,
+                       n_ports: int, start: RollView | None = None, max_date: dt.datetime | None = None,
                        create: bool = False) -> Generator[PortLoad]:
         """
         Generates all port loads in inventory using an optional start

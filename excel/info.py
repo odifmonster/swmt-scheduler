@@ -114,7 +114,8 @@ def get_excel_info(name: ParsedKey) -> tuple[os.PathLike, PandasKWArgs]:
     res = { k: v for k, v in inf.items() if k != 'fpath' }
     match name:
         case 'fabric_items':
-            str_cols = ['GREIGE ITEM', 'STYLE', 'COLOR NAME', 'COLOR NUMBER', 'PA FIN ITEM']
+            str_cols = ['GREIGE ITEM', 'STYLE', 'STATUS', 'COLOR NAME', 'COLOR NUMBER',
+                        'PA FIN ITEM']
             str_cols += list(map(lambda i: f'JET {i}', (1,2,3,4,7,8,9,10)))
             res['dtype'] = { col: 'string' for col in str_cols }
         case 'greige_sizes':
@@ -125,7 +126,7 @@ def get_excel_info(name: ParsedKey) -> tuple[os.PathLike, PandasKWArgs]:
             res['dtype'] = { 'jet': 'string', 'alt_jet': 'string' }
         case 'inventory':
             res['dtype'] = { 'Roll': 'string', 'Item': 'string', 'Quality': 'string',
-                             'ASSIGNED_ORDER': 'string' }
+                             'ASSIGNED_ORDER': 'string', 'Warehouse': 'string' }
         case 'ship_dates':
             res['dtype'] = 'string'
         case 'incoming_si_greige' | 'incoming_wv_greige':

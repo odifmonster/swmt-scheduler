@@ -15,10 +15,24 @@ def _first_monday_after(date: dt.datetime):
     monday = date + dt.timedelta(days=days_to_mon)
     return dt.datetime(year=monday.year, month=monday.month, day=monday.day)
 
+def _max_color(clr1, clr2):
+    if color.BLACK in (clr1, clr2):
+        return color.BLACK
+    if color.SOLUTION in (clr1, clr2):
+        return color.SOLUTION
+    if color.MEDIUM in (clr1, clr2):
+        return color.MEDIUM
+    if color.LIGHT in (clr1, clr2):
+        return color.LIGHT
+    if color.LIGHT0 in (clr1, clr2):
+        return color.LIGHT0
+    return color.EMPTY
+
 class JetSched(HasID[int], SuperImmut,
                attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
                       'last_job_end','jobs'),
-               priv_attrs=('id','init_sched','soil','jss','date_rng','jobs'),
+               priv_attrs=('id','init_sched','soil','jss','date_rng','jobs',
+                           'max_ss'),
                frozen=('*id','*init_sched','*date_rng')):
     
     def __init__(self, date_rng: DateRange, prev_sched = None):
@@ -30,7 +44,8 @@ class JetSched(HasID[int], SuperImmut,
         globals()['_CTR'] += 1
         SuperImmut.__init__(self, priv={'id': globals()['_CTR'], 'init_sched': prev_sched,
                                         'soil': init_soil, 'jss': init_jobs,
-                                        'date_rng': date_rng, 'jobs': []})
+                                        'date_rng': date_rng, 'jobs': [],
+                                        'max_ss': color.EMPTY})
     
     @property
     def _prefix(self):
@@ -54,7 +69,7 @@ class JetSched(HasID[int], SuperImmut,
         if not self.__jobs:
             lje = self.__date_rng.minval
         else:
-            lje = self.__jobs[-1].end
+            lje = max(self.__date_rng.minval, self.__jobs[-1].end)
 
         if lje.weekday() > 4 and (lje.weekday() == 6 or lje.hour >= 20):
             return _first_monday_after(lje)
@@ -94,11 +109,19 @@ class JetSched(HasID[int], SuperImmut,
         return JetSched(self.__date_rng, prev_sched=self.__init_sched)
     
     def get_needed_strip(self, item: fabric.FabricStyle):
-        strip_id = item.get_strip(self.soil_level)
-        strip = None if strip_id is None else fabric.get_style(strip_id)
-        if strip is None and (self.jobs_since_strip >= 9 or \
-            self.full_sched and item.color.shade == fabric.color.LIGHT and \
-            self.full_sched[-1].color.shade == fabric.color.BLACK):
+        strip = None
+        if item.color.shade in (color.LIGHT, color.LIGHT0):
+            if self.__max_ss in (color.MEDIUM, color.SOLUTION):
+                strip = fabric.get_style('STRIP')
+            elif self.__max_ss == color.BLACK:
+                strip = fabric.get_style('HEAVYSTRIP')
+        if item.color.shade == color.MEDIUM:
+            if self.__max_ss == color.SOLUTION:
+                strip = fabric.get_style('STRIP')
+            elif self.__max_ss == color.BLACK:
+                strip = fabric.get_style('HEAVYSTRIP')
+
+        if strip is None and self.jobs_since_strip >= 9:
             strip = fabric.get_style('STRIP')
         
         return strip
@@ -108,12 +131,31 @@ class JetSched(HasID[int], SuperImmut,
         strip = self.get_needed_strip(lots[0].item)
 
         if not strip is None:
+            if lots[0].shade == color.LIGHT0:
+                return False
             total_cycle += strip.cycle_time
+
+        if self.jobs_since_strip == 0 and lots[0].shade == color.LIGHT0:
+            return False
         
-        return total_cycle <= self.rem_time
+        min_date = max(map(lambda l: l.min_date, lots))
+        moveable = all(map(lambda l: l.moveable, lots))
+        if moveable and min_date.weekday() == 6:
+            min_date += dt.timedelta(days=1)
+        if not moveable:
+            new_start = min_date
+        else:
+            new_start = max(min_date, self.last_job_end)
+        
+        if self.last_job_end - dt.timedelta(minutes=1) > new_start:
+            return False
+        
+        diff = new_start - self.last_job_end
+        return total_cycle + diff <= self.rem_time
     
     def add_job(self, job: Job, force = False):
         if not force and job.start + dt.timedelta(minutes=1) < self.last_job_end:
+            print(force)
             new_start = job.start.strftime('%m/%d %H:%M')
             cur_end = self.last_job_end.strftime('%m/%d %H:%M')
             raise ValueError(f'Cannot add job with start time {new_start} to schedule with last job ending at {cur_end}')
@@ -121,7 +163,9 @@ class JetSched(HasID[int], SuperImmut,
         self.__jobs.append(job)
         if job.shade in (color.STRIP, color.HEAVYSTRIP):
             self.__jss = 0
+            self.__max_ss = job.shade
         else:
+            self.__max_ss = _max_color(job.shade, self.__max_ss)
             self.__jss += 1
 
         self.__soil += job.color.soil
@@ -133,10 +177,17 @@ class JetSched(HasID[int], SuperImmut,
             strip_job = Job([DyeLot.new_strip(strip, self.last_job_end)], self.last_job_end)
             self.add_job(strip_job)
         min_date = max(map(lambda l: l.min_date, lots))
+        moveable = all(map(lambda l: l.moveable, lots))
+        force = False
         if min_date.weekday() == 6:
             min_date += dt.timedelta(days=1)
-        new_job = Job(lots, max(min_date, self.last_job_end), idx=idx)
-        self.add_job(new_job)
+        if not moveable:
+            force = True
+            new_start = min_date
+        else:
+            new_start = max(min_date, self.last_job_end)
+        new_job = Job(lots, new_start, idx=idx)
+        self.add_job(new_job, force=force)
         return new_job
     
     def activate(self):

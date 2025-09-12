@@ -35,8 +35,9 @@ class Logger:
         return self._get_insert_idx(id, lo, mid)
 
     def add_process(self, p: Process):
-        idx = self._get_insert_idx(p.id, 0, len(self.processes))
-        self.processes.insert(idx, p)
+        pass
+        # idx = self._get_insert_idx(p.id, 0, len(self.processes))
+        # self.processes.insert(idx, p)
     
     def push_caller(self, p: Process):
         self.callers.append(p.id)

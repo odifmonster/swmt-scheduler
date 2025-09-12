@@ -39,7 +39,7 @@ def init():
     globals()['_FABRIC_STYLES']['STRIP'] = \
         FabricStyle('STRIP', none_grg, 'STRIP', 2, 'STRIP', 1, all_jets)
     globals()['_FABRIC_STYLES']['EMPTY'] = \
-        FabricStyle('EMPTY', none_grg, 'EMPTY', 3, 'EMPTY', 1, all_jets)
+        FabricStyle('EMPTY', none_grg, 'EMPTY', 3, 'EMPTY', 2.2, all_jets)
 
 def get_style(id):
     if id not in globals()['_FABRIC_STYLES']:

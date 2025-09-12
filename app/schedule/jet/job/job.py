@@ -7,17 +7,20 @@ _CTR = 20
 
 class Job:
     def __init__(self, dyelots: list[DyeLot], start: datetime, idx = None):
-        self.id = ""
+        if len(dyelots) == 1 and dyelots[0].id[:3] != 'LOT':
+            self.id = dyelots[0].id
+        else:
+            self.id = ""
 
-        for dyelot in dyelots:
-            self.id += dyelot.id
+            for dyelot in dyelots:
+                self.id += dyelot.id
 
-        if idx is not None:
-            if idx >= 0:
-                self.id+= f"@{idx}"
-            else:
-                globals()['_CTR'] += 1
-                self.id += f'@{globals()['_CTR']}'
+            if idx is not None:
+                if idx >= 0:
+                    self.id+= f"@{idx}"
+                else:
+                    globals()['_CTR'] += 1
+                    self.id += f'@{globals()['_CTR']}'
 
         self.lots = dyelots
         self.start = start

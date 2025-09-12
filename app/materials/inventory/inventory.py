@@ -11,6 +11,8 @@ from ..roll import Roll, RollView, RollAlloc, SizeClass, LARGE, NORMAL, SMALL, H
     PARTIAL, KnitPlant, ANY
 from .snapshot import Snapshot
 
+TODAY = dt.datetime.today()
+
 def rloads_args(slf, rview, snapshot, prev_wts, jet_rng, prev_plts):
     return {
         'desc1': f'Allocating pieces of roll {rview.id} to ports',
@@ -34,7 +36,7 @@ def comb_yld(res):
         'desc1': f'port load={res}'
     }
 
-def ploads_args(slf, greige, snapshot, jet_rng, start = None, max_date = None,
+def ploads_args(slf, greige, snapshot, jet_rng, n_ports, start = None, max_date = None,
                 create = False):
     return {
         'desc1': f'Allocating rolls of {greige} to ports on inventory snapshot {snapshot}',
@@ -49,6 +51,7 @@ def ploads_yld(res):
 class PortLoad(NamedTuple):
     roll1: RollAlloc
     roll2: RollAlloc | None
+    greige: GreigeStyle
     lbs: float
     avail_date: dt.datetime
 
@@ -94,7 +97,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
     def make_group(self, data, **kwargs):
         return StyleGroup(item=data.item)
     
-    def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange, max_date = None):
+    def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange, n_ports: int, max_date = None):
         if greige not in self:
             return
         
@@ -111,6 +114,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
                 wt_fact = 1
             if max_date is not None and rview.avail_date > max_date:
                 continue
+            if n_ports == 1 and rview.size not in (PARTIAL, HALF): continue
             if jet_rng.contains(rview.lbs / wt_fact):
                 yield rview
     
@@ -147,7 +151,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
             piece = roll.allocate(cur_wt, snapshot=snapshot)
             self.add(roll)
             prev_plts.append(roll.plant)
-            yield PortLoad(piece, None, cur_wt, piece.avail_date)
+            yield PortLoad(piece, None, roll.item, cur_wt, piece.avail_date)
     
     @logged_generator(comb_args, comb_yld)
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
@@ -193,7 +197,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
                 self.add(roll1)
                 self.add(roll2)
                 if piece1 and piece2:
-                    pload = PortLoad(piece1, piece2, piece1.lbs + piece2.lbs,
+                    pload = PortLoad(piece1, piece2, roll1.item, piece1.lbs + piece2.lbs,
                                      max(piece1.avail_date, piece2.avail_date))
                     prev_wts.append(pload.lbs)
                     prev_plts.append(roll1.plant)
@@ -205,31 +209,36 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
     
     @logged_generator(ploads_args, ploads_yld)
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None, max_date = None, create = False):
+                       n_ports: int, start: RollView | None = None, max_date = None, create = False):
         if not (greige not in self or create):
             yield FailedYield(desc1=f'No {greige} in inventory')
             return
         
         prev_wts: list[float] = []
         prev_plts: list[KnitPlant] = []
-        if start:
-            yield from self.get_roll_loads(start, snapshot, prev_wts, jet_rng, prev_plts)
+        
+        if greige in self:
+            if start:
+                yield from self.get_roll_loads(start, snapshot, prev_wts, jet_rng, prev_plts)
 
-        sizes = {
-            NORMAL: 0, HALF: 1, LARGE: 2, SMALL: 3, PARTIAL: 4
-        }
+            sizes = {
+                NORMAL: 0, HALF: 1, LARGE: 2, SMALL: 3, PARTIAL: 4
+            }
 
-        views: list[RollView] = list(self[greige].itervalues())
-        views = sorted(views, key=lambda r: (r.avail_date, sizes[r.size]))
+            views: list[RollView] = list(self[greige].itervalues())
+            views = sorted(views, key=lambda r: (r.avail_date, sizes[r.size]))
 
-        for rview in views:
-            if max_date is not None and rview.avail_date > max_date: continue
-            if rview.size == PARTIAL: continue
-            yield from self.get_roll_loads(rview, snapshot, prev_wts, jet_rng,
-                                           prev_plts)
+            for rview in views:
+                if max_date is not None and rview.avail_date > max_date: continue
+                if rview.size == PARTIAL: continue
+                if n_ports == 1 and rview.size not in (PARTIAL, HALF) \
+                    and rview.avail_date >= TODAY - dt.timedelta(days=1) and \
+                        rview.avail_date < TODAY + dt.timedelta(days=2): continue
+                yield from self.get_roll_loads(rview, snapshot, prev_wts, jet_rng,
+                                            prev_plts)
 
-        yield from self.get_comb_loads(greige, snapshot, prev_wts, jet_rng, prev_plts,
-                                       max_date=max_date)
+            yield from self.get_comb_loads(greige, snapshot, prev_wts, jet_rng, prev_plts,
+                                        max_date=max_date)
         
         if max_date is not None and create:
             for _ in range(8):
@@ -241,7 +250,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
 
                 wt_rng = min_float_rng(wt_rng, jet_rng)
                 wt = wt_rng.average() * 2
-                if 'ANMUT' in greige.id:
+                if 'ANMUT' in greige.id or n_ports == 1:
                     wt = wt_rng.average()
 
                 newroll = Roll(f'NEW{globals()['_CTR']:06}', greige, wt, max_date,

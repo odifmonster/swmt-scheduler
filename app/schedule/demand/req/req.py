@@ -12,10 +12,8 @@ class Req(HasID[str], SuperImmut,
         orders: list[Order] = []
         buckets = sorted(buckets, key=lambda b: b[0])
         total_yds = 0
-        pnum = 0
-        for due_date, yds in buckets:
+        for pnum, due_date, yds in buckets:
             total_yds += yds
-            pnum += 1
             if yds > 0:
                 orders.append(Order(self, item, pnum, due_date, yds, total_yds))
 
@@ -42,7 +40,7 @@ class Req(HasID[str], SuperImmut,
                        filter(lambda lview: not lview.end is None and lview.end <= date, self.lots)))
     
     def assign(self, ports):
-        newlot = DyeLot.new_lot(self.item, ports)
+        newlot = DyeLot.new_lot(self.item, ports[0].greige, ports)
         self.__lots.append(newlot)
         return newlot
     

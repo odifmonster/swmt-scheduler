@@ -8,11 +8,12 @@ from app.support import HasID, SuperImmut
 ShadeGrade = NewType('ShadeGrade', str)
 HEAVYSTRIP = ShadeGrade('0_HEAVYSTRIP')
 STRIP = ShadeGrade('1_STRIP')
-SOLUTION = ShadeGrade('2_SOLUTION')
+LIGHT0 = ShadeGrade('2_LIGHT0')
 LIGHT = ShadeGrade('3_LIGHT')
 EMPTY = ShadeGrade('4_EMPTY')
 MEDIUM = ShadeGrade('5_MEDIUM')
-BLACK = ShadeGrade('6_BLACK')
+SOLUTION = ShadeGrade('6_SOLUTION')
+BLACK = ShadeGrade('7_BLACK')
 
 def _get_shade_grade(rawval):
     if type(rawval) is str:
@@ -20,6 +21,7 @@ def _get_shade_grade(rawval):
             case 'HEAVYSTRIP': return HEAVYSTRIP
             case 'STRIP': return STRIP
             case 'SOLUTION': return SOLUTION
+            case 'LIGHT0': return LIGHT0
             case 'LIGHT': return LIGHT
             case 'EMPTY': return EMPTY
             case 'MEDIUM': return MEDIUM
@@ -28,6 +30,7 @@ def _get_shade_grade(rawval):
                 raise ValueError(f'Unknown shade: {repr(rawval)}')
     if type(rawval) is int:
         match rawval:
+            case 0: return LIGHT0
             case 1: return LIGHT
             case 2: return MEDIUM
             case 3: return BLACK

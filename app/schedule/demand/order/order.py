@@ -26,7 +26,11 @@ class Order(Data[str], mod_in_group=True,
             frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     
     def __init__(self, req: _Req, item, pnum, due_date, cur_yds, cum_yds):
-        Data.__init__(self, f'P{pnum}@{item.id}', 'Order', OrderView(self),
+        if pnum < 0:
+            prefix = 'OVERDUE'
+        else:
+            prefix = f'P{pnum}'
+        Data.__init__(self, f'{prefix}@{item.id}', 'Order', OrderView(self),
                       priv={'req': req, 'init_cur_yds': cur_yds,
                             'init_cum_yds': cum_yds}, item=item,
                       pnum=pnum, due_date=due_date)

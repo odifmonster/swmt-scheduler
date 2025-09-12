@@ -8,10 +8,11 @@
 
 fabric_items: # information about fabric items (which jets they can run on, which greige style they use, etc.)
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="New XREF file.xlsx"
+    excel_book=LamDemandPlanning.xlsx
     sheet_name=Xref
-    columns="GREIGE ITEM", STYLE, Yield, "COLOR NAME", "COLOR NUMBER", "PA FIN ITEM", ...
-        "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", "JET 10", "SHADE RATING"
+    columns="GREIGE ITEM", STYLE, WD, Yield, "STATUS", "COLOR NAME", "COLOR NUMBER", ...
+    "PA FIN ITEM", "JET 1", "JET 2", "JET 3", "JET 4", "JET 7", "JET 8", "JET 9", ...
+    "JET 10", "SHADE RATING"
 
 greige_sizes: # information about target lbs per greige style roll
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
@@ -33,32 +34,26 @@ jet_info:
 
 inventory:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
     sheet_name="1427"
-    columns=Roll, Item, Quality, Pounds, ASSIGNED_ORDER
+    columns=Warehouse, Roll, Item, Quality, Pounds, ASSIGNED_ORDER
     start_row=4
 
 incoming_si_greige:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="SI release 20250825.xlsx"
-    sheet_name="Vendor Release Report - Weekly "
-    excel_columns="F,AS,AT"
-    column_names=greige, daily_lbs, weekly_lbs
-    start_row=3
-    end_row=25
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    sheet_name="Greige requirements"
+    columns=Greige, "Expected SI daily"
 
 incoming_wv_greige:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="SI release 20250825.xlsx"
-    sheet_name="Vendor Release Report - Weekly "
-    excel_columns="F,AU"
-    column_names=greige, weekly_lbs
-    start_row=29
-    end_row=35
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    sheet_name="Greige requirements"
+    columns=Greige, "Expected WV 9/9"
 
 adaptive_orders:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
     sheet_name=Adaptive
     columns=Machine, StartTime, EndTime, FinItem, DyelotID1, DyelotID2, Qty
 
@@ -72,14 +67,14 @@ pa_demand_plan:
 
 ship_dates:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250901.xlsx"
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
     sheet_name="Lam Release"
     columns="Stock Item", "Ply1 Item", "Ship Day"
 
 pa_min_reqs:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250901.xlsx"
-    sheet_name="Fab shortage 9-4"
+    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    sheet_name="Fab shortage 9-12"
     columns="PA Item", "Ply1 Item", "FAB req'd past due", "FAB req'd WK0", ...
         "FAB req'd WK1", "FAB req'd WK2", "FAB req'd WK3", "FAB req'd WK4", ...
         "FAB req'd WK5", "PA Fin", "Inspection", "Frame", "Dye Orders"

@@ -15,7 +15,7 @@ class Req(HasID[str], SuperImmut,
     item: FabricStyle # the item of this requirement
     orders: tuple[Order, ...] # the orders that compose this requirement
     def __init__(self, item: FabricStyle,
-                 buckets: list[tuple[dt.datetime, float]]) -> None:
+                 buckets: list[tuple[int, dt.datetime, float]]) -> None:
         """
         Initialize a new Req object.
 
