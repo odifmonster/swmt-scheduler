@@ -92,6 +92,20 @@ def next_comment(stream: StreamWrapper, prev: str) -> str:
         return prev
     return next_comment(stream, prev+nxt)
 
+def next_escape(stream: StreamWrapper) -> str:
+    nxt = stream.read()
+    if len(nxt) == 0:
+        raise SyntaxError(f'Unclosed string on line {stream.pos.line}')
+    match nxt:
+        case 'n':
+            return '\n'
+        case 't':
+            return '\t'
+        case 'r':
+            return '\r'
+        case _:
+            return nxt
+
 def next_string(stream: StreamWrapper, prev: str) -> str:
     nxt = stream.read()
     if len(nxt) == 0:
@@ -100,6 +114,9 @@ def next_string(stream: StreamWrapper, prev: str) -> str:
         raise SyntaxError(f'Unclosed string on line {stream.pos.line}.')
     if nxt == '"':
         return prev+nxt
+    
+    if nxt == '\\':
+        nxt = next_escape(stream)
     return next_string(stream, prev+nxt)
 
 def next_file_ext(stream: StreamWrapper, prev: str) -> str:

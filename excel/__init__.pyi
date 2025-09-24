@@ -3,7 +3,8 @@ import os
 
 type ParsedKey = Literal['fabric_items', 'greige_sizes', 'greige_translation', 'inventory',
                          'adaptive_orders', 'pa_demand_plan', 'jet_info', 'ship_dates',
-                         'incoming_si_greige', 'incoming_wv_greige', 'pa_min_reqs']
+                         'incoming_si_greige', 'incoming_wv_greige', 'pa_min_reqs',
+                         'pa_floor_mos']
 
 class ExcelInfo(TypedDict):
     fpath: str = ''

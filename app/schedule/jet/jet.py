@@ -105,17 +105,48 @@ class Jet(HasLogger, HasID[str], SuperImmut,
                 if job.id == last_job_before.id:
                     break
         
-        min_date = max(map(lambda l: l.min_date, lots))
-        if not newsched.can_add(lots) or (newsched.last_job_end < min_date and \
-            idx < len(cur_reg_jobs)):
-            return None, []
-    
         newjobs = []
-        newjobs.append(newsched.add_lots(lots, idx))
-        for job in self.__cur_sched.jobs[idx:]:
-            if newsched.can_add(tuple(job.lots)):
-                newjobs.append(newsched.add_lots(tuple(job.lots), -1))
-            elif any(map(lambda l: not l.moveable, job.lots)):
+        if type(lots) is list:
+            for lot in lots:
+                if not newsched.can_add((lot,)):
+                    return None, []
+                newjobs.append(newsched.add_lots((lot,), idx))
+        else:
+            if not newsched.can_add(lots):
+                return None, []
+            newjobs.append(newsched.add_lots(lots, idx))
+
+        rem_jobs = self.__cur_sched.jobs[idx:]
+        rem_moveable = list(filter(lambda j: j.lots[0].moveable, rem_jobs))
+        rem_frozen = list(filter(lambda j: not j.lots[0].moveable, rem_jobs))
+
+        m_idx = 0
+        f_idx = 0
+        while m_idx < len(rem_moveable) or f_idx < len(rem_frozen):
+            if m_idx == len(rem_moveable):
+                add_frz = True
+            elif f_idx == len(rem_frozen):
+                add_frz = False
+            elif rem_frozen[f_idx].start < rem_moveable[m_idx].start:
+                add_frz = True
+            else:
+                nxt_move = rem_moveable[m_idx]
+                nxt_move_end = newsched.get_expected_end(tuple(nxt_move.lots))
+                if nxt_move_end + timedelta(minutes=1) > rem_frozen[f_idx].start:
+                    add_frz = True
+                else:
+                    add_frz = False
+            
+            if add_frz:
+                curjob = rem_frozen[f_idx]
+                f_idx += 1
+            else:
+                curjob = rem_moveable[m_idx]
+                m_idx += 1
+
+            if newsched.can_add(tuple(curjob.lots)):
+                newjobs.append(newsched.add_lots(tuple(curjob.lots), -1))
+            elif add_frz:
                 return None, []
         
         return newsched, newjobs

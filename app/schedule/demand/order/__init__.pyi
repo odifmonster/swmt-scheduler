@@ -88,7 +88,8 @@ class Order(Data[str], mod_in_group=True,
     def total_lbs(self) -> float:
         """The total remaining pounds needed to fulfill this requirement, ignoring due date."""
         ...
-    def late_table(self, next_avail: dt.datetime) -> list[tuple[float, dt.timedelta]]:
+    def late_table(self, next_avail: dt.datetime, ignore_amt: float) \
+        -> list[tuple[float, dt.timedelta]]:
         """
         Returns a list of pairs containing yards and how late
         they will be compared to this order's due date.
@@ -154,7 +155,8 @@ class OrderView(DataView[str],
     def total_lbs(self) -> float:
         """The total remaining pounds needed to fulfill this requirement, ignoring due date."""
         ...
-    def late_table(self, next_avail: dt.datetime) -> list[tuple[float, dt.timedelta]]:
+    def late_table(self, next_avail: dt.datetime, ignore_amt: float) \
+        -> list[tuple[float, dt.timedelta]]:
         """
         Returns a list of pairs containing yards and how late
         they will be compared to this order's due date.

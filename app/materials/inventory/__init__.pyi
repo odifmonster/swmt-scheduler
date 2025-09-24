@@ -108,7 +108,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView, remkey: bool = False) -> Roll: ...
     def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange, n_ports: int,
-                   max_date: dt.datetime | None = None) -> Generator[RollView]:
+                   pnum: int, max_date: dt.datetime | None = None) -> Generator[RollView]:
         """
         Generates the valid "starting" greige rolls in inventory for
         the given style.
@@ -142,7 +142,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
         """
         ...
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange, max_date: dt.datetime | None = None) \
+                       jet_rng: FloatRange, pnum: int, max_date: dt.datetime | None = None) \
                         -> Generator[PortLoad]:
         """
         Generates port loads from combining partial rolls in inventory.
@@ -164,8 +164,9 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
         """
         ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       n_ports: int, start: RollView | None = None, max_date: dt.datetime | None = None,
-                       create: bool = False) -> Generator[PortLoad]:
+                       n_ports: int, pnum: int, start: RollView | None = None,
+                       max_date: dt.datetime | None = None, create: bool = False) \
+                        -> Generator[PortLoad]:
         """
         Generates all port loads in inventory using an optional start
         roll.
@@ -205,8 +206,8 @@ class InvView(GroupedView[str, GreigeStyle],
     def get(self, id: str) -> RollView: ...
     def add(self, data: Roll) -> None: ...
     def remove(self, dview: RollView, remkey: bool = False) -> Roll: ...
-    def get_starts(self, greige: GreigeStyle,
-                   max_date: dt.datetime | None = None) -> Generator[RollView]:
+    def get_starts(self, greige: GreigeStyle, jet_rng: FloatRange, n_ports: int,
+                   pnum: int, max_date: dt.datetime | None = None) -> Generator[RollView]:
         """
         Generates the valid "starting" greige rolls in inventory for
         the given style.
@@ -240,7 +241,7 @@ class InvView(GroupedView[str, GreigeStyle],
         """
         ...
     def get_comb_loads(self, greige: GreigeStyle, snapshot: Snapshot, prev_wts: list[float],
-                       jet_rng: FloatRange, max_date: dt.datetime | None = None) \
+                       jet_rng: FloatRange, pnum: int, max_date: dt.datetime | None = None) \
                         -> Generator[PortLoad]:
         """
         Generates port loads from combining partial rolls in inventory.
@@ -262,8 +263,9 @@ class InvView(GroupedView[str, GreigeStyle],
         """
         ...
     def get_port_loads(self, greige: GreigeStyle, snapshot: Snapshot, jet_rng: FloatRange,
-                       start: RollView | None = None, max_date: dt.datetime | None = None,
-                       create: bool = False) -> Generator[PortLoad]:
+                       n_ports: int, pnum: int, start: RollView | None = None,
+                       max_date: dt.datetime | None = None, create: bool = False) \
+                        -> Generator[PortLoad]:
         """
         Generates all port loads in inventory using an optional start
         roll.

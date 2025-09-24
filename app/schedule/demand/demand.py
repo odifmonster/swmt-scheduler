@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import datetime as dt
+import datetime as dt, math
 
 from app.support.grouped import Grouped, GroupedView, Atom
 from app.support.logging import HasLogger, Logger, ProcessDesc, FailedYield, logged_generator
@@ -72,6 +72,7 @@ class Demand(HasLogger, Grouped[str, dt.datetime], attrs=('_logger','logger')):
     @logged_generator(matches_args, matches_yld)
     def get_matches(self, order: Order):
         dates = sorted(self)
+        port_avg = order.greige.port_rng.average()
         for date in dates:
             if order.greige not in self[date]: continue
             if order.color not in self[date, order.greige]: continue
@@ -80,9 +81,11 @@ class Demand(HasLogger, Grouped[str, dt.datetime], attrs=('_logger','logger')):
                 match: OrderView = view
                 if match.total_lbs <= 0: continue
                 if match.item == order.item: continue
+                ports1 = math.ceil(order.total_lbs / (port_avg*2)) * 2
+                ports2 = math.ceil(match.total_lbs / (port_avg*2)) * 2
                 total_lbs = order.total_lbs + match.total_lbs
-                needed_ports = total_lbs / order.greige.port_rng.average()
-                if needed_ports > 8:
+                needed_ports = total_lbs / port_avg
+                if ports1 + ports2 > 8:
                     yield FailedYield(desc1='Combined pounds exceeds maximum jet size',
                                       desc2=f'combined pounds={total_lbs:.2f}',
                                       desc3=f'minimum ports needed={needed_ports:.1f}')

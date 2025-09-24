@@ -77,8 +77,8 @@ class Order(Data[str], mod_in_group=True,
     def total_lbs(self):
         return self.total_yds / self.item.yld
     
-    def late_table(self, next_avail: dt.datetime):
-        if self.yds <= 0:
+    def late_table(self, next_avail: dt.datetime, ignore_amt: float):
+        if self.yds <= 50:
             return []
         
         r: _Req = self.__req
@@ -88,12 +88,16 @@ class Order(Data[str], mod_in_group=True,
         if not lots:
             return [(self.yds, max_late_time)]
         
-        last_late = self.__init_cum_yds
+        init_cum = self.__init_cum_yds
+        if self.total_yds > 0:
+            init_cum -= min(self.total_yds, ignore_amt)
+
+        last_late = init_cum
         idx = 0
         for i in range(len(lots), 0, -1):
             total_prod = r.total_yds_by(lots[i-1].end)
-            if self.__init_cum_yds - total_prod > 0:
-                last_late = min(self.__init_cum_yds - total_prod, self.init_yds)
+            if init_cum - total_prod > 50:
+                last_late = min(init_cum - total_prod, self.init_yds)
                 idx = i
                 break
         

@@ -6,7 +6,7 @@ import sys, os, math, datetime as dt, pandas as pd
 from app import style
 from app.support import logging
 from app.style import GreigeStyle, color
-from app.materials import Inventory, PortLoad, Snapshot
+from app.materials import Inventory, PortLoad, Snapshot, RollView
 from app.schedule import DyeLot, Order, OrderView, Req, Demand, Jet, JetSched, \
     Job
 
@@ -39,22 +39,39 @@ def try_load_jet(inv: Inventory, loads: Generator[PortLoad], jet: Jet, snapshot:
     return ret
 
 # @logging.logged_func(LOGGER, jload_args, jload_ret)
-def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet,
+def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet, min_pnum: int,
                   max_date: dt.datetime | None = None, create: bool = False,
                   snap: Snapshot | None = None) \
     -> tuple[Snapshot | None, list[PortLoad]]:
     if snap is None:
         snap = Snapshot()
     max_ret: list[PortLoad] = []
+
+    alt_grg = None
+    if greige == style.greige.get_style('AU3426 WIDE') and not create:
+        alt_grg = style.greige.get_style('AU3426')
+
+    def concat_gens[T: PortLoad | RollView](gen1: Generator[T],
+                                            gen2: Generator[T]):
+        yield from gen1
+        yield from gen2
     
     for rview in inv.itervalues():
         roll = inv.remove(rview)
         roll.snapshot = snap
         inv.add(roll)
 
-    for start in inv.get_starts(greige, jet.load_rng, jet.n_ports):
-        pl_gen = inv.get_port_loads(greige, snap, jet.load_rng, jet.n_ports,
-                                    start=start, max_date=max_date, create=create)
+    starts = inv.get_starts(greige, jet.load_rng, jet.n_ports, min_pnum)
+    if alt_grg is not None:
+        starts1 = starts
+        starts2 = inv.get_starts(alt_grg, jet.load_rng, jet.n_ports, min_pnum)
+        starts = concat_gens(starts1, starts2)
+
+    for start in starts:
+        pl_gen = inv.get_port_loads(start.item, snap, jet.load_rng, jet.n_ports,
+                                    min_pnum, start=start, max_date=max_date,
+                                    create=create)
+
         ret = try_load_jet(inv, pl_gen, jet, snap)
         if len(ret) == jet.n_ports:
             return snap, ret
@@ -62,12 +79,20 @@ def get_jet_loads(inv: Inventory, greige: GreigeStyle, jet: Jet,
         if len(ret) > len(max_ret):
             max_ret = ret
     
-    pl_gen = inv.get_port_loads(greige, snap, jet.load_rng, jet.n_ports, max_date=max_date,
-                                create=create)
+    pl_gen = inv.get_port_loads(greige, snap, jet.load_rng, jet.n_ports, min_pnum,
+                                max_date=max_date, create=create)
     ret = try_load_jet(inv, pl_gen, jet, snap)
     if len(ret) == jet.n_ports:
         return snap, ret
-    elif len(ret) > len(max_ret):
+    
+    if alt_grg is not None:
+        pl_gen = inv.get_port_loads(alt_grg, snap, jet.load_rng, jet.n_ports, min_pnum,
+                                    max_date=max_date, create=create)
+        ret = try_load_jet(inv, pl_gen, jet, snap)
+    if len(ret) == jet.n_ports:
+        return snap, ret
+    
+    if len(ret) > len(max_ret):
         max_ret = ret
 
     return None, max_ret
@@ -81,26 +106,22 @@ def gpl_loop(o1: Order, o2: Order, inv: Inventory, jet: Jet) \
     avg_load = o1.greige.port_rng.average()
     min_o1_ports = math.ceil(o1.total_lbs / avg_load)
     min_total_ports = math.ceil((o1.total_lbs+o2.lbs) / avg_load)
+    o1pct = min_o1_ports / min_total_ports
+    ports1 = math.ceil(o1pct * (jet.n_ports / 2)) * 2
 
-    if min_total_ports > jet.n_ports:
+    if min_total_ports > jet.n_ports or jet.n_ports < 4:
         return 'Minimum required ports exceeds jet size'
-    if round((min_o1_ports / min_total_ports) * jet.n_ports) == jet.n_ports:
+    if ports1 == jet.n_ports:
         return 'Split too uneven'
 
     max_due = min(o1.due_date, o2.due_date) - dt.timedelta(days=1)
-    min_arrival = MONDAY + dt.timedelta(weeks=1, days=2, hours=10)
-    snap, loads = get_jet_loads(inv, o1.greige, jet, max_date=max_due)
+    min_arrival = MONDAY + dt.timedelta(weeks=1, hours=10)
+    snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum), max_date=max_due)
     if snap is None:
-        if o1.greige == style.greige.get_style('AU3426 WIDE'):
-            snap, loads = get_jet_loads(inv, style.greige.get_style('AU3426'), jet,
-                                        max_date=max_due)
-        
-        if snap is None:
-            snap, loads = get_jet_loads(inv, o1.greige, jet,
-                                        max_date=min_arrival,
-                                        create=True)
+        snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum),
+                                    max_date=min_arrival,
+                                    create=True)
     
-    ports1 = round((min_o1_ports / min_total_ports) * jet.n_ports)
     lot1 = o1.assign(loads[:ports1])
     lot2 = o2.assign(loads[ports1:])
     
@@ -122,19 +143,14 @@ def gsl_loop(order: Order, inv: Inventory, jet: Jet) -> tuple[DyeLot, Snapshot] 
     if not order.item.can_run_on_jet(jet.id):
         return 'Jet cannot run item'
     grg_due = order.due_date - dt.timedelta(days=1)
-    min_arrival = MONDAY + dt.timedelta(weeks=1, days=2, hours=10)
-    snap, loads = get_jet_loads(inv, order.greige, jet, max_date=grg_due)
+    min_arrival = MONDAY + dt.timedelta(weeks=1, hours=10)
+    snap, loads = get_jet_loads(inv, order.greige, jet, order.pnum, max_date=grg_due)
     flag = False
     if snap is None:
         flag = True
-        if order.greige == style.greige.get_style('AU3426 WIDE'):
-            snap, loads = get_jet_loads(inv, style.greige.get_style('AU3426'), jet,
-                                        max_date=grg_due)
-        
-        if snap is None:
-            snap, loads = get_jet_loads(inv, order.greige, jet,
-                                        max_date=min_arrival,
-                                        create=True)
+        snap, loads = get_jet_loads(inv, order.greige, jet, order.pnum,
+                                    max_date=min_arrival,
+                                    create=True)
         # return 'Could not fill jet'
     return order.assign(loads), snap
 
@@ -142,8 +158,14 @@ def gsl_loop(order: Order, inv: Inventory, jet: Jet) -> tuple[DyeLot, Snapshot] 
 def get_single_lots(order: Order, inv: Inventory, jets: list[Jet]) \
     -> dict[Jet, tuple[DyeLot, Snapshot]]:
     lots_map: dict[Jet, tuple[DyeLot, Snapshot]] = {}
+    est_ports1 = math.ceil(max(order.init_lbs, order.total_lbs) \
+                           / order.greige.port_rng.average())
+    est_ports2 = math.ceil(max(0, order.total_lbs) \
+                           / order.greige.port_rng.average())
     
     for jet in jets:
+        if est_ports1 / 8 > 2 and est_ports2 > 8 and jet.n_ports <= 4: continue
+        if jet.n_ports < 4 and est_ports2 / jet.n_ports > 2: continue
         ret = gsl_loop(order, inv, jet)
         if type(ret) is str: continue
         lots_map[jet] = ret
@@ -182,6 +204,56 @@ def get_all_lots(order: Order, dmnd: Demand, inv: Inventory,
                 
     return lots_map
 
+def get_multi_jets(order: Order, jets: list[Jet], prev: tuple[Jet, ...]) \
+    -> Generator[tuple[Jet, ...]]:
+    total = order.total_lbs
+    ports = math.ceil(total / order.greige.port_rng.average())
+
+    if sum(map(lambda j: j.n_ports, prev)) >= ports:
+        yield prev
+        return
+    if len(prev) == 4:
+        return
+    
+    for jet in jets:
+        if not order.item.can_run_on_jet(jet.id): continue
+        yield from get_multi_jets(order, jets, (*prev, jet))
+
+def get_multi_lots(order: Order, inv: Inventory, jets: list[Jet]) \
+    -> dict[Snapshot, dict[Jet, list[DyeLot]]]:
+    multi_gen = get_multi_jets(order, jets, tuple())
+    grg_due = order.due_date - dt.timedelta(days=1)
+    min_arrival = MONDAY + dt.timedelta(weeks=1, days=2, hours=10)
+    multi_lots: dict[Snapshot, dict[Jet, list[DyeLot]]] = {}
+
+    for jet_tup in multi_gen:
+        if len(jet_tup) == 1: continue
+
+        snap = Snapshot()
+        multi_lots[snap] = {}
+
+        for jet in jet_tup:
+            if jet not in multi_lots[snap]:
+                multi_lots[snap][jet] = []
+
+            retsnap, loads = get_jet_loads(inv, order.greige, jet,
+                                           max_date=grg_due, snap=snap)
+            if retsnap is not None and retsnap == snap:
+                multi_lots[snap][jet].append(order.assign(loads))
+                continue
+            
+            snap, loads = get_jet_loads(inv, order.greige, jet,
+                                        max_date=min_arrival, create=True,
+                                        snap=snap)
+            multi_lots[snap][jet].append(order.assign(loads))
+    
+    for snap in multi_lots:
+        for jet in multi_lots[snap]:
+            lots = sorted(multi_lots[snap][jet], key=lambda l: l.min_date)
+            multi_lots[snap][jet] = lots
+    
+    return multi_lots
+
 def sched_over_max(jet: Jet, nweeks: int) -> float:
     jet_jobs = jet.jobs
     job_lbs: Callable[[Job], float] = lambda j: sum(map(lambda l: l.lbs, j.lots))
@@ -190,7 +262,7 @@ def sched_over_max(jet: Jet, nweeks: int) -> float:
     start = jet.date_rng.minval
     if jet_jobs:
         start = jet_jobs[0].start
-    ndays = nweeks*6
+    ndays = nweeks*5
     max_lbs = 36000 * jet.n_ports / 39
 
     return max(0, total_lbs / ndays - max_lbs) * 0.01
@@ -199,7 +271,7 @@ def sched_over_max(jet: Jet, nweeks: int) -> float:
 def sched_cost(jet: Jet) -> tuple[float, float, float]:
     shade_vals = {
         color.SOLUTION: 15, color.LIGHT: 0, color.MEDIUM: 5, color.BLACK: 20,
-        color.LIGHT0: 0
+        color.LIGHT0: 2
     }
     not_seq_cost = 0
     non_black_9 = 0
@@ -229,27 +301,28 @@ def sched_cost(jet: Jet) -> tuple[float, float, float]:
     return strip_cost, not_seq_cost, non_black_9
 
 # @logging.logged_func(LOGGER, order_cost_args, order_cost_ret)
-def order_cost(order: Order | OrderView, next_avail: dt.datetime) -> float:
-    table = order.late_table(next_avail)
+def order_cost(order: Order | OrderView, next_avail: dt.datetime,
+               ignore_amt: float) -> float:
+    table = order.late_table(next_avail, ignore_amt)
     if not table:
         return 0
     
     first_row = table[0]
     first_yds, first_delta = first_row
     cost = 0.0
-    days_late_idxs = [4,5,6,10]
-    start_cost_map = {4: 1000, 5:1500, 6:2500, 10:5000}
-    scaling_map = {4:.01, 5: .015, 6: .025, 10: .5, 11: 1}
+    days_late_idxs = [2,3,4,8]
+    start_cost_map = {2: 1000, 3:1500, 4:2500, 8:10000}
+    scaling_map = {2:.01, 3: .015, 4: .025, 8: .5, 9: 1}
     found_idx = False
     index = 0
-    
     for idx in days_late_idxs:
         if first_delta < dt.timedelta(days=idx) and not found_idx:
             cost += start_cost_map[idx]
             found_idx = True
             index = idx
     if not found_idx:
-        cost += first_delta.days*1000
+        exp = first_delta.days - 8
+        cost += 100000 * (2 ** exp)
         index = 11
     
     for row in table:
@@ -267,25 +340,31 @@ def order_cost(order: Order | OrderView, next_avail: dt.datetime) -> float:
         cost += 5000 + max(min(order.total_lbs, order.init_lbs), 500)
     return cost
 
-@logging.logged_func(LOGGER, late_cost_args, late_cost_ret)
-def late_cost(order: Order, dmnd: Demand, next_avail: dt.datetime) -> tuple[float, float]:
-    cur_late = order_cost(order, next_avail)
+# @logging.logged_func(LOGGER, late_cost_args, late_cost_ret)
+def late_cost(order: Order, dmnd: Demand, next_avail: dt.datetime,
+              ignore_rem: bool = False) -> tuple[float, float]:
+    if ignore_rem:
+        ignore_amt = min(order.init_yds, order.total_yds)
+    else:
+        ignore_amt = 0
+    cur_late = order_cost(order, next_avail, ignore_amt)
     rem_late = 0.0
     end_cur_wk = order.due_date + dt.timedelta(days=5-order.due_date.weekday())
 
     for date in dmnd:
-        if date > end_cur_wk: continue
         for other_order in dmnd[date].itervalues():
-            rem_late += order_cost(other_order, next_avail)
+            if other_order.item == order.item and other_order.due_date > order.due_date: continue
+            rem_late += order_cost(other_order, next_avail, 0)
             
     return cur_late, rem_late
 
-def req_cost(req: Req) -> float:
+def req_cost(req: Req, due_date: dt.datetime) -> float:
     if not req.orders:
         return 0
     
-    sorted_ords = sorted(req.orders, key=lambda o: o.due_date)
-    if sorted_ords[-1].total_yds > 0:
+    sorted_ords = sorted(filter(lambda o: o.due_date <= due_date, req.orders),
+                         key=lambda o: o.due_date)
+    if not sorted_ords or sorted_ords[-1].total_yds > 0:
         return 0
     return abs(sorted_ords[-1].total_yds) * .04
 
@@ -294,9 +373,9 @@ def excess_inv_cost(order: Order, reqs: list[Req]) -> tuple[float, float]:
     cur_inv, rem_inv = 0, 0
     for req in reqs:
         if order.item == req.item:
-            cur_inv += req_cost(req)
+            cur_inv += req_cost(req, order.due_date + dt.timedelta(weeks=2))
         else:
-            rem_inv += req_cost(req)
+            rem_inv += req_cost(req, order.due_date + dt.timedelta(weeks=2))
 
     return cur_inv, rem_inv
 
@@ -318,15 +397,22 @@ def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmn
         needed_grg[order.greige][order.due_date] += rem_lbs
     
     avail_grg: dict[GreigeStyle, float] = {}
+    def is_new(p: PortLoad):
+        r1_new = 'NEW' in p.roll1.roll_id
+        r2_new = p.roll2 is not None and 'NEW' in p.roll2.roll_id
+        return r1_new or r2_new
+    
     for grg in inv:
         if grg not in avail_grg:
             avail_grg[grg] = 0
         for rview in inv[grg].itervalues():
+            if 'NEW' in rview.id: continue
             avail_grg[grg] += rview.lbs
     for grg in extras:
         if grg not in avail_grg:
             avail_grg[grg] = 0
-        avail_grg[grg] += sum(map(lambda p: p.lbs, extras[grg]))
+        avail_grg[grg] += sum(map(lambda p: p.lbs,
+                                  filter(lambda p: not is_new(p), extras[grg])))
 
     used_cost = 0
     for grg in needed_grg:
@@ -352,12 +438,13 @@ def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmn
     return used_cost
 
 # @logging.logged_func(LOGGER, cost_args, cost_ret)
-def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
-         snap: Snapshot, inv: Inventory, next_avail: dt.datetime) -> float:
+def cost(jet: Jet, sched: JetSched, newjob: Job | None, order: Order, dmnd: Demand,
+         reqs: list[Req], snap: Snapshot, inv: Inventory, next_avail: dt.datetime,
+         ignore_rem: bool = False) -> tuple[float, float]:
     apply_snapshot(inv, snap)
     prevsched = jet.set_sched(sched)
 
-    cur_late, rem_late = late_cost(order, dmnd, next_avail)
+    cur_late, rem_late = late_cost(order, dmnd, next_avail, ignore_rem=ignore_rem)
     cur_inv, rem_inv = excess_inv_cost(order, reqs)
     used_inv = used_inv_cost(inv, prevsched.free_greige(), dmnd)
     strips, not_seq, nb9 = sched_cost(jet)
@@ -366,29 +453,118 @@ def cost(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
     over_max = sched_over_max(jet, nweeks)
     not_pref = 0
 
-    if order.item.can_run_on_jet('Jet-07') or order.item.can_run_on_jet('Jet-08'):
-        if jet.id not in ('Jet-07', 'Jet-08'):
-            not_pref = order.total_yds * 0.1
-
+    all_jobs = list(filter(lambda j: j.shade not in (color.STRIP, color.HEAVYSTRIP),
+                           jet.jobs))
     apply_snapshot(inv, None)
     jet.set_sched(prevsched)
 
-    ret = sum((cur_late, rem_late, cur_inv, rem_inv, used_inv, not_pref))
-    all_jobs = list(filter(lambda j: j.shade not in (color.STRIP, color.HEAVYSTRIP),
-                           jet.jobs))
-    if jet.cur_sched.full_sched:
-        ret += (strips+not_seq+nb9+over_max) / (len(all_jobs)*jet.n_ports)
-    return ret
+    if order.item.can_run_on_jet('Jet-07') and jet.id in ('Jet-09', 'Jet-10'):
+        not_pref = order.total_yds * 2
+    elif order.item.can_run_on_jet('Jet-08'):
+        if jet.id != 'Jet-08' and jet.id in ('Jet-09', 'Jet-10'):
+            not_pref = order.total_yds * 0.1
 
-def key_sched(s_and_c: tuple[Jet, Snapshot | None, JetSched, float]):
-    return s_and_c[-1], s_and_c[2].last_job_end
+    non_jet_cost = sum((cur_late, rem_late, cur_inv, rem_inv, used_inv))
+    jet_cost = (strips+not_seq+nb9+over_max) / (max(1,len(all_jobs))*jet.n_ports) + not_pref
+    # if order.item.id == 'FF LYRICHELHS-41114-63':
+    #     print(jet, sched, snap, cur_late, rem_late, cur_inv, rem_inv, used_inv, jet_cost)
+    return non_jet_cost, jet_cost
+
+def cost_all(scheds: dict[Jet, JetSched], order: Order, dmnd: Demand, reqs: list[Req],
+             snap: Snapshot, inv: Inventory, next_avail: dt.datetime) -> float:
+    apply_snapshot(inv, snap)
+    prevscheds: dict[Jet, JetSched] = {}
+    for jet in scheds:
+        prevscheds[jet] = jet.set_sched(scheds[jet])
+    
+    cur_late, rem_late = late_cost(order, dmnd, next_avail)
+    cur_inv, rem_inv = excess_inv_cost(order, reqs)
+
+    free_grg: dict[GreigeStyle, list[PortLoad]] = {}
+    for sched in prevscheds.values():
+        cur_free = sched.free_greige()
+        for grg in cur_free:
+            if grg not in free_grg:
+                free_grg[grg] = []
+            free_grg[grg] += cur_free[grg]
+
+    used_inv = used_inv_cost(inv, free_grg, dmnd)
+
+    total_jet_cost = 0
+    for jet in scheds:
+        strips, not_seq, nb9 = sched_cost(jet)
+        ndays = (order.due_date - jet.date_rng.minval).total_seconds() / (3600*24)
+        nweeks = max(1, ndays/7 - 2.5)
+        over_max = sched_over_max(jet, nweeks)
+        not_pref = 0
+
+        if order.item.can_run_on_jet('Jet-07') or order.item.can_run_on_jet('Jet-08'):
+            if jet.id not in ('Jet-07', 'Jet-08'):
+                not_pref = order.total_yds * 0.1
+
+        all_jobs = list(filter(lambda j: j.shade not in (color.STRIP, color.HEAVYSTRIP),
+                               jet.jobs))
+
+        total_jet_cost += (strips+not_seq+nb9+over_max) / (len(all_jobs)*jet.n_ports) + not_pref
+
+    apply_snapshot(inv, None)
+    for jet in prevscheds:
+        jet.set_sched(prevscheds[jet])
+    
+    return sum((cur_late, rem_late, cur_inv, rem_inv, used_inv)) + total_jet_cost / len(scheds)
+
+def key_sched(s_and_c: tuple[dict[Jet, JetSched], Snapshot | None, float]):
+    return s_and_c[-1]
+
+def best_sub_job(snap: Snapshot, jet: Jet, lots: list[DyeLot],
+                 order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
+                 next_avail: dt.datetime) -> tuple[JetSched, float] | None:
+    costs: list[tuple[JetSched, float, float]] = []
+    cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
+    next_fri = max(next_avail, cur_fri + dt.timedelta(weeks=2))
+
+    index = jet.get_start_idx((lots[0],), order.due_date)
+    cur_jet_jobs = jet.cur_sched.jobs
+    for i in range(index, len(cur_jet_jobs)+1):
+        newsched, _ = jet.insert(lots, i)
+        if newsched is not None:
+            newcost = sum(cost(jet, newsched, order, dmnd, reqs, snap, inv,
+                           next_fri))
+            costs.append((newsched, newcost))
+    
+    if not costs:
+        return None
+    costs = sorted(costs, key=lambda x: x[1])
+    return costs[0]
+
+def best_multi_scheds(multi_lots: dict[Snapshot, dict[Jet, list[DyeLot]]],
+                      order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
+                      next_avail: dt.datetime):
+    best_scheds: dict[Snapshot, dict[Jet, JetSched]] = {}
+
+    for snap in multi_lots:
+        print(snap)
+        best_scheds[snap] = {}
+        for jet in multi_lots[snap]:
+            if not multi_lots[snap][jet]: continue
+            print(jet)
+            res = best_sub_job(snap, jet, multi_lots[snap][jet],
+                               order, dmnd, reqs, inv, next_avail)
+            if res is None:
+                del best_scheds[snap]
+                break
+
+            sched, _ = res
+            best_scheds[snap][jet] = sched
+    
+    return best_scheds
 
 # @logging.logged_func(LOGGER, best_job_args, best_job_ret)
 def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snapshot]]],
-                 order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
-                 next_avail: dt.datetime) \
-                    -> tuple[Jet, Snapshot | None, JetSched, float] | None:
-    sched_and_costs: list[tuple[Jet, Snapshot | None, JetSched, float]] = []
+                 order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
+                 next_avail: dt.datetime, check_multi: bool = True) \
+                    -> tuple[dict[Jet, JetSched], Snapshot | None, float] | None:
+    sched_and_costs: list[tuple[dict[Jet, JetSched], Snapshot | None, float]] = []
     cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
     next_fri = max(next_avail, cur_fri + dt.timedelta(weeks=2))
     for jet in lots_map:
@@ -398,15 +574,32 @@ def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snap
             index = jet.get_start_idx(lots, order.due_date)
             cur_jet_jobs = jet.cur_sched.jobs
             for i in range(index, len(cur_jet_jobs)+1):
-                newsched, _ = jet.insert(lots, i)
+                newsched, newjobs = jet.insert(lots, i)
+                # if order.item.id == 'FF LYRICHELHS-41114-63':
+                #     print(jet, i, end=' ')
+                #     if cur_jet_jobs and i > 0 and i < len(cur_jet_jobs):
+                #         print(cur_jet_jobs[i-1].color.shade, cur_jet_jobs[i].lots[0].moveable)
+                #     else:
+                #         print()
+                #     print(newsched)
+                #     print()
                 if newsched is not None:
-                    newcost = cost(jet, newsched, order, dmnd, reqs, snapshot, inv,
-                                   next_fri)
-                    sched_and_costs.append((jet, snapshot, newsched, newcost))
-        cur_cost = cost(jet, jet.cur_sched, order, dmnd, reqs, snapshot, inv,
-                        next_fri)
-        sched_and_costs.append((jet, None, jet.cur_sched, cur_cost))
+                    newcost = sum(cost(jet, newsched, newjobs[0], order, dmnd, reqs, snapshot, inv,
+                                   next_fri, ignore_rem=True))
+                    sched_and_costs.append(({jet: newsched}, snapshot, newcost))
+        cur_cost = sum(cost(jet, jet.cur_sched, None, order, dmnd, reqs, None, inv, next_fri))
+        sched_and_costs.append(({ jet: jet.cur_sched }, None, cur_cost))
+    
+    if check_multi:
+        multi_lots = get_multi_lots(order, inv, jets)
+        best_scheds = best_multi_scheds(multi_lots, order, dmnd, reqs, inv, next_avail)
+        for snap, scheds in best_scheds.items():
+            schedcost = cost_all(scheds, order, dmnd, reqs, snap, inv, next_avail)
+            sched_and_costs.append((scheds, snap, schedcost))
+
     sorted_s_and_c = sorted(sched_and_costs, key=key_sched)
+    # if order.item.id == 'FF LYRICHELHS-41114-63':
+    #     print(sorted_s_and_c)
     if len(sorted_s_and_c) > 0:
         return sorted_s_and_c[0]
     return None
@@ -428,20 +621,25 @@ def add_back_free_loads(prevsched: JetSched, inv: Inventory) -> None:
 
 # @logging.logged_func(LOGGER, desc_args=sched_ord_args, desc_ret=sched_ord_ret)
 def schedule_order(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
-                   jets: list[Jet], next_avail: dt.datetime) -> tuple[Order, bool]:
+                   jets: list[Jet], next_avail: dt.datetime,
+                   check_multi: bool = True) -> tuple[Order, bool]:
     lots_map = get_all_lots(order, dmnd, inv, jets)
-    ret = get_best_job(lots_map, order, dmnd, reqs, inv, next_avail)
+    ret = get_best_job(lots_map, order, dmnd, reqs, inv, jets, next_avail,
+                       check_multi=check_multi)
     if ret is None:
         return order, False
     
-    best_jet, best_snap, best_sched, _ = ret
+    best_scheds, best_snap, _ = ret
 
     apply_snapshot(inv, best_snap, temp=False)
     if best_snap is None:
         return order, False
     
-    prevsched = best_jet.set_sched(best_sched)
-    add_back_free_loads(prevsched, inv)
+    prev_scheds: dict[Jet, JetSched] = {}
+    for jet in best_scheds:
+        prev_scheds[jet] = jet.set_sched(best_scheds[jet])
+        add_back_free_loads(prev_scheds[jet], inv)
+
     return order, True
 
 # @logging.logged_func(LOGGER, desc_args=make_sched_args, desc_ret=make_sched_ret)
@@ -450,15 +648,31 @@ def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]
     dates = sorted(dmnd)
     for date in dates:
         print(f'Making schedule for orders for {date.strftime('%m/%d')}')
-        views = sorted(dmnd[date].itervalues(), key=lambda o: o.init_yds, reverse=True)
+
+        all_views = list(dmnd[date].itervalues())
+        ultra_lt = list(filter(lambda o: o.color.shade == color.LIGHT0, all_views))
+        rem = list(filter(lambda o: o.color.shade != color.LIGHT0, all_views))
+        views = sorted(rem, key=lambda o: o.init_yds, reverse=True)
+        views += sorted(ultra_lt, key=lambda o: o.init_yds, reverse=True)
+
         for oview in views:
             print(f'  Making schedule for {oview}')
             order = dmnd.remove(oview)
+            checked = True
+            min_yds = 150 if order.init_yds > 150 else 80
+            prev_yds = math.inf
 
-            while order.total_yds > min(150, order.init_yds):
+            while order.total_yds > min_yds:
+                if order.total_yds + 100 > prev_yds:
+                    break
+
+                prev_yds = order.total_yds
+                print(f'    remaining yards: {order.total_yds:.2f}')
                 order, cont = schedule_order(order, dmnd, reqs, inv, jets,
-                                             next_avail)
+                                             next_avail, check_multi=not checked)
+                checked = True
                 if not cont:
+                    print(f'    remaining yards: {order.total_yds:.2f}')
                     break
             
             dmnd.add(order)
@@ -577,7 +791,7 @@ def main(start_str: str, end_str: str):
     inv_df, dmnd_df = get_input_tables(inv, dmnd)
     friday_raw = start + dt.timedelta(days=4 - start.weekday())
     friday = dt.datetime(friday_raw.year, friday_raw.month, friday_raw.day)
-    make_schedule(dmnd, reqs, inv, jets, friday + dt.timedelta(weeks=2))
+    make_schedule(dmnd, reqs, inv, jets, friday + dt.timedelta(weeks=4))
     write_output(writer, os.path.join(os.path.dirname(__file__), 'datasrc'),
                  inv_df, dmnd_df, inv, dmnd, jets, reqs, LOGGER)
 

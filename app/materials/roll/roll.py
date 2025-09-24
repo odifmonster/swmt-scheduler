@@ -21,7 +21,7 @@ ANY = KnitPlant('ANY')
 
 _CTR = 0
 
-def alloc_args(slf, lbs, snapshot = None):
+def alloc_args(slf, lbs, pnum, snapshot = None):
     desc1 = f'Allocating {lbs:.2f} lbs of {slf.id}'
     if not snapshot is None:
         desc1 += f' on inventory snapshot {snapshot}'
@@ -67,10 +67,10 @@ class RollAlloc(HasID[int], SuperImmut,
         return self.__id
 
 class Roll(HasLogger, Data[str], mod_in_group=False,
-           attrs=('_logger','logger','item','size','init_wt','lbs','avail_date',
-                  'snapshot','plant'),
+           attrs=('_logger','logger','item','size','init_wt','lbs','arrive_date',
+                  'avail_date1','avail_date2','snapshot','plant'),
            priv_attrs=('cur_wt','allocs','temp_allocs'),
-           frozen=('item','init_wt','avail_date','plant')):
+           frozen=('item','init_wt','arrive_date','avail_date1','avail_date2','plant')):
     
     _logger = Logger()
 
@@ -78,11 +78,11 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
     def set_logger(cls, lgr):
         cls._logger = lgr
 
-    def __init__(self, id, item, lbs, avail_date, plant):
+    def __init__(self, id, item, lbs, arrive_date, avail_date1, avail_date2, plant):
         Data.__init__(self, id, 'Roll', RollView(self),
                       priv={'cur_wt': lbs, 'allocs': set(), 'temp_allocs': {}},
-                      init_wt=lbs, item=item, avail_date=avail_date, snapshot=None,
-                      plant=plant)
+                      init_wt=lbs, item=item, arrive_date=arrive_date, avail_date1=avail_date1,
+                      avail_date2=avail_date2, snapshot=None, plant=plant)
 
     def __repr__(self):
         return f'Roll(id={repr(self.id)}, item={repr(self.item)}, wt={round(self.lbs, ndigits=2)})'
@@ -112,8 +112,12 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
     
     @setter_like
     @logged_meth(alloc_args, alloc_ret)
-    def allocate(self, lbs, snapshot = None):
-        ret = RollAlloc(self.id, lbs, self.avail_date, self.plant)
+    def allocate(self, lbs, pnum, snapshot = None):
+        if pnum <= 0:
+            avail_date = self.avail_date1
+        else:
+            avail_date = self.avail_date2
+        ret = RollAlloc(self.id, lbs, avail_date, self.plant)
         if snapshot is None:
             if self.__cur_wt + 1 < lbs:
                 raise ValueError(f'{lbs:.2f} lbs exceeds remaining weight in roll ({self.lbs:.2f})')
@@ -146,8 +150,8 @@ class Roll(HasLogger, Data[str], mod_in_group=False,
         
         self.__temp_allocs.clear()
 
-class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot',
-                                     'init_wt','plant'),
+class RollView(DataView[str], attrs=('item','size','lbs','arrive_date','avail_date1',
+                                     'avail_date2','snapshot','init_wt','plant'),
                funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     pass

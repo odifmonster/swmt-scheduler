@@ -150,4 +150,4 @@ def main(fpath: str):
     writer.close()
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main()

@@ -23,8 +23,8 @@ class RollAlloc(HasID[int], SuperImmut,
 
 class Roll(HasLogger, Data[str],
            mod_in_group=False,
-           attrs=('_logger','logger','item','size','lbs','avail_date','snapshot',
-                  'init_wt','plant'),
+           attrs=('_logger','logger','item','size','lbs','arrive_date','avail_date1',
+                  'avail_date2','snapshot','init_wt','plant'),
            priv_attrs=('cur_wt','allocs','temp_allocs'),
            frozen=('init_wt','item','avail_date','plant')):
     """
@@ -32,11 +32,14 @@ class Roll(HasLogger, Data[str],
     """
     item: GreigeStyle
     init_wt: float
-    avail_date: dt.datetime
+    arrive_date: dt.datetime
+    avail_date1: dt.datetime
+    avail_date2: dt.datetime
     snapshot: Snapshot | None # The currently active inventory "snapshot"
     plant: KnitPlant
     def __init__(self, id: str, item: GreigeStyle, lbs: float,
-                 avail_date: dt.datetime, plant: KnitPlant) -> None:
+                 arrive_date: dt.datetime, avail_date1: dt.datetime,
+                 avail_date2: dt.datetime, plant: KnitPlant) -> None:
         """
         Initialize a new Roll object.
 
@@ -56,7 +59,7 @@ class Roll(HasLogger, Data[str],
     def size(self) -> SizeClass:
         """The size of this roll relative to the standard for this item."""
         ...
-    def allocate(self, lbs: float, snapshot: Snapshot | None = None) -> RollAlloc:
+    def allocate(self, lbs: float, pnum: int, snapshot: Snapshot | None = None) -> RollAlloc:
         """
         Allocate a piece of this roll.
 
@@ -86,13 +89,15 @@ class Roll(HasLogger, Data[str],
         ...
     def view(self) -> RollView: ...
 
-class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot',
-                                     'init_wt','plant'),
+class RollView(DataView[str], attrs=('item','size','lbs','arrive_date','avail_date2',
+                                     'avail_date1','snapshot','init_wt','plant'),
                funcs=('allocate','deallocate','release_snaps'),
                dunders=('repr',)):
     item: GreigeStyle
     init_wt: float
-    avail_date: dt.datetime
+    arrive_date: dt.datetime
+    avail_date1: dt.datetime
+    avail_date2: dt.datetime
     snapshot: Snapshot | None # The currently active inventory "snapshot"
     plant: KnitPlant
     def __init__(self, link: Roll) -> None: ...
@@ -104,7 +109,7 @@ class RollView(DataView[str], attrs=('item','size','lbs','avail_date','snapshot'
     def size(self) -> SizeClass:
         """The size of this roll relative to the standard for this item."""
         ...
-    def allocate(self, lbs: float, snapshot: Snapshot | None = None) -> RollAlloc:
+    def allocate(self, lbs: float, pnum: int, snapshot: Snapshot | None = None) -> RollAlloc:
         """
         Allocate a piece of this roll.
 

@@ -7,7 +7,8 @@ from .parser import parse_data_info
 
 type ParsedKey = Literal['fabric_items', 'greige_sizes', 'greige_translation', 'inventory',
                          'adaptive_orders', 'pa_demand_plan', 'jet_info', 'ship_dates',
-                         'incoming_si_greige', 'incoming_wv_greige', 'pa_min_reqs']
+                         'incoming_si_greige', 'incoming_wv_greige', 'pa_min_reqs',
+                         'pa_floor_mos']
 
 INFO_MAP: dict[ParsedKey, 'ExcelInfo'] = {}
 
@@ -140,4 +141,8 @@ def get_excel_info(name: ParsedKey) -> tuple[os.PathLike, PandasKWArgs]:
             res['dtype'] = { 'PA Fin Item': 'string' }
         case 'pa_min_reqs':
             res['dtype'] = { 'PA Item': 'string', 'Ply1 Item': 'string' }
+        case 'pa_floor_mos':
+            str_cols = ['Item\nType', 'Warehouse', 'Customer', 'Roll', 'Lot',
+                        'Item', 'Quality', 'Owner']
+            res['dtype'] = { col: 'string' for col in str_cols }
     return (inf['fpath'], res)

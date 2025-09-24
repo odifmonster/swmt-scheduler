@@ -34,26 +34,26 @@ jet_info:
 
 inventory:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
     sheet_name="1427"
     columns=Warehouse, Roll, Item, Quality, Pounds, ASSIGNED_ORDER
     start_row=4
 
 incoming_si_greige:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
     sheet_name="Greige requirements"
     columns=Greige, "Expected SI daily"
 
 incoming_wv_greige:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
     sheet_name="Greige requirements"
-    columns=Greige, "Expected WV 9/9"
+    columns=Greige, "Expected WV 9/16"
 
 adaptive_orders:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
     sheet_name=Adaptive
     columns=Machine, StartTime, EndTime, FinItem, DyelotID1, DyelotID2, Qty
 
@@ -67,14 +67,22 @@ pa_demand_plan:
 
 ship_dates:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
     sheet_name="Lam Release"
     columns="Stock Item", "Ply1 Item", "Ship Day"
 
 pa_min_reqs:
     folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
-    excel_book="PA plant orders against Lam demand 20250908.xlsx"
-    sheet_name="Fab shortage 9-12"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
+    sheet_name="Fab shortage 9-24"
     columns="PA Item", "Ply1 Item", "FAB req'd past due", "FAB req'd WK0", ...
         "FAB req'd WK1", "FAB req'd WK2", "FAB req'd WK3", "FAB req'd WK4", ...
         "FAB req'd WK5", "PA Fin", "Inspection", "Frame", "Dye Orders"
+
+pa_floor_mos:
+    folder="/Users/lamanwyner/Desktop/Shawmut Projects/Scheduling"
+    excel_book="PA plant orders against Lam demand 20250922.xlsx"
+    sheet_name="1427"
+    columns="Item\nType", Warehouse, Customer, Owner, Roll, Lot, Item, ...
+        Quality, "Nominal\nWidth", Quantity, WEEKOF
+    start_row=4

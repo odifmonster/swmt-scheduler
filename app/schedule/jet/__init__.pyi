@@ -54,7 +54,8 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         """Initializes a new schedule, passing in the adaptive schedule as the previous one."""
         ...
     def get_start_idx(self, lots: tuple[DyeLot, ...], due_date: dt.datetime) -> int: ...
-    def insert(self, lots: tuple[DyeLot, ...], idx: int) -> tuple[JetSched | None, list[Job]]:
+    def insert(self, lots: tuple[DyeLot, ...] | list[DyeLot],
+               idx: int) -> tuple[JetSched | None, list[Job]]:
         """
         Tries to insert a job with the given lots at the given
         index in the schedule.

@@ -298,7 +298,8 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, LateDetailData, MissingData
         if order.yds > 0 and order.total_yds <= 0:
             cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
             next_fri = cur_fri + dt.timedelta(weeks=2)
-            late_pairs = sorted(order.late_table(next_fri), key=lambda x: x[1])
+            late_pairs = sorted(order.late_table(next_fri, 0), key=lambda x: x[1])
+            if not late_pairs: continue
             total_yds = 0
 
             order_ids.append(order.id)

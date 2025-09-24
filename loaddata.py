@@ -72,11 +72,13 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     wv_df = pd.read_excel(fpath, **pdargs)
     wv_df['Greige'] = wv_df['Greige'].str.upper()
 
-    today = dt.datetime.now()
+    today = dt.datetime.now() + dt.timedelta(days=2)
     today = dt.datetime(today.year, today.month, today.day)
     raw_mon = today + dt.timedelta(days=0-today.weekday())
+    avail1 = today + dt.timedelta(days=2, hours=10)
+    avail2 = avail1 + dt.timedelta(days=1)
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
-    max_date = monday + dt.timedelta(weeks=1, days=3)
+    max_date = monday + dt.timedelta(weeks=1, days=1, hours=12)
     counter = 0
 
     weekly_plan: dict[style.GreigeStyle, float] = {}
@@ -98,8 +100,8 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
         for wks in range(5):
             for days in range(5):
-                avail_date = monday + dt.timedelta(weeks=wks, days=days, hours=8)
-                if avail_date < today or avail_date > max_date: continue
+                arrive_date = monday + dt.timedelta(weeks=wks, days=days, hours=10)
+                if arrive_date < today or arrive_date > max_date: continue
                 total_lbs += si_df.loc[i, 'Expected SI daily']
                 wt = grg.roll_rng.average()
                 if grg.id == 'ANMUT-C':
@@ -108,7 +110,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
                 for j in range(nrolls):
                     r = Roll(f'FSPLAN{counter+j+1:06}', grg, wt,
-                             monday + dt.timedelta(weeks=wks, days=days, hours=10),
+                             arrive_date, max(arrive_date, avail1), max(arrive_date, avail2),
                              roll.FAIRYSTONE)
                     inv.add(r)
 
@@ -128,12 +130,12 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
         total_lbs = 0
         rolls_added = 0
-        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 9/9'] / 2
+        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 9/16']
         if avg_wkly_lbs <= 0: continue
 
         for wks in range(5):
-            avail_date = monday + dt.timedelta(weeks=wks, days=1)
-            if avail_date < today or avail_date > max_date: continue
+            arrive_date = monday + dt.timedelta(weeks=wks, days=1, hours=10)
+            if arrive_date < today or arrive_date > max_date: continue
 
             total_lbs += avg_wkly_lbs
             wt = grg.roll_rng.average()
@@ -143,7 +145,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
             for j in range(nrolls):
                 r = Roll(f'WFPLAN{counter+j+1:06}', grg, wt,
-                         monday + dt.timedelta(weeks=wks, days=1, hours=10),
+                         arrive_date, max(arrive_date, avail1), max(arrive_date, avail2),
                          roll.WHITEVILLE)
                 inv.add(r)
 
