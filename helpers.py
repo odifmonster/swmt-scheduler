@@ -25,7 +25,9 @@ def apply_snapshot(inv: Inventory, snap: Snapshot | None, temp: bool = True) -> 
 class InvTable(TypedDict):
     greige: list[str]
     lbs: list[float]
-    avail_date: list[dt.datetime]
+    arrive_date: list[dt.datetime]
+    avail_date1: list[dt.datetime]
+    avail_date2: list[dt.datetime]
 
 class OrderTable(TypedDict):
     item: list[str]
@@ -133,7 +135,9 @@ class RollsTable(TypedDict):
 class NewInvTable(TypedDict):
     greige: list[str]
     lbs: list[float]
-    avail_date: list[dt.datetime]
+    arrive_date: list[dt.datetime]
+    avail_date1: list[dt.datetime]
+    avail_date2: list[dt.datetime]
 
 class LateTable(TypedDict):
     item: list[str]
@@ -176,7 +180,8 @@ type OrderData = tuple[list[str], OrderTable]
 
 def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
     roll_ids: list[str] = []
-    inv_table = InvTable(greige=[], lbs=[], avail_date=[])
+    inv_table = InvTable(greige=[], lbs=[], arrive_date=[], avail_date1=[],
+                         avail_date2=[])
 
     order_ids: list[str] = []
     order_table = OrderTable(item=[], greige=[], pnum=[], due_date=[], yds=[], lbs=[])
@@ -185,7 +190,9 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
         roll_ids.append(rview.id)
         inv_table['greige'].append(rview.item.id)
         inv_table['lbs'].append(rview.lbs)
-        inv_table['avail_date'].append(rview.avail_date)
+        inv_table['arrive_date'].append(rview.arrive_date)
+        inv_table['avail_date1'].append(rview.avail_date1)
+        inv_table['avail_date2'].append(rview.avail_date2)
     
     for order in dmnd.itervalues():
         order_ids.append(order.id)
@@ -248,10 +255,13 @@ def get_lot_pnums(reqs: list[Req]) -> tuple[list[str], LotPnumsTable]:
         total_prod_yds = 0
         total_req_yds = 0
         while o_idx < len(orders) and l_idx < len(lots):
-            lot_ids.append(lots[l_idx].id)
-            pnum_table['order'].append(orders[o_idx].id)
-            pnum_table['pnum'].append(orders[o_idx].pnum)
-            pnum_table['due_date'].append(orders[o_idx].due_date)
+
+            if total_req_yds + orders[o_idx].init_yds \
+                - total_prod_yds >= 100:
+                lot_ids.append(lots[l_idx].id)
+                pnum_table['order'].append(orders[o_idx].id)
+                pnum_table['pnum'].append(orders[o_idx].pnum)
+                pnum_table['due_date'].append(orders[o_idx].due_date)
 
             if total_prod_yds + lots[l_idx].yds >= total_req_yds + orders[o_idx].init_yds:
                 total_req_yds += orders[o_idx].init_yds
@@ -266,7 +276,8 @@ type NewInvData = tuple[list[str], NewInvTable]
 
 def get_new_inv(inv: Inventory) -> NewInvData:
     roll_ids: list[str] = []
-    inv_table = NewInvTable(greige=[], lbs=[], avail_date=[])
+    inv_table = NewInvTable(greige=[], lbs=[], arrive_date=[], avail_date1=[],
+                            avail_date2=[])
 
     for rview in inv.itervalues():
         if 'NEW' not in rview.id: continue
@@ -274,7 +285,9 @@ def get_new_inv(inv: Inventory) -> NewInvData:
         roll_ids.append(rview.id)
         inv_table['greige'].append(rview.item.id)
         inv_table['lbs'].append(rview.init_wt)
-        inv_table['avail_date'].append(rview.avail_date)
+        inv_table['arrive_date'].append(rview.arrive_date)
+        inv_table['avail_date1'].append(rview.avail_date1)
+        inv_table['avail_date2'].append(rview.avail_date2)
     
     return roll_ids, inv_table
 

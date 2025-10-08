@@ -142,6 +142,9 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
             return
         
         x = round(rview.lbs / wt_rng.average())
+        if x == 0:
+            return
+        
         if wt_rng.contains(rview.lbs / x):
             port_wt = rview.lbs / x
         elif prev_wts:
@@ -166,19 +169,21 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
             yield FailedYield(desc1=f'No partial rolls of {greige}')
             return
         
-        for id1 in self[greige, PARTIAL]:
-            for id2 in self[greige, PARTIAL]:
-                rview1: RollView = self[greige, PARTIAL, id1]
-                rview2: RollView = self[greige, PARTIAL, id2]
-                if rview1 == rview2: continue
-                if rview1.lbs < 50 or rview2.lbs < 50: continue
+        rviews: list[RollView] = list(self[greige, PARTIAL].itervalues())
+        for i in range(len(rviews)):
+            rview1 = rviews[i]
+            if rview1.lbs < 50: continue
+            if max_date is not None:
+                if pnum <= 0 and rview1.avail_date1 > max_date or \
+                    pnum > 0 and rview1.avail_date2 > max_date: continue
+            if prev_plts and rview1.plant not in prev_plts + [ANY]: continue
+            for j in range(i+1, len(rviews)):
+                rview2 = rviews[j]
+                if rview2.lbs < 50: continue
                 if max_date is not None:
-                    if pnum <= 0 and (rview1.avail_date1 > max_date or \
-                                      rview2.avail_date1 > max_date): continue
-                    if rview1.avail_date2 > max_date or rview2.avail_date2 > max_date:
-                        continue
-                if prev_plts and (rview1.plant not in prev_plts + [ANY] or \
-                    rview2.plant not in prev_plts + [ANY]): continue
+                    if pnum <= 0 and rview1.avail_date1 > max_date or \
+                        pnum > 0 and rview1.avail_date2 > max_date: continue
+                if prev_plts and rview2.plant not in prev_plts + [ANY]: continue
 
                 if not prev_wts:
                     wt_rng = jet_rng
@@ -236,7 +241,11 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
             }
 
             views: list[RollView] = list(self[greige].itervalues())
-            views = sorted(views, key=lambda r: (r.avail_date, sizes[r.size]))
+            if pnum <= 0:
+                key = lambda r: (r.avail_date1, sizes[r.size])
+            else:
+                key = lambda r: (r.avail_date2, sizes[r.size])
+            views = sorted(views, key=key)
 
             for rview in views:
                 if pnum <= 0:
@@ -244,15 +253,14 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
                 else:
                     avail_date = rview.avail_date2
                 if max_date is not None and avail_date > max_date: continue
-                if rview.size == PARTIAL: continue
                 if n_ports == 1 and rview.size not in (PARTIAL, HALF) \
                     and avail_date >= TODAY - dt.timedelta(days=1) and \
                         avail_date < TODAY + dt.timedelta(days=2): continue
                 yield from self.get_roll_loads(rview, snapshot, prev_wts, jet_rng,
                                                prev_plts, pnum)
 
-            yield from self.get_comb_loads(greige, snapshot, prev_wts, jet_rng, prev_plts,
-                                           pnum, max_date=max_date)
+            # yield from self.get_comb_loads(greige, snapshot, prev_wts, jet_rng, prev_plts,
+            #                                pnum, max_date=max_date)
         
         if max_date is not None and create:
             for _ in range(8):

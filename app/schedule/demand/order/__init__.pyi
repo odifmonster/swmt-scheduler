@@ -17,7 +17,7 @@ class _Req(Protocol):
 
 class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
+                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
             priv_attrs=('req','init_cur_yds','init_cum_yds'),
             frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
     """
@@ -65,6 +65,8 @@ class Order(Data[str], mod_in_group=True,
         """The initial yards in this order."""
         ...
     @property
+    def avg_use(self) -> float: ...
+    @property
     def cum_yds(self) -> float:
         """The cumulative remaining yards needed to fulfill the requirement by this due date."""
         ...
@@ -104,7 +106,7 @@ class Order(Data[str], mod_in_group=True,
 
 class OrderView(DataView[str],
                 attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date'),
+                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
                 funcs=('late_table','assign','unassign'),
                 dunders=('repr',)):
     """
@@ -131,6 +133,8 @@ class OrderView(DataView[str],
     def init_yds(self) -> float:
         """The initial yards in this order."""
         ...
+    @property
+    def avg_use(self) -> float: ...
     @property
     def cum_yds(self) -> float:
         """The cumulative remaining yards needed to fulfill the requirement by this due date."""

@@ -6,14 +6,15 @@ from app.schedule import DyeLot, DyeLotView
 from app.schedule.demand.order import Order
 
 class Req(HasID[str], SuperImmut,
-          attrs=('_prefix','id','item','orders','lots'),
-          priv_attrs=('id','lots'), frozen=('*id','item','orders')):
+          attrs=('_prefix','id','item','orders','lots','avg_use'),
+          priv_attrs=('id','lots'), frozen=('*id','item','orders','avg_use')):
     """
     A class for Req objects. Represents all the orders
     on a single item.
     """
     item: FabricStyle # the item of this requirement
     orders: tuple[Order, ...] # the orders that compose this requirement
+    avg_use: float
     def __init__(self, item: FabricStyle,
                  buckets: list[tuple[int, dt.datetime, float]]) -> None:
         """

@@ -5,8 +5,8 @@ from ...dyelot import DyeLot, DyeLotView
 from ..order import Order
 
 class Req(HasID[str], SuperImmut,
-          attrs=('_prefix','id','item','orders','lots'),
-          priv_attrs=('id','lots'), frozen=('*id','item','orders')):
+          attrs=('_prefix','id','item','orders','lots','avg_use'),
+          priv_attrs=('id','lots'), frozen=('*id','item','orders','avg_use')):
     
     def __init__(self, item, buckets):
         orders: list[Order] = []
@@ -17,7 +17,8 @@ class Req(HasID[str], SuperImmut,
             if total_yds > 0:
                 orders.append(Order(self, item, pnum, due_date, yds, total_yds))
 
-        SuperImmut.__init__(self, priv={'id': item.id, 'lots': []}, item=item, orders=tuple(orders))
+        SuperImmut.__init__(self, priv={'id': item.id, 'lots': []}, item=item, orders=tuple(orders),
+                            avg_use=total_yds / (len(buckets)-1))
     
     @property
     def _prefix(self):

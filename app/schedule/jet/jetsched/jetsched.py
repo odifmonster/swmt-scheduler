@@ -71,7 +71,7 @@ class JetSched(HasID[int], SuperImmut,
         else:
             lje = max(self.__date_rng.minval, self.__jobs[-1].end)
 
-        if lje.weekday() > 3 and (lje.weekday() >= 5 or lje.hour >= 20):
+        if lje.weekday() > 4 and (lje.weekday() > 5 or lje.hour >= 20):
             return _first_monday_after(lje)
         return lje
     
@@ -129,7 +129,7 @@ class JetSched(HasID[int], SuperImmut,
     def get_cycle_end(self, start: dt.datetime, item: fabric.FabricStyle):
         end = start + item.cycle_time
         wkday = end.weekday()
-        if wkday > 3 and (wkday >= 5 or end.hour >= 20):
+        if wkday > 4 and (wkday > 5 or end.hour >= 20):
             end = _first_monday_after(end)
         return end
     
@@ -154,7 +154,7 @@ class JetSched(HasID[int], SuperImmut,
         
         min_date = max(map(lambda l: l.min_date, lots))
         moveable = all(map(lambda l: l.moveable, lots))
-        if moveable and min_date.weekday() >= 5:
+        if moveable and min_date.weekday() > 5:
             min_date = _first_monday_after(min_date)
         if not moveable:
             new_start = min_date
@@ -193,7 +193,7 @@ class JetSched(HasID[int], SuperImmut,
         min_date = max(map(lambda l: l.min_date, lots))
         moveable = all(map(lambda l: l.moveable, lots))
         force = False
-        if min_date.weekday() >= 5:
+        if min_date.weekday() > 5:
             min_date = _first_monday_after(min_date)
         if not moveable:
             force = True

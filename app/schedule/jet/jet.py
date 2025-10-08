@@ -84,7 +84,9 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         curjobs = self.__cur_sched.jobs
         for i, job in enumerate(curjobs):
             tdelta = due_date - job.start
-            if tdelta.days < 21:
+            moveable = all(map(lambda l: l.moveable, job.lots))
+            if tdelta.days < 18 and (moveable or i == len(curjobs) - 1 or \
+                curjobs[i+1].start - timedelta(hours=4) > job.end):
                 return i
         return len(curjobs)
     

@@ -38,6 +38,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
     fpath, pdargs = excel.get_excel_info('inventory')
     inv_df = pd.read_excel(fpath, **pdargs)
+    epoch = dt.datetime.fromtimestamp(0)
 
     # def _reducer(res: set[str], val: str) -> set[str]:
     #     res.add(val)
@@ -61,7 +62,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
         else:
             plt = roll.FAIRYSTONE
         r = Roll(inv_df.loc[i, 'Roll'], grg, inv_df.loc[i, 'Pounds'],
-                 dt.datetime.fromtimestamp(0), plt)
+                 epoch, epoch, epoch, plt)
         inv.add(r)
 
     fpath, pdargs = excel.get_excel_info('incoming_si_greige')
@@ -76,7 +77,11 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     today = dt.datetime(today.year, today.month, today.day)
     raw_mon = today + dt.timedelta(days=0-today.weekday())
     avail1 = today + dt.timedelta(days=2, hours=10)
+    if avail1.weekday() > 4:
+        avail1 += dt.timedelta(days=2)
     avail2 = avail1 + dt.timedelta(days=1)
+    if avail2.weekday() > 4:
+        avail2 += dt.timedelta(days=2)
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
     max_date = monday + dt.timedelta(weeks=1, days=1, hours=12)
     counter = 0
@@ -130,14 +135,18 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
         total_lbs = 0
         rolls_added = 0
-        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 9/16']
+        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 10/7'] + wv_df.loc[i, 'Expected WV 10/10']
+        shipment1 = wv_df.loc[i, 'Expected WV 10/7']
+        shipment2 = wv_df.loc[i, 'Expected WV 10/10']
         if avg_wkly_lbs <= 0: continue
 
         for wks in range(5):
             arrive_date = monday + dt.timedelta(weeks=wks, days=1, hours=10)
+            arrive1 = dt.datetime(2025, 10, 7, hour=10)
+            arrive2 = dt.datetime(2025, 10, 10, hour=10)
             if arrive_date < today or arrive_date > max_date: continue
 
-            total_lbs += avg_wkly_lbs
+            total_lbs += shipment1
             wt = grg.roll_rng.average()
             if grg.id == 'ANMUT-C':
                 wt = grg.port_rng.average()
@@ -145,7 +154,22 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
             for j in range(nrolls):
                 r = Roll(f'WFPLAN{counter+j+1:06}', grg, wt,
-                         arrive_date, max(arrive_date, avail1), max(arrive_date, avail2),
+                         arrive1, max(arrive1, avail1), max(arrive1, avail2),
+                         roll.WHITEVILLE)
+                inv.add(r)
+
+            counter += nrolls
+            rolls_added += nrolls
+
+            total_lbs += shipment2
+            wt = grg.roll_rng.average()
+            if grg.id == 'ANMUT-C':
+                wt = grg.port_rng.average()
+            nrolls = int(total_lbs / wt) - rolls_added
+
+            for j in range(nrolls):
+                r = Roll(f'WFPLAN{counter+j+1:06}', grg, wt,
+                         arrive2, max(arrive2, avail1), max(arrive2, avail2),
                          roll.WHITEVILLE)
                 inv.add(r)
 
@@ -249,7 +273,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
         fin = reqs_df.loc[i, 'PA Fin']
         insp = reqs_df.loc[i, 'Inspection'] * 0.9
         frame = reqs_df.loc[i, 'Frame'] * 0.85
-        on_sched = reqs_df.loc[i, 'Dye Orders']
+        on_sched = reqs_df.loc[i, 'Dye Orders'] * 0.85
 
         if new_only:
             total_avail = fin + insp + frame + on_sched
