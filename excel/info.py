@@ -134,8 +134,8 @@ def get_excel_info(name: ParsedKey) -> tuple[os.PathLike, PandasKWArgs]:
             res['dtype'] = { 'greige': 'string' }
         case 'adaptive_orders':
             res['dtype'] = {
-                'DyelotID1': 'string', 'DyelotID2': 'string', 'Machine': 'string',
-                'FinItem': 'string'
+                'job': 'string', 'dyelot': 'string', 'machine': 'string',
+                'item': 'string'
             }
         case 'pa_demand_plan':
             res['dtype'] = { 'PA Fin Item': 'string' }
