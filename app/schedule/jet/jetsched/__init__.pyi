@@ -1,13 +1,13 @@
 import datetime as dt
 from app.support import HasID, SuperImmut, DateRange
-from app.style import FabricStyle, GreigeStyle
+from app.style import FabricStyle, GreigeStyle, Color
 from app.materials import PortLoad
 from app.schedule import DyeLot
 from app.schedule.jet import Job
 
 class JetSched(HasID[int], SuperImmut,
-               attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
-                      'last_job_end','jobs'),
+               attrs=('_prefix','id','soil_level','jobs_since_strip','clr_since_strip',
+                      'rem_time','last_job_end','jobs'),
                priv_attrs=('id','init_sched','soil','jss','date_rng','jobs'),
                frozen=('*id','*init_sched','*date_rng')):
     """
@@ -33,6 +33,8 @@ class JetSched(HasID[int], SuperImmut,
     def jobs_since_strip(self) -> int:
         """The number of jobs run since the last strip cycle."""
         ...
+    @property
+    def clr_since_strip(self) -> Color: ...
     @property
     def last_job_end(self) -> dt.datetime:
         """

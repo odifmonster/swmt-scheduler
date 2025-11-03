@@ -25,7 +25,7 @@ def run_fabric_converts(df: pd.DataFrame) -> pd.DataFrame:
     return sub_df
 
 def run_greige_converts(df: pd.DataFrame) -> pd.DataFrame:
-    df['greige'] = df['greige'].str.upper()
+    df['GreigeAlt'] = df['GreigeAlt'].str.upper()
     return df
 
 def get_out_path(key: InfoKey) -> os.PathLike:
@@ -43,7 +43,7 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
     match key:
         case 'fabric_items':
             jets: list[str] = []
-            for jeti in (1,2,3,4,7,8,9,10):
+            for jeti in (1,2,3,4,6,7,8,9,10):
                 if not pd.isna(df.loc[i, f'JET {jeti}']):
                     jets.append(f'Jet-{jeti:02}')
             row: list[str] = []
@@ -64,8 +64,8 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
 
             return ','.join([str(x) for x in row]) + '\n'
         case 'greige_sizes':
-            grg = df.loc[i, 'greige']
-            tgt_lbs = df.loc[i, 'tgt_lbs']
+            grg = df.loc[i, 'GreigeAlt']
+            tgt_lbs = 350
             return f'{grg},{tgt_lbs-20:.2f},{tgt_lbs+20:.2f}\n'
         case 'greige_translation':
             return f'{df.loc[i, 'inventory']},{df.loc[i, 'plan']}\n'

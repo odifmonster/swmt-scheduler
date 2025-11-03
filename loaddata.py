@@ -83,7 +83,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     if avail2.weekday() > 4:
         avail2 += dt.timedelta(days=2)
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
-    max_date = monday + dt.timedelta(weeks=1, days=3, hours=12)
+    max_date = monday + dt.timedelta(weeks=2, hours=12)
     counter = 0
 
     weekly_plan: dict[style.GreigeStyle, float] = {}
@@ -135,9 +135,9 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
         total_lbs = 0
         rolls_added = 0
-        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 10/7'] + wv_df.loc[i, 'Expected WV 10/10']
-        shipment1 = wv_df.loc[i, 'Expected WV 10/7']
-        shipment2 = wv_df.loc[i, 'Expected WV 10/10']
+        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 10/27']
+        shipment1 = wv_df.loc[i, 'Expected WV 10/27']
+        shipment2 = wv_df.loc[i, 'Expected WV 11/3']
         if avg_wkly_lbs <= 0: continue
 
         for wks in range(5):
@@ -269,6 +269,8 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
     # not_avail = agg_sched_info(start, _get_val, _reducer, {})
 
     reqs_df = pd.read_excel(reqs_path, **reqs_args)
+    to_drop = reqs_df[reqs_df['PA Item'].isna()].index
+    reqs_df = reqs_df.drop(to_drop)
     reqs_df['Ship Day'] = reqs_df['Ply1 Item'].apply(lambda x: _map_ship_day(x, ship_days_data))
 
     today = dt.datetime.now()
@@ -354,7 +356,7 @@ def load_jets(start: dt.datetime, end: dt.datetime) -> list[Jet]:
                                            job_end, alt_lbs=lot_lbs)
             lots.append(cur_lot)
 
-        cur_job = Job(lots, job_start)
+        cur_job = Job(lots, job_start, job_id=job)
         cur_jet.add_adaptive_job(cur_job)
     
     for j in jets:

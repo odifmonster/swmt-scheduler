@@ -29,23 +29,24 @@ def _max_color(clr1, clr2):
     return color.EMPTY
 
 class JetSched(HasID[int], SuperImmut,
-               attrs=('_prefix','id','soil_level','jobs_since_strip','rem_time',
-                      'last_job_end','jobs'),
+               attrs=('_prefix','id','soil_level','jobs_since_strip','clr_since_strip',
+                      'rem_time','last_job_end','jobs'),
                priv_attrs=('id','init_sched','soil','jss','date_rng','jobs',
                            'max_ss'),
                frozen=('*id','*init_sched','*date_rng')):
     
     def __init__(self, date_rng: DateRange, prev_sched = None):
-        init_soil, init_jobs = 0, 0
+        init_soil, init_jobs, init_clr = 0, 0, color.EMPTY
         if prev_sched:
             init_soil = prev_sched.soil_level
             init_jobs = prev_sched.jobs_since_strip
+            init_clr = prev_sched.clr_since_strip
 
         globals()['_CTR'] += 1
         SuperImmut.__init__(self, priv={'id': globals()['_CTR'], 'init_sched': prev_sched,
                                         'soil': init_soil, 'jss': init_jobs,
                                         'date_rng': date_rng, 'jobs': [],
-                                        'max_ss': color.EMPTY})
+                                        'max_ss': init_clr})
     
     @property
     def _prefix(self):
@@ -62,6 +63,10 @@ class JetSched(HasID[int], SuperImmut,
     @property
     def jobs_since_strip(self):
         return self.__jss
+    
+    @property
+    def clr_since_strip(self):
+        return self.__max_ss
     
     @property
     def last_job_end(self):

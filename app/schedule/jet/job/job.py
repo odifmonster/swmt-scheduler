@@ -6,9 +6,9 @@ from datetime import datetime
 _CTR = 20
 
 class Job:
-    def __init__(self, dyelots: list[DyeLot], start: datetime, idx = None):
-        if len(dyelots) == 1 and dyelots[0].id[:3] != 'LOT':
-            self.id = dyelots[0].id
+    def __init__(self, dyelots: list[DyeLot], start: datetime, idx = None, job_id = None):
+        if job_id is not None:
+            self.id = job_id
         else:
             self.id = ""
 
