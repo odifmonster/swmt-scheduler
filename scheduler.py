@@ -18,7 +18,8 @@ from loaddata import load_inv, load_demand, load_jets, LOGGER
 style.greige.init()
 style.fabric.init()
 
-TODAY = dt.datetime.now()
+_raw_today = dt.datetime.now()
+TODAY = dt.datetime(year=_raw_today.year, month=_raw_today.month, day=_raw_today.day)
 _raw_monday = TODAY + dt.timedelta(days=0 - TODAY.weekday())
 MONDAY = dt.datetime(year=_raw_monday.year, month=_raw_monday.month,
                      day=_raw_monday.day)
@@ -115,7 +116,7 @@ def gpl_loop(o1: Order, o2: Order, inv: Inventory, jet: Jet) \
         return 'Split too uneven'
 
     max_due = min(o1.due_date, o2.due_date) - dt.timedelta(days=1)
-    min_arrival = MONDAY + dt.timedelta(weeks=2, hours=10)
+    min_arrival = TODAY + dt.timedelta(weeks=1, hours=10)
     snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum), max_date=max_due)
     if snap is None:
         snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum),
@@ -144,7 +145,7 @@ def gsl_loop(order: Order, inv: Inventory, jet: Jet) -> tuple[DyeLot, Snapshot] 
     if not order.item.can_run_on_jet(jet.id):
         return 'Jet cannot run item'
     grg_due = order.due_date - dt.timedelta(days=1)
-    min_arrival = MONDAY + dt.timedelta(weeks=2, hours=10)
+    min_arrival = TODAY + dt.timedelta(weeks=1, hours=10)
     snap, loads = get_jet_loads(inv, order.greige, jet, order.pnum, max_date=grg_due)
     flag = False
     if snap is None:

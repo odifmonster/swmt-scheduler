@@ -73,17 +73,17 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
     wv_df = pd.read_excel(fpath, **pdargs)
     wv_df['Greige'] = wv_df['Greige'].str.upper()
 
-    today = dt.datetime.now() + dt.timedelta(days=2)
+    today = dt.datetime.now()
     today = dt.datetime(today.year, today.month, today.day)
     raw_mon = today + dt.timedelta(days=0-today.weekday())
-    avail1 = today + dt.timedelta(days=2, hours=10)
+    avail1 = today + dt.timedelta(hours=10)
     if avail1.weekday() > 4:
         avail1 += dt.timedelta(days=2)
     avail2 = avail1 + dt.timedelta(days=1)
     if avail2.weekday() > 4:
         avail2 += dt.timedelta(days=2)
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
-    max_date = monday + dt.timedelta(weeks=2, hours=12)
+    max_date = today + dt.timedelta(weeks=1, hours=12)
     counter = 0
 
     weekly_plan: dict[style.GreigeStyle, float] = {}
@@ -135,8 +135,8 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
 
         total_lbs = 0
         rolls_added = 0
-        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 10/27']
-        shipment1 = wv_df.loc[i, 'Expected WV 10/27']
+        avg_wkly_lbs = wv_df.loc[i, 'Expected WV 11/17']
+        shipment1 = wv_df.loc[i, 'Expected WV 11/17']
         shipment2 = wv_df.loc[i, 'Expected WV 11/3']
         if avg_wkly_lbs <= 0: continue
 
@@ -347,7 +347,7 @@ def load_jets(start: dt.datetime, end: dt.datetime) -> list[Jet]:
         lots = []
 
         for i in grp.index:
-            item = style.fabric.get_style(moveable_df.loc[i, 'item'])
+            item = style.fabric.get_style(moveable_df.loc[i, 'item1'])
             if item is None:
                 item = style.fabric.get_style('EMPTY')
         

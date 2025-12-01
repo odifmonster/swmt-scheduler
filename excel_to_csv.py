@@ -46,6 +46,7 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
             for jeti in (1,2,3,4,6,7,8,9,10):
                 if not pd.isna(df.loc[i, f'JET {jeti}']):
                     jets.append(f'Jet-{jeti:02}')
+                
             row: list[str] = []
             master = df.loc[i, 'STYLE'].strip()
             color = df.loc[i, 'COLOR NUMBER']
