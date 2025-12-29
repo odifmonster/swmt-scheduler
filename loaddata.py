@@ -245,6 +245,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
     ship_days_data = {}
     for name, group in grouped:
         ship_days = group['Ship Day'].unique()
+        sched_days = group['Schedule Day']
         # print(', '.join(list(filter(lambda x: not pd.isna(x), ship_days))), end=' ')
         
         day_set = set()
@@ -255,7 +256,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
         # print(name, day_set)
 
         days = [math.inf] + list(map(lambda x: days_map[x], day_set))
-        ship_days_data[name] = min(days)
+        ship_days_data[name] = min(sched_days)-1
 
     # def _get_val(df: pd.DataFrame, i: int) -> tuple[str, float]:
     #     return (df.loc[i, 'FinItem'], df.loc[i, 'Qty'])
@@ -313,7 +314,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
                 wkday = 2
 
             lam_due_date = monday + dt.timedelta(weeks=wk_delta, days=wkday)
-            due_date = sub_bsns_days(lam_due_date, 5)
+            due_date = sub_bsns_days(lam_due_date, 4)
 
             cum_req += req_raw
             cur_req_yds = max(0, min(req_raw, cum_req - total_avail))

@@ -35,7 +35,7 @@ class DyeLot(HasID[str], SuperImmut,
         new_id = f'LOT{globals()['_CTR']:05}'
         min_date = max(map(lambda pl: pl.avail_date, ports)) + dt.timedelta(days=1)
         return cls(new_id, tuple(ports), item, greige, None, item.cycle_time,
-                   dt.timedelta(hours=16), min_date)
+                   dt.timedelta(hours=72), min_date)
 
     def __init__(self, id, ports, item, greige, start, cycle_time, fin_time, min_date,
                  alt_lbs = None, moveable = True):

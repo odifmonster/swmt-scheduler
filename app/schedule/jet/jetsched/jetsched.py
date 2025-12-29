@@ -76,7 +76,9 @@ class JetSched(HasID[int], SuperImmut,
         else:
             lje = max(self.__date_rng.minval, self.__jobs[-1].end)
 
-        if lje.weekday() > 4 and (lje.weekday() > 5 or lje.hour >= 20):
+        last_mon = lje - dt.timedelta(days=lje.weekday())
+        if (lje.weekday() > 4 and (lje.weekday() > 5 or lje.hour >= 20)) or \
+            (last_mon.date() == dt.date(2025, 12, 22) and lje.weekday() > 2):
             return _first_monday_after(lje)
         return lje
     
@@ -85,7 +87,10 @@ class JetSched(HasID[int], SuperImmut,
         lje = self.last_job_end
         rem_rng = DateRange(lje, self.__date_rng.maxval)
         first_mon = _first_monday_after(lje)
-        cur_wknd = DateRange(first_mon - dt.timedelta(hours=24), first_mon)
+        wknd_hrs = 24
+        if first_mon.date() == dt.date(2025, 12, 29):
+            wknd_hrs = 96
+        cur_wknd = DateRange(first_mon - dt.timedelta(hours=wknd_hrs), first_mon)
         rem_t = rem_rng.maxval - lje
 
         while rem_rng.overlaps(cur_wknd):
@@ -95,8 +100,12 @@ class JetSched(HasID[int], SuperImmut,
             if cur_wknd.maxval > rem_rng.maxval:
                 rem_t += (cur_wknd.maxval - rem_rng.maxval)
             
-            cur_wknd = DateRange(cur_wknd.minval + dt.timedelta(days=7),
-                                 cur_wknd.maxval + dt.timedelta(days=7))
+            first_mon += dt.timedelta(days=7)
+            wknd_hrs = 24
+            if first_mon.date() == dt.date(2025, 12, 29):
+                wknd_hrs = 96
+            cur_wknd = DateRange(first_mon - dt.timedelta(hours=wknd_hrs),
+                                 first_mon)
         
         return rem_t
     
@@ -134,7 +143,9 @@ class JetSched(HasID[int], SuperImmut,
     def get_cycle_end(self, start: dt.datetime, item: fabric.FabricStyle):
         end = start + item.cycle_time
         wkday = end.weekday()
-        if wkday > 4 and (wkday > 5 or end.hour >= 20):
+        cur_mon = end - dt.timedelta(days=wkday)
+        if (wkday > 4 and wkday > 5 or end.hour >= 20) or \
+            cur_mon.date() == dt.date(2025, 12, 22) and wkday > 2:
             end = _first_monday_after(end)
         return end
     
@@ -159,7 +170,9 @@ class JetSched(HasID[int], SuperImmut,
         
         min_date = max(map(lambda l: l.min_date, lots))
         moveable = all(map(lambda l: l.moveable, lots))
-        if moveable and min_date.weekday() > 5:
+        min_mon = min_date - dt.timedelta(days=min_date.weekday())
+        if moveable and (min_date.weekday() > 5 \
+            or min_mon.date() == dt.date(2025, 12, 22) and min_date.weekday() > 2):
             min_date = _first_monday_after(min_date)
         if not moveable:
             new_start = min_date
@@ -198,7 +211,9 @@ class JetSched(HasID[int], SuperImmut,
         min_date = max(map(lambda l: l.min_date, lots))
         moveable = all(map(lambda l: l.moveable, lots))
         force = False
-        if min_date.weekday() > 5:
+        min_mon = min_date - dt.timedelta(days=min_date.weekday())
+        if min_date.weekday() > 5 or \
+            min_mon.date() == dt.date(2025, 12, 22) and min_date.weekday() > 2:
             min_date = _first_monday_after(min_date)
         if not moveable:
             force = True
