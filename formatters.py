@@ -142,10 +142,11 @@ def cost_args(jet: Jet, sched: JetSched, newjob, order: Order, dmnd: Demand,
         'desc2': f'inventory snapshot={snap}'
     }
 
-def cost_ret(res: tuple[float, float]) -> ProcessDesc:
-    non_jet, jet = res
+def cost_ret(res) -> ProcessDesc:
+    non_jet, jet, hard_late = res
     return {
-        'desc1': f'cost={non_jet+jet:.2f}'
+        'desc1': f'cost={non_jet+jet:.2f}',
+        'desc2': f'late costs on hard orders={sum(hard_late.values()):.2f}'
     }
 
 def sc_cost_args(jet: Jet) -> ProcessDesc:
@@ -177,10 +178,11 @@ def late_cost_args(order: Order, dmnd: Demand, next_avail: dt.datetime,
         'desc1': 'Getting the cost of late and not-scheduled orders'
     }
 
-def late_cost_ret(res: tuple[float, float]) -> ProcessDesc:
+def late_cost_ret(res: tuple[float, float, float]) -> ProcessDesc:
     return {
         'desc1': f'late costs on current order={res[0]:.2f}',
-        'desc2': f'late costs on other orders={res[1]:.2f}'
+        'desc2': f'late costs on other orders={res[1]:.2f}',
+        'desc3': f'late costs on other hard orders={sum(res[2].values()):.2f}'
     }
 
 def inv_cost_args(order: Order, reqs: list[Req]) -> ProcessDesc:

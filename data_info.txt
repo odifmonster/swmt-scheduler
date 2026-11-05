@@ -90,6 +90,15 @@ pa_min_reqs2:
         "FAB req'd WK9", "FAB req'd WK10", "FAB req'd WK11", "FAB req'd WK12", "In transit", ...
         "PA Fin", "Inspection", "Frame", "Dye Orders"
 
+# Optional: remaining safety stock to build per PA item, in yards. Leave this
+# block out (or commented) to schedule without safety stock. The sheet needs a
+# "PA Item" column and a "Safety Yds" column; point it wherever safety ends up.
+# safety_stock:
+#     folder="/Users/lamanwyner/OneDrive - Shawmut Corporation/[EXT] Supply Chain - PA Supply/PA Weekly Order Planning"
+#     excel_book="safety_stock.xlsx"
+#     sheet_name="Safety"
+#     columns="PA Item", "Safety Yds"
+
 pa_floor_mos:
     folder="/Users/lamanwyner/OneDrive - Shawmut Corporation/[EXT] Supply Chain - PA Supply/PA Weekly Order Planning"
     excel_book="PA plant orders against Lam demand 20261109 lam plant date.xlsx"

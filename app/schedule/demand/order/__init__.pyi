@@ -17,20 +17,28 @@ class _Req(Protocol):
 
 class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
+                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use',
+                   'safety'),
             priv_attrs=('req','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
+            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date',
+                    'safety')):
     """
     A class for Order objects. This represents a required quantity
     of an item and a due date. Orders will track their fulfillment
     status against their requirement, the total requirement on that
     item, and their due dates.
+
+    A safety order is the trailing bucket of a requirement that
+    represents safety stock to build once the hard requirements are
+    covered. It has no real due date: it is never "late", it only
+    counts as unfilled.
     """
     item: FabricStyle # the item for this order
     pnum: int # the priority number of this order
     due_date: dt.datetime # the due date of this order
-    def __init__(self, req: _Req, item: FabricStyle, pnum: int, cur_yds: float,
-                 cum_yds: float) -> None:
+    safety: bool # whether this order is a safety stock bucket
+    def __init__(self, req: _Req, item: FabricStyle, pnum: int, due_date: dt.datetime,
+                 cur_yds: float, cum_yds: float, safety: bool = False) -> None:
         """
         Initialize a new Order object.
 
@@ -40,12 +48,14 @@ class Order(Data[str], mod_in_group=True,
               The item this order is for.
             pnum:
               The priority number of this order.
+            due_date:
+              The due date of this order.
             cur_yds:
               The number of yards in this order.
             cum_yds:
               The total yards to produce by this order's due date.
-            p1date:
-              The date and time the P1 truck is leaving.
+            safety:
+              Whether this order is a safety stock bucket.
         """
         ...
     @property
@@ -106,7 +116,8 @@ class Order(Data[str], mod_in_group=True,
 
 class OrderView(DataView[str],
                 attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
+                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use',
+                       'safety'),
                 funcs=('late_table','assign','unassign'),
                 dunders=('repr',)):
     """
@@ -114,6 +125,7 @@ class OrderView(DataView[str],
     """
     pnum: int # the priority number of this order
     due_date: dt.datetime # the due date of this order
+    safety: bool # whether this order is a safety stock bucket
     def __init__(self, link: Order) -> None: ...
     @property
     def item(self) -> FabricStyle: ...

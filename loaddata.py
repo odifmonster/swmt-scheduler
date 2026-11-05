@@ -228,10 +228,50 @@ def sub_bsns_days(start: dt.datetime, ndays: int) -> dt.datetime:
         start -= dt.timedelta(days=tdays)
     return start
 
+def load_safety_stock() -> dict[str, float]:
+    """
+    Load the remaining safety stock to build per PA item, in yards.
+
+    Where safety stock lives has not been decided yet, so this reads an
+    optional 'safety_stock' source from data_info.txt with the columns
+    "PA Item" and "Safety Yds". When no such source is configured (or
+    the workbook is missing) no safety stock is scheduled. Any other
+    source of these numbers can be passed straight to load_demand as
+    a dict instead.
+    """
+    try:
+        fpath, pdargs = excel.get_excel_info('safety_stock')
+    except KeyError:
+        return {}
+
+    try:
+        df = pd.read_excel(fpath, **pdargs)
+    except FileNotFoundError:
+        print(f'Safety stock workbook not found: {fpath}')
+        return {}
+
+    df = df[~df['PA Item'].isna()]
+    safety: dict[str, float] = {}
+    for item, grp in df.groupby('PA Item'):
+        yds = float(grp['Safety Yds'].fillna(0).sum())
+        if yds > 0:
+            safety[item] = yds
+    return safety
+
 def load_demand(start: dt.datetime, new_only: bool = True,
-                use_lam_sched: bool = False) -> tuple[list[Req], Demand]:
+                use_lam_sched: bool = False,
+                safety_stock: dict[str, float] | None = None) -> tuple[list[Req], Demand]:
+    """
+    Load the requirements and demand. 'safety_stock' maps a PA item id to
+    the yards of safety stock still to be built for that item, on top of
+    its hard requirements. These yards are taken as given (they are not
+    netted against on-hand fabric the way the hard requirements are) and
+    become a trailing SAFETY order on the item's requirement.
+    """
     reqs: list[Req] = []
     dmnd = Demand()
+    if safety_stock is None:
+        safety_stock = {}
 
     ship_path, ship_args = excel.get_excel_info('ship_dates')
 
@@ -311,7 +351,11 @@ def load_demand(start: dt.datetime, new_only: bool = True,
         #     total_avail -= not_avail[fab.id]
 
         cum_req = 0
-        dates_yds: list[tuple[dt.datetime, float]] = []
+        dates_yds: list[tuple[int, dt.datetime, float]] = []
+
+        wkday = min(grp['Ship Day']) - 2
+        if wkday == math.inf:
+            wkday = 2
 
         for wk_delta, col_end in pairs:
             req_raw = sum(grp[f'FAB req\'d {col_end}'])
@@ -319,9 +363,6 @@ def load_demand(start: dt.datetime, new_only: bool = True,
                 pnum = -1
             else:
                 pnum = int(col_end[2:])
-            wkday = min(grp['Ship Day']) - 2
-            if wkday == math.inf:
-                wkday = 2
 
             lam_due_date = monday + dt.timedelta(weeks=wk_delta, days=wkday)
             due_date = sub_bsns_days(lam_due_date, 4)
@@ -330,7 +371,16 @@ def load_demand(start: dt.datetime, new_only: bool = True,
             cur_req_yds = max(0, min(req_raw, cum_req - total_avail))
             dates_yds.append((pnum, due_date, cur_req_yds))
 
-        x = Req(fab, dates_yds)
+        # safety stock goes in a bucket after the last hard requirement, so
+        # it is scheduled after every hard order and never counts as late
+        safety = None
+        safety_yds = safety_stock.get(fab_id, 0)
+        if safety_yds > 0:
+            last_wk = pairs[-1][0]
+            lam_safety_date = monday + dt.timedelta(weeks=last_wk+1, days=wkday)
+            safety = (last_wk+1, sub_bsns_days(lam_safety_date, 4), safety_yds)
+
+        x = Req(fab, dates_yds, safety=safety)
         for o in x.orders:
             dmnd.add(o)
         reqs.append(x)

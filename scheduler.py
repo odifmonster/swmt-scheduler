@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Generator, Callable
+from typing import Generator, Callable, NamedTuple
 import sys, os, math, datetime as dt, pandas as pd
 
 from app import style
@@ -11,12 +11,25 @@ from app.schedule import DyeLot, Order, OrderView, Req, Demand, Jet, JetSched, \
     Job
 
 from helpers import add_back_piece, apply_snapshot, get_init_tables, get_sched_tables, \
-    get_late_tables, get_new_inv, get_lot_pnums, df_cols_to_string, get_logs_table
+    get_late_tables, get_new_inv, get_lot_pnums, df_cols_to_string, get_logs_table, \
+    get_safety_table
 from formatters import *
-from loaddata import load_inv, load_demand, load_jets, LOGGER
+from loaddata import load_inv, load_demand, load_jets, load_safety_stock, LOGGER
 
 style.greige.init()
 style.fabric.init()
+
+# Cost per yard of safety stock left unbuilt. This is deliberately small next
+# to the late costs on hard orders (which start at 1000 per order), so safety
+# only wins a jet slot when nothing with a real due date wants it. It still
+# has to outweigh the jet sequencing costs of an extra job, which are single
+# digits once averaged over a jet's schedule.
+SAFETY_YD_COST = 0.05
+
+# Whether a safety order may create planned (not yet knit) greige when the
+# inventory cannot fill a jet. Safety stock is built opportunistically from
+# greige that is on hand or already expected, so by default it may not.
+SAFETY_CREATE_GREIGE = False
 
 _raw_today = dt.datetime.now()
 TODAY = dt.datetime(year=_raw_today.year, month=_raw_today.month, day=_raw_today.day)
@@ -117,10 +130,13 @@ def gpl_loop(o1: Order, o2: Order, inv: Inventory, jet: Jet) \
     min_arrival = TODAY + dt.timedelta(weeks=1, hours=10)
     snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum), max_date=max_due)
     if snap is None:
+        # the partial loads were already handed back to inventory
+        if (o1.safety or o2.safety) and not SAFETY_CREATE_GREIGE:
+            return 'Could not fill jet without new greige for safety stock'
         snap, loads = get_jet_loads(inv, o1.greige, jet, min(o1.pnum, o2.pnum),
                                     max_date=min_arrival,
                                     create=True)
-    
+
     lot1 = o1.assign(loads[:ports1])
     lot2 = o2.assign(loads[ports1:])
     
@@ -147,6 +163,9 @@ def gsl_loop(order: Order, inv: Inventory, jet: Jet) -> tuple[DyeLot, Snapshot] 
     snap, loads = get_jet_loads(inv, order.greige, jet, order.pnum, max_date=grg_due)
     flag = False
     if snap is None:
+        # the partial loads were already handed back to inventory
+        if order.safety and not SAFETY_CREATE_GREIGE:
+            return 'Could not fill jet without new greige for safety stock'
         flag = True
         snap, loads = get_jet_loads(inv, order.greige, jet, order.pnum,
                                     max_date=min_arrival,
@@ -305,9 +324,21 @@ def sched_cost(jet: Jet) -> tuple[float, float, float]:
             
     return strip_cost, not_seq_cost, non_black_9
 
+def safety_cost(order: Order | OrderView) -> float:
+    """
+    The cost of a safety stock order. Safety has no due date, so there is
+    no lateness: the only cost is the safety yards that have not been built
+    yet. The remaining total on the order also counts any hard yards still
+    ahead of it, so the unfilled safety is capped at the bucket's own size.
+    """
+    return max(0, min(order.init_yds, order.total_yds)) * SAFETY_YD_COST
+
 @logging.logged_func(LOGGER, order_cost_args, order_cost_ret)
 def order_cost(order: Order | OrderView, next_avail: dt.datetime,
                ignore_amt: float, cur_ports: int = -1) -> float:
+    if order.safety:
+        return safety_cost(order)
+
     table = order.late_table(next_avail, ignore_amt)
     if not table:
         return 0
@@ -351,33 +382,71 @@ def order_cost(order: Order | OrderView, next_avail: dt.datetime,
 
 @logging.logged_func(LOGGER, late_cost_args, late_cost_ret)
 def late_cost(order: Order, dmnd: Demand, next_avail: dt.datetime,
-              cur_ports: int, ignore_rem: bool = False) -> tuple[float, float]:
+              cur_ports: int, ignore_rem: bool = False) \
+                -> tuple[float, float, dict[str, float]]:
+    """
+    Returns the late cost of the order being scheduled, the late cost of
+    every other order, and the late cost of each other hard (non-safety)
+    order by order id. The last value is what a safety order is not
+    allowed to make worse, order by order.
+    """
     if ignore_rem:
         ignore_amt = min(order.init_yds, order.total_yds)
     else:
         ignore_amt = 0
     cur_late = order_cost(order, next_avail, ignore_amt, cur_ports=cur_ports)
     rem_late = 0.0
+    hard_late: dict[str, float] = {}
     end_cur_wk = order.due_date + dt.timedelta(days=5-order.due_date.weekday())
 
     for date in dmnd:
         for other_order in dmnd[date].itervalues():
             if other_order.item == order.item and other_order.due_date > order.due_date: continue
-            rem_late += order_cost(other_order, next_avail, 0)
-            
-    return cur_late, rem_late
+            other_cost = order_cost(other_order, next_avail, 0)
+            rem_late += other_cost
+            if not other_order.safety:
+                hard_late[other_order.id] = other_cost
+
+    return cur_late, rem_late, hard_late
+
+def hard_late_cost(dmnd: Demand, next_avail: dt.datetime) -> dict[str, float]:
+    """The late cost of every hard order in the demand, by order id, under the current schedules."""
+    costs: dict[str, float] = {}
+    for date in dmnd:
+        for other_order in dmnd[date].itervalues():
+            if other_order.safety: continue
+            costs[other_order.id] = order_cost(other_order, next_avail, 0)
+    return costs
+
+def worsened_hard_orders(base: dict[str, float], new: dict[str, float]) -> list[str]:
+    """The ids of the hard orders whose late cost is higher in 'new' than in 'base'."""
+    return [oid for oid, c in new.items() if c > base.get(oid, 0) + 1e-3]
 
 def req_cost(req: Req, due_date: dt.datetime) -> float:
     if not req.orders:
         return 0
-    
+
     sorted_ords = sorted(filter(lambda o: o.due_date <= due_date, req.orders),
                          key=lambda o: o.due_date)
     if not sorted_ords or sorted_ords[-1].total_yds > 0:
         return 0
-    
-    rem_yds = abs(sorted_ords[-1].total_yds)
-    rem_weeks = round(rem_yds / req.avg_use)
+
+    last = sorted_ords[-1]
+    rem_yds = abs(last.total_yds)
+
+    # yards produced past the hard requirements that land in the safety
+    # bucket are wanted inventory, not excess
+    safety = req.safety_order
+    if safety is not None and not last.safety:
+        into_safety = max(0, safety.init_yds - max(0, safety.total_yds))
+        rem_yds = max(0, rem_yds - into_safety)
+    if rem_yds <= 0:
+        return 0
+
+    # an item with safety stock but no hard requirements has no weekly use
+    rem_weeks = 1
+    if req.avg_use > 0:
+        rem_weeks = round(rem_yds / req.avg_use)
     return rem_yds * 0.014 * rem_weeks
 
 @logging.logged_func(LOGGER, inv_cost_args, inv_cost_ret)
@@ -397,6 +466,8 @@ def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmn
     max_pnum = -1
     max_pdate = dt.datetime.fromtimestamp(0)
     for order in dmnd.itervalues():
+        # safety stock has no claim on greige that a hard order may need
+        if order.safety: continue
         if order.pnum > max_pnum:
             max_pnum = order.pnum
             max_pdate = order.due_date
@@ -449,14 +520,24 @@ def used_inv_cost(inv: Inventory, extras: dict[GreigeStyle, list[PortLoad]], dmn
     
     return used_cost
 
+class Cost(NamedTuple):
+    non_jet: float
+    jet: float
+    hard_late: dict[str, float] # late cost of each hard order not being scheduled
+
+    @property
+    def total(self) -> float:
+        return self.non_jet + self.jet
+
 @logging.logged_func(LOGGER, cost_args, cost_ret)
 def cost(jet: Jet, sched: JetSched, newjob: Job | None, order: Order, dmnd: Demand,
          reqs: list[Req], snap: Snapshot, inv: Inventory, next_avail: dt.datetime,
-         ignore_rem: bool = False) -> tuple[float, float]:
+         ignore_rem: bool = False) -> Cost:
     apply_snapshot(inv, snap)
     prevsched = jet.set_sched(sched)
 
-    cur_late, rem_late = late_cost(order, dmnd, next_avail, jet.n_ports, ignore_rem=ignore_rem)
+    cur_late, rem_late, hard_late = late_cost(order, dmnd, next_avail, jet.n_ports,
+                                              ignore_rem=ignore_rem)
     cur_inv, rem_inv = excess_inv_cost(order, reqs)
     used_inv = used_inv_cost(inv, prevsched.free_greige(), dmnd)
     strips, not_seq, nb9 = sched_cost(jet)
@@ -480,7 +561,7 @@ def cost(jet: Jet, sched: JetSched, newjob: Job | None, order: Order, dmnd: Dema
     jet_cost = (strips+not_seq+nb9+over_max) / (max(1,len(all_jobs))*jet.n_ports) + not_pref
     # if order.item.id == 'FF LYRICHELHS-41114-63':
     #     print(jet, sched, snap, cur_late, rem_late, cur_inv, rem_inv, used_inv, jet_cost)
-    return non_jet_cost, jet_cost
+    return Cost(non_jet_cost, jet_cost, hard_late)
 
 def cost_all(scheds: dict[Jet, JetSched], order: Order, dmnd: Demand, reqs: list[Req],
              snap: Snapshot, inv: Inventory, next_avail: dt.datetime) -> float:
@@ -489,7 +570,7 @@ def cost_all(scheds: dict[Jet, JetSched], order: Order, dmnd: Demand, reqs: list
     for jet in scheds:
         prevscheds[jet] = jet.set_sched(scheds[jet])
     
-    cur_late, rem_late = late_cost(order, dmnd, next_avail)
+    cur_late, rem_late, _ = late_cost(order, dmnd, next_avail, -1)
     cur_inv, rem_inv = excess_inv_cost(order, reqs)
 
     free_grg: dict[GreigeStyle, list[PortLoad]] = {}
@@ -539,10 +620,10 @@ def best_sub_job(snap: Snapshot, jet: Jet, lots: list[DyeLot],
     index = jet.get_start_idx((lots[0],), order.due_date)
     cur_jet_jobs = jet.cur_sched.jobs
     for i in range(index, len(cur_jet_jobs)+1):
-        newsched, _ = jet.insert(lots, i)
+        newsched, newjobs = jet.insert(lots, i, order.due_date)
         if newsched is not None:
-            newcost = sum(cost(jet, newsched, order, dmnd, reqs, snap, inv,
-                           next_fri))
+            newcost = cost(jet, newsched, newjobs[0], order, dmnd, reqs, snap, inv,
+                           next_fri).total
             costs.append((newsched, newcost))
     
     if not costs:
@@ -580,15 +661,32 @@ def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snap
     sched_and_costs: list[tuple[dict[Jet, JetSched], Snapshot | None, float]] = []
     cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
     next_fri = max(next_avail, cur_fri + dt.timedelta(weeks=2))
+
+    # Safety stock is placed wherever it fits, but it may never push a hard
+    # order later than it already is: any candidate schedule that raises the
+    # late cost of any single hard order is thrown out before costs are
+    # compared. (Per order, not in total: a reshuffle that helps one hard
+    # order must not pay for delaying another.)
+    base_hard_late: dict[str, float] = {}
+    if order.safety:
+        base_hard_late = hard_late_cost(dmnd, next_fri)
+
     for jet in lots_map:
         for tup in lots_map[jet]:
             lots = tup[:-1]
             snapshot = tup[-1]
-            index = jet.get_start_idx(lots, order.due_date)
+            if order.safety:
+                # try every slot, and do not hold the job back to the week
+                # before its (nominal) due date
+                index = 0
+                insert_due = None
+            else:
+                index = jet.get_start_idx(lots, order.due_date)
+                insert_due = order.due_date
             cur_jet_jobs = jet.cur_sched.jobs
             for i in range(index, len(cur_jet_jobs)+1):
                 # print(f'      inserting at {i} on jet {jet.id}')
-                newsched, newjobs = jet.insert(lots, i, order.due_date)
+                newsched, newjobs = jet.insert(lots, i, insert_due)
                 # if order.item.id == 'FF LYRICHELHS-41114-63':
                 #     print(jet, i, end=' ')
                 #     if cur_jet_jobs and i > 0 and i < len(cur_jet_jobs):
@@ -598,10 +696,12 @@ def get_best_job(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snap
                 #     print(newsched)
                 #     print()
                 if newsched is not None:
-                    newcost = sum(cost(jet, newsched, newjobs[0], order, dmnd, reqs, snapshot, inv,
-                                   next_fri, ignore_rem=True))
-                    sched_and_costs.append(({jet: newsched}, snapshot, newcost))
-        cur_cost = sum(cost(jet, jet.cur_sched, None, order, dmnd, reqs, None, inv, next_fri))
+                    newcost = cost(jet, newsched, newjobs[0], order, dmnd, reqs, snapshot, inv,
+                                   next_fri, ignore_rem=True)
+                    if order.safety and worsened_hard_orders(base_hard_late, newcost.hard_late):
+                        continue
+                    sched_and_costs.append(({jet: newsched}, snapshot, newcost.total))
+        cur_cost = cost(jet, jet.cur_sched, None, order, dmnd, reqs, None, inv, next_fri).total
         sched_and_costs.append(({ jet: jet.cur_sched }, None, cur_cost))
     
     if check_multi:
@@ -658,14 +758,15 @@ def schedule_order(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
 
     return order, True
 
-@logging.logged_func(LOGGER, desc_args=make_sched_args, desc_ret=make_sched_ret)
-def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
-                  next_avail: dt.datetime) -> None:
-    dates = sorted(dmnd)
+def schedule_dates(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
+                   next_avail: dt.datetime, dates: list[dt.datetime]) -> None:
     for date in dates:
-        print(f'Making schedule for orders for {date.strftime('%m/%d')}')
-
         all_views = list(dmnd[date].itervalues())
+        if all(map(lambda o: o.safety, all_views)):
+            print(f'Making schedule for safety stock (bucket {date.strftime('%m/%d')})')
+        else:
+            print(f'Making schedule for orders for {date.strftime('%m/%d')}')
+
         ultra_lt = list(filter(lambda o: o.color.shade == color.LIGHT0, all_views))
         rem = list(filter(lambda o: o.color.shade != color.LIGHT0, all_views))
         views = sorted(rem, key=lambda o: o.init_yds, reverse=True)
@@ -690,8 +791,37 @@ def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet]
                 if not cont:
                     print(f'    remaining yards: {order.total_yds:.2f}')
                     break
-            
+
             dmnd.add(order)
+
+@logging.logged_func(LOGGER, desc_args=make_sched_args, desc_ret=make_sched_ret)
+def make_schedule(dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
+                  next_avail: dt.datetime) -> None:
+    # Safety stock is held out of the demand until every hard requirement has
+    # been scheduled, so the hard schedule comes out exactly as it would with
+    # no safety stock at all. Only then are the safety orders added and placed
+    # wherever they fit without pushing a hard order later (see get_best_job).
+    safety_orders: list[Order] = [dmnd.remove(v) for v in list(dmnd.itervalues())
+                                  if v.safety]
+
+    schedule_dates(dmnd, reqs, inv, jets, next_avail, sorted(dmnd))
+    if not safety_orders:
+        return
+
+    hard_dates = set(dmnd)
+    for order in safety_orders:
+        dmnd.add(order)
+    safety_dates = sorted(filter(lambda d: d not in hard_dates, dmnd))
+
+    hard_late_before = hard_late_cost(dmnd, next_avail)
+    schedule_dates(dmnd, reqs, inv, jets, next_avail, safety_dates)
+    hard_late_after = hard_late_cost(dmnd, next_avail)
+    worse = worsened_hard_orders(hard_late_before, hard_late_after)
+    print(f'Hard-order late cost before safety stock: {sum(hard_late_before.values()):.2f}, '
+          f'after: {sum(hard_late_after.values()):.2f}; '
+          f'hard orders made later by safety stock: {len(worse)}')
+    for oid in worse:
+        print(f'  {oid}: {hard_late_before.get(oid, 0):.2f} -> {hard_late_after[oid]:.2f}')
 
 def get_input_tables(inv: Inventory, dmnd: Demand) \
     -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -758,6 +888,10 @@ def write_output(writer: pd.ExcelWriter, logpath: str, inv_df: pd.DataFrame,
     
     late, late_detail, missing = get_late_tables(dmnd)
 
+    safety_ids, safety_data = get_safety_table(reqs)
+    safety_df = pd.DataFrame(data=safety_data, index=safety_ids)
+    safety_df = df_cols_to_string(safety_df, 'item', 'greige')
+
     order_ids, late_data = late
     late_df = pd.DataFrame(data=late_data, index=order_ids)
     late_df = df_cols_to_string(late_df, 'item')
@@ -783,7 +917,9 @@ def write_output(writer: pd.ExcelWriter, logpath: str, inv_df: pd.DataFrame,
     late_df2.to_excel(writer, sheet_name='late_details', float_format='%.2f',
                       index_label='bucket_id')
     missing_df.to_excel(writer, sheet_name='not_scheduled', float_format='%.2f', index_label='order_id')
-    
+    safety_df.to_excel(writer, sheet_name='safety_stock', float_format='%.2f',
+                       index_label='order_id')
+
     all_logs = get_logs_table(lgr)
     for tup in all_logs:
         fname, proc_ids, logs_data = tup
@@ -801,7 +937,8 @@ def main(start_str: str, end_str: str):
 
     print('Loading program data...')
     inv, _ = load_inv(start)
-    reqs, dmnd = load_demand(start, use_lam_sched=True)
+    safety_stock = load_safety_stock()
+    reqs, dmnd = load_demand(start, use_lam_sched=True, safety_stock=safety_stock)
     jets = load_jets(start, end)
     print('\rFinished loading data!')
 
