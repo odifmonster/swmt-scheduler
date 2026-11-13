@@ -21,19 +21,23 @@ class _Req(Protocol):
 
 class Order(Data[str], mod_in_group=True,
             attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
+                   'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use',
+                   'safety'),
             priv_attrs=('req','init_cur_yds','init_cum_yds'),
-            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date')):
-    
-    def __init__(self, req: _Req, item, pnum, due_date, cur_yds, cum_yds):
-        if pnum < 0:
+            frozen=('*req','*init_cur_yds','*init_cum_yds','item','pnum','due_date',
+                    'safety')):
+
+    def __init__(self, req: _Req, item, pnum, due_date, cur_yds, cum_yds, safety=False):
+        if safety:
+            prefix = 'SAFETY'
+        elif pnum < 0:
             prefix = 'OVERDUE'
         else:
             prefix = f'P{pnum}'
         Data.__init__(self, f'{prefix}@{item.id}', 'Order', OrderView(self),
                       priv={'req': req, 'init_cur_yds': cur_yds,
                             'init_cum_yds': cum_yds}, item=item,
-                      pnum=pnum, due_date=due_date)
+                      pnum=pnum, due_date=due_date, safety=safety)
     
     @property
     def greige(self):
@@ -128,7 +132,8 @@ class Order(Data[str], mod_in_group=True,
 
 class OrderView(DataView[str],
                 attrs=('item','greige','color','yds','init_yds','cum_yds','total_yds',
-                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use'),
+                       'lbs','init_lbs','cum_lbs','total_lbs','pnum','due_date','avg_use',
+                       'safety'),
                 funcs=('late_table','assign','unassign'),
                 dunders=('repr',)):
     pass

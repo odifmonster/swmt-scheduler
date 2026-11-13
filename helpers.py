@@ -36,6 +36,7 @@ class OrderTable(TypedDict):
     due_date: list[dt.datetime]
     yds: list[float]
     lbs: list[float]
+    safety: list[bool]
 
 type JobsCol = Literal['jet', 'start', 'end', 'greige', 'color', 'lbs']
 
@@ -163,6 +164,14 @@ class MissingTable(TypedDict):
     yds_not_scheduled: list[float]
     lbs_not_scheduled: list[float]
 
+class SafetyTable(TypedDict):
+    item: list[str]
+    greige: list[str]
+    safety_yds: list[float]
+    scheduled_yds: list[float]
+    remaining_yds: list[float]
+    excess_yds: list[float]
+
 class LogsTable(TypedDict):
     caller: list[int]
     name: list[str]
@@ -184,7 +193,8 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
                          avail_date2=[])
 
     order_ids: list[str] = []
-    order_table = OrderTable(item=[], greige=[], pnum=[], due_date=[], yds=[], lbs=[])
+    order_table = OrderTable(item=[], greige=[], pnum=[], due_date=[], yds=[], lbs=[],
+                             safety=[])
 
     for rview in inv.itervalues():
         roll_ids.append(rview.id)
@@ -202,7 +212,8 @@ def get_init_tables(inv: Inventory, dmnd: Demand) -> tuple[InvData, OrderData]:
         order_table['due_date'].append(order.due_date)
         order_table['yds'].append(order.yds)
         order_table['lbs'].append(order.lbs)
-    
+        order_table['safety'].append(order.safety)
+
     return (roll_ids, inv_table), (order_ids, order_table)
 
 type JobsData = tuple[list[str], JobsTable]
@@ -308,6 +319,8 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, LateDetailData, MissingData
                               lbs_not_scheduled=[])
 
     for order in dmnd.itervalues():
+        # safety stock is never late or missing; it gets its own table
+        if order.safety: continue
         if order.yds > 0 and order.total_yds <= 0:
             cur_fri = order.due_date + dt.timedelta(days=4 - order.due_date.weekday())
             next_fri = cur_fri + dt.timedelta(weeks=2)
@@ -348,6 +361,45 @@ def get_late_tables(dmnd: Demand) -> tuple[LateData, LateDetailData, MissingData
     
     return (order_ids, late_table), (late_ids, late_detail), (miss_ids, miss_table)
 
+type SafetyData = tuple[list[str], SafetyTable]
+
+def get_safety_table(reqs: list[Req]) -> SafetyData:
+    """
+    One row per item with safety stock: the yards asked for, how many of
+    them the schedule builds, what is still missing, and any production
+    beyond the safety target.
+    """
+    order_ids: list[str] = []
+    table = SafetyTable(item=[], greige=[], safety_yds=[], scheduled_yds=[],
+                        remaining_yds=[], excess_yds=[])
+
+    for req in reqs:
+        order = req.safety_order
+        if order is None: continue
+
+        # total_yds also counts hard yards still ahead of the safety bucket
+        remaining = max(0, min(order.init_yds, order.total_yds))
+        excess = max(0, -order.total_yds)
+
+        order_ids.append(order.id)
+        table['item'].append(order.item.id)
+        table['greige'].append(order.item.greige.id)
+        table['safety_yds'].append(order.init_yds)
+        table['scheduled_yds'].append(order.init_yds - remaining)
+        table['remaining_yds'].append(remaining)
+        table['excess_yds'].append(excess)
+
+    return order_ids, table
+
+def _order_pnum(order_id: str) -> int:
+    """The priority number encoded in an order id's prefix (P<n>, OVERDUE or SAFETY)."""
+    prefix = order_id.split('@')[0]
+    if prefix == 'OVERDUE':
+        return -1
+    if prefix == 'SAFETY':
+        return 99
+    return int(prefix[1:])
+
 def get_logs_table(lgr: Logger) -> list[tuple[str, list[int], LogsTable]]:
     tables: list[tuple[str, list[int], LogsTable]] = []
 
@@ -360,9 +412,8 @@ def get_logs_table(lgr: Logger) -> list[tuple[str, list[int], LogsTable]]:
     for process in sorted(lgr.processes, key=lambda p: p.id):
         if process.name == 'schedule_order':
             x: re.Match = re.match(r'.*Order\(id=(.*)\)', process.desc1)
-            order_id: str = x.group(1)
-            prefix = order_id[1:3]
-            pnum = int(prefix[1:])
+            order_id: str = x.group(1).strip('\'"')
+            pnum = _order_pnum(order_id)
 
             x: re.Match = re.match(r'.*=(.*)', process.desc2)
             day: str = x.group(1)

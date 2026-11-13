@@ -6,7 +6,8 @@ from app.schedule import DyeLot, DyeLotView
 from app.schedule.demand.order import Order
 
 class Req(HasID[str], SuperImmut,
-          attrs=('_prefix','id','item','orders','lots','avg_use'),
+          attrs=('_prefix','id','item','orders','lots','avg_use','hard_orders',
+                 'safety_order'),
           priv_attrs=('id','lots'), frozen=('*id','item','orders','avg_use')):
     """
     A class for Req objects. Represents all the orders
@@ -14,23 +15,35 @@ class Req(HasID[str], SuperImmut,
     """
     item: FabricStyle # the item of this requirement
     orders: tuple[Order, ...] # the orders that compose this requirement
-    avg_use: float
+    avg_use: float # the average weekly yards of hard requirements
     def __init__(self, item: FabricStyle,
-                 buckets: list[tuple[int, dt.datetime, float]]) -> None:
+                 buckets: list[tuple[int, dt.datetime, float]],
+                 safety: tuple[int, dt.datetime, float] | None = None) -> None:
         """
         Initialize a new Req object.
 
             item:
               The item of this requirement.
             buckets:
-              A list of pairs of priority numbers and their associated yards.
-            p1date:
-              The date and time the P1 truck is leaving.
+              A list of tuples of priority numbers, due dates, and
+              their associated yards (the hard requirements).
+            safety:
+              An optional trailing bucket of safety stock to build
+              once the hard requirements are covered. Same shape as
+              a hard bucket. Ignored when its yards are not positive.
         """
         ...
     @property
     def lots(self) -> list[DyeLotView]:
         """The DyeLots assigned to this requirement."""
+        ...
+    @property
+    def hard_orders(self) -> tuple[Order, ...]:
+        """The orders of this requirement that are hard requirements."""
+        ...
+    @property
+    def safety_order(self) -> Order | None:
+        """The safety stock order of this requirement, if any."""
         ...
     @property
     def total_yds_prod(self) -> float:

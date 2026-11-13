@@ -228,8 +228,49 @@ def sub_bsns_days(start: dt.datetime, ndays: int) -> dt.datetime:
         start -= dt.timedelta(days=tdays)
     return start
 
+# The column of the demand tab that holds the safety replenishment: the
+# additional yards to order per item to rebuild its safety stock.
+SAFETY_COL = 'Safety'
+
+def _read_reqs_sheet(fpath, pdargs: dict) -> pd.DataFrame:
+    """
+    Read the demand tab. Every column listed in data_info.txt must be in
+    the sheet except the safety column, which older workbooks do not have.
+    """
+    args = dict(pdargs)
+    cols = args.get('usecols')
+    if not isinstance(cols, list):
+        return pd.read_excel(fpath, **args)
+
+    wanted = set(cols)
+    args['usecols'] = lambda c: c in wanted
+    df = pd.read_excel(fpath, **args)
+
+    missing = wanted - set(df.columns) - {SAFETY_COL}
+    if missing:
+        raise ValueError(f'Columns not found in sheet {repr(args.get('sheet_name'))} '
+                         f'of {fpath}: {sorted(missing)}')
+    if SAFETY_COL in wanted and SAFETY_COL not in df.columns:
+        print(f'No {repr(SAFETY_COL)} column in sheet {repr(args.get('sheet_name'))}; '
+              'scheduling without safety stock')
+    return df
+
 def load_demand(start: dt.datetime, new_only: bool = True,
-                use_lam_sched: bool = False) -> tuple[list[Req], Demand]:
+                use_lam_sched: bool = False,
+                safety_stock: dict[str, float] | None = None) -> tuple[list[Req], Demand]:
+    """
+    Load the requirements and demand.
+
+    Safety replenishment comes from the 'Safety' column of the demand tab:
+    the additional yards to order per item to rebuild its safety stock.
+    These yards are taken as given (they are not netted against on-hand
+    fabric the way the hard requirements are) and become a trailing SAFETY
+    order on the item's requirement. Rows of the same PA item are summed,
+    like the requirements are.
+
+    'safety_stock', when given, replaces the column: it maps a PA item id
+    to its safety yards. Pass an empty dict to schedule without safety.
+    """
     reqs: list[Req] = []
     dmnd = Demand()
 
@@ -275,9 +316,14 @@ def load_demand(start: dt.datetime, new_only: bool = True,
     
     # not_avail = agg_sched_info(start, _get_val, _reducer, {})
 
-    reqs_df = pd.read_excel(reqs_path, **reqs_args)
+    reqs_df = _read_reqs_sheet(reqs_path, reqs_args)
     to_drop = reqs_df[reqs_df['PA Item'].isna()].index
     reqs_df = reqs_df.drop(to_drop)
+    if SAFETY_COL in reqs_df.columns:
+        reqs_df[SAFETY_COL] = pd.to_numeric(reqs_df[SAFETY_COL], errors='coerce').fillna(0)
+    else:
+        reqs_df[SAFETY_COL] = 0.0
+    n_safety, total_safety = 0, 0.0
     if not use_lam_sched:
         reqs_df['Ship Day'] = reqs_df['Ply1 Item'].apply(lambda x: _map_ship_day(x, ship_days_data))
 
@@ -292,9 +338,18 @@ def load_demand(start: dt.datetime, new_only: bool = True,
         pairs.append((i, f'WK{i}'))
 
     for fab_id, grp in reqs_df.groupby('PA Item'):
+        if safety_stock is None:
+            safety_yds = max(0.0, float(sum(grp[SAFETY_COL])))
+        else:
+            safety_yds = max(0.0, float(safety_stock.get(fab_id, 0)))
+
         fab = style.fabric.get_style(fab_id)
         if fab is None:
-            print(f'Skipping demand on {repr(fab_id)}')
+            if safety_yds > 0:
+                print(f'Skipping demand on {repr(fab_id)} '
+                      f'(including {safety_yds:.0f} yds of safety stock)')
+            else:
+                print(f'Skipping demand on {repr(fab_id)}')
             continue
 
         transit = sum(grp['In transit'])
@@ -311,7 +366,11 @@ def load_demand(start: dt.datetime, new_only: bool = True,
         #     total_avail -= not_avail[fab.id]
 
         cum_req = 0
-        dates_yds: list[tuple[dt.datetime, float]] = []
+        dates_yds: list[tuple[int, dt.datetime, float]] = []
+
+        wkday = min(grp['Ship Day']) - 2
+        if wkday == math.inf:
+            wkday = 2
 
         for wk_delta, col_end in pairs:
             req_raw = sum(grp[f'FAB req\'d {col_end}'])
@@ -319,9 +378,6 @@ def load_demand(start: dt.datetime, new_only: bool = True,
                 pnum = -1
             else:
                 pnum = int(col_end[2:])
-            wkday = min(grp['Ship Day']) - 2
-            if wkday == math.inf:
-                wkday = 2
 
             lam_due_date = monday + dt.timedelta(weeks=wk_delta, days=wkday)
             due_date = sub_bsns_days(lam_due_date, 4)
@@ -330,11 +386,23 @@ def load_demand(start: dt.datetime, new_only: bool = True,
             cur_req_yds = max(0, min(req_raw, cum_req - total_avail))
             dates_yds.append((pnum, due_date, cur_req_yds))
 
-        x = Req(fab, dates_yds)
+        # safety stock goes in a bucket after the last hard requirement, so
+        # it is scheduled after every hard order and never counts as late
+        safety = None
+        if safety_yds > 0:
+            last_wk = pairs[-1][0]
+            lam_safety_date = monday + dt.timedelta(weeks=last_wk+1, days=wkday)
+            safety = (last_wk+1, sub_bsns_days(lam_safety_date, 4), safety_yds)
+            n_safety += 1
+            total_safety += safety_yds
+
+        x = Req(fab, dates_yds, safety=safety)
         for o in x.orders:
             dmnd.add(o)
         reqs.append(x)
-    
+
+    print(f'Loaded safety stock replenishment for {n_safety} items '
+          f'({total_safety:.0f} yds)')
     return reqs, dmnd
 
 def load_jets(start: dt.datetime, end: dt.datetime) -> list[Jet]:
