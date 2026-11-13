@@ -14,7 +14,7 @@ from helpers import add_back_piece, apply_snapshot, get_init_tables, get_sched_t
     get_late_tables, get_new_inv, get_lot_pnums, df_cols_to_string, get_logs_table, \
     get_safety_table
 from formatters import *
-from loaddata import load_inv, load_demand, load_jets, load_safety_stock, LOGGER
+from loaddata import load_inv, load_demand, load_jets, LOGGER
 
 style.greige.init()
 style.fabric.init()
@@ -937,8 +937,8 @@ def main(start_str: str, end_str: str):
 
     print('Loading program data...')
     inv, _ = load_inv(start)
-    safety_stock = load_safety_stock()
-    reqs, dmnd = load_demand(start, use_lam_sched=True, safety_stock=safety_stock)
+    # safety replenishment comes in with the demand (the tab's Safety column)
+    reqs, dmnd = load_demand(start, use_lam_sched=True)
     jets = load_jets(start, end)
     print('\rFinished loading data!')
 
