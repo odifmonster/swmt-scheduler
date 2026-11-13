@@ -150,6 +150,7 @@ def load_inv(start: dt.datetime) -> tuple[Inventory, dict[style.GreigeStyle, flo
             wt = grg.roll_rng.average()
             if grg.id == 'ANMUT-C':
                 wt = grg.port_rng.average()
+            
             nrolls = int(total_lbs / wt) - rolls_added
 
             for j in range(nrolls):
@@ -227,12 +228,17 @@ def sub_bsns_days(start: dt.datetime, ndays: int) -> dt.datetime:
         start -= dt.timedelta(days=tdays)
     return start
 
-def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], Demand]:
+def load_demand(start: dt.datetime, new_only: bool = True,
+                use_lam_sched: bool = False) -> tuple[list[Req], Demand]:
     reqs: list[Req] = []
     dmnd = Demand()
 
     ship_path, ship_args = excel.get_excel_info('ship_dates')
-    reqs_path, reqs_args = excel.get_excel_info('pa_min_reqs')
+
+    if use_lam_sched:
+        reqs_path, reqs_args = excel.get_excel_info('pa_min_reqs2')
+    else:
+        reqs_path, reqs_args = excel.get_excel_info('pa_min_reqs')
 
     ship_df = pd.read_excel(ship_path, **ship_args)
     ship_df = ship_df[ship_df['Ply1 Item'] != '0']
@@ -256,7 +262,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
         # print(name, day_set)
 
         days = [math.inf] + list(map(lambda x: days_map[x], day_set))
-        ship_days_data[name] = min(sched_days)-1
+        ship_days_data[name] = min(sched_days)-2
 
     # def _get_val(df: pd.DataFrame, i: int) -> tuple[str, float]:
     #     return (df.loc[i, 'FinItem'], df.loc[i, 'Qty'])
@@ -272,14 +278,17 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
     reqs_df = pd.read_excel(reqs_path, **reqs_args)
     to_drop = reqs_df[reqs_df['PA Item'].isna()].index
     reqs_df = reqs_df.drop(to_drop)
-    reqs_df['Ship Day'] = reqs_df['Ply1 Item'].apply(lambda x: _map_ship_day(x, ship_days_data))
+    if not use_lam_sched:
+        reqs_df['Ship Day'] = reqs_df['Ply1 Item'].apply(lambda x: _map_ship_day(x, ship_days_data))
 
     today = dt.datetime.now()
+    if today.weekday() == 6:
+        today += dt.timedelta(days=1)
     raw_mon = today + dt.timedelta(days=0-today.weekday())
     monday = dt.datetime(year=raw_mon.year, month=raw_mon.month, day=raw_mon.day)
 
     pairs = [(-1, 'past due')]
-    for i in range(6):
+    for i in range(13):
         pairs.append((i, f'WK{i}'))
 
     for fab_id, grp in reqs_df.groupby('PA Item'):
@@ -288,15 +297,16 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
             print(f'Skipping demand on {repr(fab_id)}')
             continue
 
+        transit = sum(grp['In transit'])
         fin = max(grp['PA Fin'])
         insp = max(grp['Inspection']) * 0.9
         frame = max(grp['Frame']) * 0.85
         on_sched = max(grp['Dye Orders']) * 0.85
 
         if new_only:
-            total_avail = fin + insp + frame + on_sched
+            total_avail = transit + fin + insp + frame + on_sched
         else:
-            total_avail = fin
+            total_avail = transit + fin
         # if fab.id in not_avail:
         #     total_avail -= not_avail[fab.id]
 
@@ -309,7 +319,7 @@ def load_demand(start: dt.datetime, new_only: bool = True) -> tuple[list[Req], D
                 pnum = -1
             else:
                 pnum = int(col_end[2:])
-            wkday = min(grp['Ship Day'])
+            wkday = min(grp['Ship Day']) - 2
             if wkday == math.inf:
                 wkday = 2
 

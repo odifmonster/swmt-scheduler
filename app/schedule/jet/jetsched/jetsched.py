@@ -203,12 +203,14 @@ class JetSched(HasID[int], SuperImmut,
         self.__soil += job.color.soil
         self.__soil = max(self.__soil, 0)
 
-    def add_lots(self, lots: tuple[DyeLot, ...], idx: int):
+    def add_lots(self, lots: tuple[DyeLot, ...], idx: int, due_date: dt.datetime | None = None):
         strip = self.get_needed_strip(lots[0].item)
         if not strip is None:
             strip_job = Job([DyeLot.new_strip(strip, self.last_job_end)], self.last_job_end)
             self.add_job(strip_job)
         min_date = max(map(lambda l: l.min_date, lots))
+        if due_date is not None:
+            min_date = max(min_date, due_date - dt.timedelta(weeks=1))
         moveable = all(map(lambda l: l.moveable, lots))
         force = False
         min_mon = min_date - dt.timedelta(days=min_date.weekday())

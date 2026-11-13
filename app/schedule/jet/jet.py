@@ -85,17 +85,16 @@ class Jet(HasLogger, HasID[str], SuperImmut,
         for i, job in enumerate(curjobs):
             tdelta = due_date - job.start
             moveable = all(map(lambda l: l.moveable, job.lots))
-            if tdelta.days < 18 and (moveable or i == len(curjobs) - 1 or \
+            if tdelta.days < 5 and (moveable or i == len(curjobs) - 1 or \
                 curjobs[i+1].start - timedelta(hours=4) > job.end):
                 return i
         return len(curjobs)
     
-    @logged_meth(insert_args, insert_ret)
-    def insert(self, lots, idx):
+    def insert(self, lots, idx, due_date: datetime):
         if self.__cur_sched is None:
             raise RuntimeError('Cannot call \'insert\' method before initializing a new schedule')
         
-        newsched = self.__cur_sched.copy()
+        newsched = self.__cur_sched.copy() 
         cur_reg_jobs = self.__cur_sched.jobs
         cur_jobs = self.__cur_sched.full_sched
 
@@ -112,11 +111,11 @@ class Jet(HasLogger, HasID[str], SuperImmut,
             for lot in lots:
                 if not newsched.can_add((lot,)):
                     return None, []
-                newjobs.append(newsched.add_lots((lot,), idx))
+                newjobs.append(newsched.add_lots((lot,), idx, due_date=due_date))
         else:
             if not newsched.can_add(lots):
                 return None, []
-            newjobs.append(newsched.add_lots(lots, idx))
+            newjobs.append(newsched.add_lots(lots, idx, due_date=due_date))
 
         rem_jobs = self.__cur_sched.jobs[idx:]
         rem_moveable = list(filter(lambda j: j.lots[0].moveable, rem_jobs))

@@ -43,9 +43,12 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
     match key:
         case 'fabric_items':
             jets: list[str] = []
-            for jeti in (1,2,3,4,6,7,8,9,10):
+            for jeti in range(1, 11):
                 if not pd.isna(df.loc[i, f'JET {jeti}']):
                     jets.append(f'Jet-{jeti:02}')
+            
+            if not pd.isna(df.loc[i, 'TANKS']):
+                jets.extend(['Tank-07', 'Tank-11'])
                 
             row: list[str] = []
             master = df.loc[i, 'STYLE'].strip()
@@ -66,7 +69,9 @@ def get_row(key: InfoKey, df: pd.DataFrame, i: int) -> str:
             return ','.join([str(x) for x in row]) + '\n'
         case 'greige_sizes':
             grg = df.loc[i, 'GreigeAlt']
-            tgt_lbs = 350
+            tgt_lbs = float(df.loc[i, 'Target'])
+            if tgt_lbs > 400:
+                tgt_lbs /= 2
             return f'{grg},{tgt_lbs-20:.2f},{tgt_lbs+20:.2f}\n'
         case 'greige_translation':
             return f'{df.loc[i, 'inventory']},{df.loc[i, 'plan']}\n'

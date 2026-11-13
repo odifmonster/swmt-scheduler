@@ -29,7 +29,7 @@ def make_sched_ret(res: None) -> ProcessDesc:
     }
 
 def sched_ord_args(order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
-                   jets: list[Jet], next_avail: dt.datetime) -> ProcessDesc:
+                   jets: list[Jet], next_avail: dt.datetime, check_multi: bool = True) -> ProcessDesc:
     return {
         'desc1': f'Attempting to fulfill {order}',
         'desc2': f'due date={order.due_date.strftime('%m/%d')}',
@@ -97,8 +97,9 @@ def gpl_loop_ret(res: tuple[DyeLot, DyeLot, Snapshot] | str) -> ProcessDesc:
         'desc1': f'lot1={lot1.id}, lot2={lot2.id}, inventory snapshot={snap}'
     }
 
-def jload_args(inv: Inventory, greige: GreigeStyle, jet: Jet,
-               max_date: dt.datetime | None = None, create: bool = False) -> ProcessDesc:
+def jload_args(inv: Inventory, greige: GreigeStyle, jet: Jet, min_pnum: int,
+               max_date: dt.datetime | None = None, create: bool = False,
+               snap: Snapshot = None) -> ProcessDesc:
     return {
         'desc1': f'Searching inventory for {greige} to load {jet.id}'
     }
@@ -114,28 +115,23 @@ def jload_ret(res: tuple[Snapshot | None, list[PortLoad]]) -> ProcessDesc:
     }
 
 def best_job_args(lots_map: dict[Jet, list[tuple[DyeLot, tuple[DyeLot, ...], Snapshot]]],
-                  order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory,
-                  next_avail: dt.datetime) -> ProcessDesc:
+                  order: Order, dmnd: Demand, reqs: list[Req], inv: Inventory, jets: list[Jet],
+                  next_avail: dt.datetime, check_multi: bool = True) -> ProcessDesc:
     return {
         'desc1': f'Finding best job for {order}'
     }
 
-def best_job_ret(res: tuple[Jet, Snapshot | None, JetSched, float] | None) -> ProcessDesc:
+def best_job_ret(res) -> ProcessDesc:
     if res is None:
         return { 'desc1': 'Could not find any jobs' }
-    jet, snap, sched, cost = res
-    if snap is None:
-        return {
-            'desc1': 'Chose not to schedule any jobs',
-            'desc2': f'cost={cost:.2f}'
-        }
     return {
-        'desc1': f'Best option is {sched} on {jet.id}',
-        'desc2': f'cost={cost:.2f}'
+        'desc1': 'Who the fuck knows I\'m gonna kms',
+        'desc2': ''
     }
 
-def cost_args(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[Req],
-              snap: Snapshot, inv: Inventory, next_avail: dt.datetime) -> ProcessDesc:
+def cost_args(jet: Jet, sched: JetSched, newjob, order: Order, dmnd: Demand,
+         reqs: list[Req], snap: Snapshot, inv: Inventory, next_avail: dt.datetime,
+         ignore_rem: bool = False) -> ProcessDesc:
     if sched == jet.cur_sched:
         return {
             'desc1': f'Getting the total cost for the current schedule of {jet.id}',
@@ -146,9 +142,10 @@ def cost_args(jet: Jet, sched: JetSched, order: Order, dmnd: Demand, reqs: list[
         'desc2': f'inventory snapshot={snap}'
     }
 
-def cost_ret(res: float) -> ProcessDesc:
+def cost_ret(res: tuple[float, float]) -> ProcessDesc:
+    non_jet, jet = res
     return {
-        'desc1': f'cost={res:.2f}'
+        'desc1': f'cost={non_jet+jet:.2f}'
     }
 
 def sc_cost_args(jet: Jet) -> ProcessDesc:
@@ -163,7 +160,8 @@ def sc_cost_ret(res: tuple[float, float, float]) -> ProcessDesc:
         'desc3': f'non-preferred items costs={non_black_9}'
     }
 
-def order_cost_args(order: Order | OrderView, next_avail: dt.datetime) -> ProcessDesc:
+def order_cost_args(order: Order | OrderView, next_avail: dt.datetime,
+               ignore_amt: float, cur_ports: int = -1) -> ProcessDesc:
     return {
         'desc1': f'Calculating late and not-scheduled costs for {order}'
     }
@@ -173,7 +171,8 @@ def order_cost_ret(res: float) -> ProcessDesc:
         'desc1': f'late cost={res:.2f}'
     }
 
-def late_cost_args(order: Order, dmnd: Demand, next_avail: dt.datetime) -> ProcessDesc:
+def late_cost_args(order: Order, dmnd: Demand, next_avail: dt.datetime,
+              cur_ports: int, ignore_rem: bool = False) -> ProcessDesc:
     return {
         'desc1': 'Getting the cost of late and not-scheduled orders'
     }

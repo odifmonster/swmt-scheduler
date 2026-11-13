@@ -9,6 +9,7 @@ def init() -> None:
         return
     
     srcpath = os.path.join(os.path.dirname(__file__), 'translate.csv')
+    masters = set()
     with open(srcpath) as infile:
         for line in infile:
             line = line.strip()
@@ -16,6 +17,10 @@ def init() -> None:
 
             inv, plan = line.split(',')
             globals()['_STYLE_MAP'][inv] = plan
+            masters.add(plan)
+
+    for m in masters:
+        globals()['_STYLE_MAP'][f'GF {m}'] = m
 
 def get_plan_name(inv_name: str) -> str | None:
     if inv_name not in globals()['_STYLE_MAP']:

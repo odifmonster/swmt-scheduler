@@ -18,7 +18,7 @@ def init():
             if not line: continue
 
             fab, grg, _, clr_name, clr_num, yld, shade, jets_str = line.split(',')
-            if 'PROVTW-NDWR' in fab:
+            if 'PROVTW-NDWR' in fab or 'SPRUCE' in fab:
                 print(fab)
             fab = fab.strip()
             grg = greige.get_style(grg.strip())

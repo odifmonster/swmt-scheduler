@@ -115,7 +115,7 @@ class Inventory(HasLogger, Grouped[str, GreigeStyle], attrs=('_logger','logger')
 
         for rview in views:
             wt_fact = 2
-            if rview.size == HALF:
+            if rview.lbs <= 400:
                 wt_fact = 1
             if max_date is not None:
                 continue
